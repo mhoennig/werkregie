@@ -32,6 +32,7 @@ interface Source {
 class Dashboard(
     private val sources: List<Source>,
     private val windowHours: Long,
+    private val version: String = "dev",
     private val executor: ExecutorService = Executors.newVirtualThreadPerTaskExecutor(),
 ) {
     private class Entry(
@@ -65,7 +66,7 @@ class Dashboard(
         }
         val items = sources.flatMap { source -> entries.getValue(source.id).let { synchronized(it) { it.items } } }
             .sortedByDescending { it.time ?: Instant.EPOCH }
-        return Snapshot(now, windowHours, items, statuses)
+        return Snapshot(version, now, windowHours, items, statuses)
     }
 
     /** Starts a background refresh when the ttl is over; returns it only if nothing was fetched yet. */

@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
         .registerKotlinModule()
         .registerModule(JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-    val dashboard = Dashboard(sources(config, mapper), config.windowHours)
+    val dashboard = Dashboard(sources(config, mapper), config.windowHours, version())
 
     // loopback only: the page shows private work and the backend holds the Gitea tokens
     val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), config.port), 0)
@@ -32,14 +32,7 @@ fun main(args: Array<String>) {
     server.createContext("/api/dashboard") { exchange ->
         exchange.respond(200, "application/json", mapper.writeValueAsBytes(dashboard.snapshot()))
     }
-    server.createContext("/") { exchange ->
-        val page = if (exchange.requestURI.path == "/") Main::class.java.getResource("/static/index.html") else null
-        if (page == null) {
-            exchange.respond(404, "text/plain", "not found".toByteArray())
-        } else {
-            exchange.respond(200, "text/html; charset=utf-8", page.readBytes())
-        }
-    }
+    server.createContext("/") { exchange -> StaticFiles.serve(exchange) }
     server.start()
     // warm the caches, so the first page load does not wait for the remote servers
     Thread.ofVirtual().start { dashboard.snapshot() }
@@ -53,6 +46,35 @@ private fun sources(config: DashboardConfig, mapper: ObjectMapper): List<Source>
         if (config.codex.enabled) add(CodexSource(config.codex, mapper))
         config.werkators.forEach { add(WerkatorSource(it, http)) }
         config.giteas.forEach { add(GiteaSource(it, http, mapper)) }
+    }
+}
+
+private fun version(): String =
+    Main::class.java.getResourceAsStream("/werkregie.properties")
+        ?.use { stream -> java.util.Properties().apply { load(stream) }.getProperty("version") }
+        ?: "dev"
+
+/** The page and its assets from the classpath; anything outside `static/` is not reachable. */
+private object StaticFiles {
+    private val safePath = Regex("^/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$")
+    private val types = mapOf(
+        "html" to "text/html; charset=utf-8",
+        "css" to "text/css; charset=utf-8",
+        "js" to "text/javascript; charset=utf-8",
+        "svg" to "image/svg+xml",
+        "woff2" to "font/woff2",
+    )
+
+    fun serve(exchange: HttpExchange) {
+        val path = exchange.requestURI.path.let { if (it == "/") "/index.html" else it }
+        val resource = path.takeIf { safePath.matches(it) && ".." !in it }
+            ?.let { Main::class.java.getResource("/static$it") }
+        val type = types[path.substringAfterLast('.')]
+        if (resource == null || type == null) {
+            exchange.respond(404, "text/plain", "not found".toByteArray())
+        } else {
+            exchange.respond(200, type, resource.readBytes())
+        }
     }
 }
 

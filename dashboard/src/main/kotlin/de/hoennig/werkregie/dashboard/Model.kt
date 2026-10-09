@@ -39,6 +39,7 @@ data class SourceStatus(
 )
 
 data class Snapshot(
+    val version: String,
     val generatedAt: Instant,
     val windowHours: Long,
     val items: List<Item>,

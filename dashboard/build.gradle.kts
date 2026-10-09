@@ -45,6 +45,13 @@ application {
     applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
+tasks.processResources {
+    // the footer shows the version, as Werkator's does
+    val version = project.version.toString()
+    inputs.property("version", version)
+    filesMatching("werkregie.properties") { expand("version" to version) }
+}
+
 tasks.test {
     useJUnitPlatform()
 }

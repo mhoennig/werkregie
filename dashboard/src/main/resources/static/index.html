@@ -3,274 +3,296 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Werkregie</title>
-<style>
-:root {
-  --bg: #f6f7f8; --panel: #ffffff; --line: #e3e6ea; --text: #1b1f24; --muted: #69727d;
-  --accent: #0b7a75; --accent-soft: #d8efed;
-  --ok: #1f8a4c; --ok-soft: #dcf2e4; --warn: #b7791f; --warn-soft: #fbf0d9;
-  --orange: #c4561b; --orange-soft: #fbe3d5; --bad: #c62f3a; --bad-soft: #f9dcdf;
-  --neutral-soft: #eceff2;
-  --claude: #c96442; --codex: #10a37f; --werkator: #3b6fd8; --werkrevisor: #8a4fd8; --gitea: #609926;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #111417; --panel: #1a1e22; --line: #2b3137; --text: #e6e9ec; --muted: #8d969f;
-    --accent: #3cc2bb; --accent-soft: #163634;
-    --ok: #4cc27c; --ok-soft: #173424; --warn: #e2b04a; --warn-soft: #3a2f16;
-    --orange: #ee8650; --orange-soft: #3d2416; --bad: #ef6b74; --bad-soft: #3c1b1f;
-    --neutral-soft: #262b30;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-a { color: inherit; }
-header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; }
-.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; max-width: 1400px; margin: 0 auto; }
-h1 { font-size: 17px; margin: 0; letter-spacing: .02em; }
-h1 span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
-.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
-.src { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; text-decoration: none; background: var(--panel); }
-.src i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
-.src.err i { background: var(--bad); }
-.src.err { border-color: var(--bad); }
-.src.warn i { background: var(--warn); }
-.filters { margin-top: 8px; }
-.toggle { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 6px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
-.toggle.on { color: var(--text); border-color: currentColor; }
-.toggle b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
-select, input[type=search] { font: inherit; font-size: 12px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
-main { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; gap: 20px; }
-h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
-h2 small { text-transform: none; letter-spacing: 0; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; }
-.list { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.row { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); align-items: start; }
-.row:first-child { border-top: 0; }
-.row.running { background: linear-gradient(90deg, var(--accent-soft), transparent 60%); }
-.when { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 1px; }
-.main { min-width: 0; }
-.title { font-weight: 550; overflow-wrap: anywhere; }
-.title a { text-decoration: none; }
-.title a:hover { text-decoration: underline; }
-.meta { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
-.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
-.tag b { width: 8px; height: 8px; border-radius: 2px; }
-.right { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; max-width: 360px; }
-.pill { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--neutral-soft); color: var(--muted); white-space: nowrap; text-decoration: none; }
-a.pill:hover { text-decoration: underline; }
-.s-ok { background: var(--ok-soft); color: var(--ok); }
-.s-run { background: var(--accent-soft); color: var(--accent); }
-.s-warn { background: var(--warn-soft); color: var(--warn); }
-.s-orange { background: var(--orange-soft); color: var(--orange); }
-.s-bad { background: var(--bad-soft); color: var(--bad); }
-.s-run::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; vertical-align: 1px; animation: pulse 1.4s infinite; }
-@keyframes pulse { 50% { opacity: .25; } }
-.copy { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 5px; font-size: 11px; padding: 1px 6px; cursor: pointer; }
-.copy:hover { color: var(--text); }
-.day { padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--bg); border-top: 1px solid var(--line); }
-.day:first-child { border-top: 0; }
-.empty { padding: 14px 12px; color: var(--muted); font-size: 13px; }
-.errors { color: var(--bad); font-size: 12px; max-width: 1400px; margin: 6px auto 0; }
-@media (max-width: 600px) {
-  .cols { grid-template-columns: 1fr; }
-  .row { grid-template-columns: 1fr; gap: 4px; }
-  .right { justify-content: flex-start; max-width: none; }
-  .sources { margin-left: 0; }
-}
-</style>
+<title>Übersicht — Werkregie</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/werkregie.css">
+<!-- The reader's light/dark choice, applied before the first paint, as in Werkator (RFC 0003). -->
+<script>try{var t=localStorage.getItem("werkregie-theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}}catch(e){}</script>
 </head>
 <body>
-<header>
-  <div class="bar">
-    <h1>Werkregie <span id="stamp">lädt …</span></h1>
-    <div class="sources" id="sources"></div>
-  </div>
-  <div class="bar filters">
-    <div id="toggles" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    <select id="project"><option value="">alle Projekte</option></select>
-    <select id="window">
-      <option value="8">8 h</option>
-      <option value="24" selected>24 h</option>
-      <option value="72">3 Tage</option>
-      <option value="168">7 Tage</option>
-    </select>
-    <input type="search" id="search" placeholder="Suchen …">
-  </div>
-  <div class="errors" id="errors"></div>
-</header>
-<main>
-  <section>
-    <h2>Läuft jetzt <small id="running-count"></small></h2>
-    <div class="list" id="running"></div>
-  </section>
-  <div class="cols">
-    <section>
-      <h2>Offene Sessions <small id="sessions-count"></small></h2>
-      <div class="list" id="sessions"></div>
-    </section>
-    <section>
-      <h2>Offene Pull Requests <small id="prs-count"></small></h2>
-      <div class="list" id="prs"></div>
-    </section>
-  </div>
-  <section>
-    <h2>Verlauf <small id="recent-count"></small></h2>
-    <div class="list" id="recent"></div>
-  </section>
-</main>
-<script>
-const SOURCES = {
-  claude: { label: "Claude", color: "var(--claude)" },
-  codex: { label: "Codex", color: "var(--codex)" },
-  werkator: { label: "Werkator", color: "var(--werkator)" },
-  werkrevisor: { label: "werkrevisor", color: "var(--werkrevisor)" },
-  gitea: { label: "Gitea", color: "var(--gitea)" },
-};
-const STATE_CLASS = {
-  busy: "s-run", running: "s-run", pending: "s-run", queued: "s-run",
-  success: "s-ok", done: "s-ok", green: "s-ok", approve_pull_request: "s-ok", merge_pull_request: "s-ok",
-  yellow: "s-warn", draft: "s-warn", warning: "s-warn",
-  orange: "s-orange",
-  failure: "s-bad", failed: "s-bad", error: "s-bad", red: "s-bad", timed_out: "s-bad", reject_pull_request: "s-bad",
-};
-const STATE_LABEL = { busy: "arbeitet", idle: "wartet", closed: "beendet", archived: "archiviert", done: "fertig", draft: "Entwurf", open: "offen" };
 
-const store = (() => { try { return window.localStorage; } catch { return null; } })();
-const saved = (() => { try { return JSON.parse(store?.getItem("werkregie") || "{}"); } catch { return {}; } })();
+<header class="site-header">
+    <div class="site-header-inner">
+        <a class="brand" href="/" aria-label="Übersicht neu laden">
+            <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 16h48M8 32h30M8 48h16"/><circle cx="47" cy="48" r="7"/></svg>
+            <span>Werkregie</span>
+        </a>
+        <nav class="site-nav" aria-label="Dashboard">
+            <span class="current nav-item"><span class="icon icon-home"></span><span class="nav-label">Übersicht</span></span>
+            <span id="live-indicator" class="status-unknown" title="Verbindung zum Backend">…</span>
+            <button id="theme-button" class="icon-button" type="button"><span class="icon icon-theme"></span></button>
+            <button id="reload-button" class="icon-button reload-button" type="button" title="Neu laden" aria-label="Neu laden"><span class="icon icon-restart"></span></button>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <!-- one chip per data source, like Werkator's repository line -->
+    <div id="source-line" class="repo-line"></div>
+    <div class="view-head">
+        <h1>Übersicht</h1>
+        <span class="view-explanation">was gerade läuft und was zuletzt geschah</span>
+        <span id="view-meta" class="view-meta"></span>
+    </div>
+    <div id="source-banner" class="watcher-banner" role="status" hidden></div>
+
+    <div class="filters">
+        <div id="source-chips" class="chips" aria-label="Quellen"></div>
+        <select id="project" class="control" aria-label="Projekt"><option value="">alle Projekte</option></select>
+        <select id="window" class="control" aria-label="Zeitraum">
+            <option value="8">8 Stunden</option>
+            <option value="24">24 Stunden</option>
+            <option value="72">3 Tage</option>
+            <option value="168">7 Tage</option>
+        </select>
+        <input id="search" class="control control-search" type="search" placeholder="Suchen …" aria-label="Suchen">
+    </div>
+
+    <div class="board">
+        <section class="panel">
+            <h2>Läuft jetzt <em id="running-count"></em></h2>
+            <div id="running"></div>
+        </section>
+        <div class="board-pair">
+            <section class="panel">
+                <h2>Offene Sessions <em id="sessions-count"></em></h2>
+                <div id="sessions"></div>
+            </section>
+            <section class="panel">
+                <h2>Offene Pull Requests <em id="prs-count"></em></h2>
+                <div id="prs"></div>
+            </section>
+        </div>
+        <section class="panel">
+            <h2>Verlauf <em id="recent-count"></em></h2>
+            <div id="recent"></div>
+        </section>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <span>
+        <strong>Werkregie</strong>
+        <span id="version" class="version"></span>
+        · © 2026 <a href="https://michael.hoennig.de" target="_blank" rel="noopener noreferrer">Michael Hönnig</a>
+    </span>
+    <span class="site-footer-links">
+        <span>nur lokal, nur lesend</span>
+    </span>
+</footer>
+
+<script>
+const SOURCES = { claude: "Claude", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea" };
+
+// Werkator's status classes: accent for good and running, clay for failed, amber for timeouts,
+// an outlined dot for waiting, ghost for everything that is over without a verdict
+const STATUS = {
+    busy: ["running", "arbeitet"], running: ["running", "läuft"],
+    pending: ["pending", "wartet"], queued: ["pending", "wartet"], idle: ["pending", "bereit"], open: ["pending", "offen"],
+    success: ["success", "erfolgreich"], done: ["success", "fertig"],
+    failure: ["failed", "fehler"], failed: ["failed", "fehler"], error: ["failed", "fehler"],
+    timed_out: ["timed_out", "timeout"],
+    interrupted: ["unknown", "abgebrochen"], closed: ["unknown", "beendet"], archived: ["unknown", "archiviert"],
+    stale: ["unknown", "veraltet"], draft: ["unknown", "entwurf"],
+};
+const TAG = {
+    pending: "tag-run", running: "tag-run", success: "tag-ok", green: "tag-ok",
+    yellow: "tag-warn", warning: "tag-warn", orange: "tag-bad", red: "tag-bad", failure: "tag-bad", error: "tag-bad",
+};
+
+const THEME_KEY = "werkregie-theme";
+const SETTINGS_KEY = "werkregie-settings";
+const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+const saved = (() => { try { return JSON.parse(storage?.getItem(SETTINGS_KEY) || "{}"); } catch (e) { return {}; } })();
 const state = { data: null, hidden: new Set(saved.hidden || []), project: saved.project || "", windowHours: saved.windowHours || 24, search: "" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function persist() {
-  try { store?.setItem("werkregie", JSON.stringify({ hidden: [...state.hidden], project: state.project, windowHours: state.windowHours })); } catch {}
+    try { storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], project: state.project, windowHours: state.windowHours })); } catch (e) {}
 }
 
 function ago(iso) {
-  if (!iso) return "";
-  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
-  if (s < 60) return "jetzt";
-  if (s < 3600) return `${Math.floor(s / 60)} min`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h`;
-  return `${Math.floor(s / 86400)} d`;
+    const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+    if (s < 60) return "jetzt";
+    if (s < 3600) return `${Math.floor(s / 60)} min`;
+    if (s < 86400) return `${Math.floor(s / 3600)} h`;
+    return `${Math.floor(s / 86400)} d`;
 }
-const clock = (iso) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+const clock = (iso, seconds) => new Date(iso).toLocaleTimeString("de-DE", seconds ? {} : { hour: "2-digit", minute: "2-digit" });
 function dayLabel(iso) {
-  const d = new Date(iso), today = new Date();
-  const diff = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
-  if (diff === 0) return "Heute";
-  if (diff === 1) return "Gestern";
-  return d.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+    const d = new Date(iso), today = new Date();
+    const diff = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
+    if (diff === 0) return "Heute";
+    if (diff === 1) return "Gestern";
+    return d.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
 }
 
-function pill(text, st, url, title) {
-  const cls = STATE_CLASS[(st || "").toLowerCase()] || "";
-  const attrs = `class="pill ${cls}" ${title ? `title="${esc(title)}"` : ""}`;
-  return url ? `<a ${attrs} href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a>` : `<span ${attrs}>${esc(text)}</span>`;
+function statusHtml(item) {
+    if (item.kind === "activity") return "";
+    const [cls, word] = STATUS[item.state] || ["unknown", item.state.replaceAll("_", " ")];
+    return `<span class="status status-${cls}">${esc(word)}</span>`;
+}
+
+function tagHtml(badge) {
+    const cls = TAG[(badge.state || "").toLowerCase()] || "";
+    const attrs = `class="tag ${cls}"${badge.title ? ` title="${esc(badge.title)}"` : ""}`;
+    return badge.url
+        ? `<a ${attrs} href="${esc(badge.url)}" target="_blank" rel="noopener">${esc(badge.label)}</a>`
+        : `<span ${attrs}>${esc(badge.label)}</span>`;
 }
 
 function row(item, timeMode) {
-  const src = SOURCES[item.source] || { label: item.source, color: "var(--muted)" };
-  const title = item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>` : esc(item.title);
-  const when = item.time ? (timeMode === "clock" ? clock(item.time) : ago(item.time)) : "";
-  const badges = (item.badges || []).map((b) => pill(b.label, b.state, b.url, b.title)).join("");
-  const copy = item.command ? `<button class="copy" data-cmd="${esc(item.command)}" title="${esc(item.command)}">resume kopieren</button>` : "";
-  return `<div class="row ${item.section === "RUNNING" ? "running" : ""}">
-    <div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>
-    <div class="main">
-      <div class="title">${title}</div>
-      <div class="meta">
-        <span class="tag" style="color:${src.color}"><b style="background:${src.color}"></b>${esc(src.label)} · ${esc(item.origin)}</span>
-        ${item.project ? `<span>${esc(item.project)}</span>` : ""}
-        ${item.detail ? `<span>${esc(item.detail)}</span>` : ""}
-      </div>
-    </div>
-    <div class="right">${badges}${pill(STATE_LABEL[item.state] || item.state.replaceAll("_", " "), item.state)}${copy}</div>
-  </div>`;
+    const title = item.url
+        ? `<a class="title" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
+        : `<span class="title">${esc(item.title)}</span>`;
+    const failed = (STATUS[item.state] || [])[0] === "failed" && item.kind !== "pr";
+    const classes = ["row", item.section === "RUNNING" ? "is-running" : "", failed ? "is-failed" : ""].join(" ");
+    const when = item.time ? (timeMode === "clock" ? clock(item.time) : ago(item.time)) : "";
+    const copy = item.command
+        ? `<button class="copy-button" type="button" data-cmd="${esc(item.command)}" title="Resume-Befehl kopieren: ${esc(item.command)}" aria-label="Resume-Befehl kopieren"><span class="icon icon-copy"></span></button>`
+        : "";
+    return `<div class="${classes}">
+        <div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>
+        <div class="what">
+            ${title}
+            <div class="meta">
+                <span class="origin">${esc(SOURCES[item.source] || item.source)} · ${esc(item.origin)}</span>
+                ${item.project ? `<span class="project">${esc(item.project)}</span>` : ""}
+                ${item.detail ? `<span class="detail">${esc(item.detail)}</span>` : ""}
+            </div>
+        </div>
+        <div class="aside">${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>
+    </div>`;
 }
 
-function fill(id, items, empty, timeMode) {
-  $(id).innerHTML = items.length ? items.map((i) => row(i, timeMode)).join("") : `<div class="empty">${empty}</div>`;
-  $(`${id}-count`).textContent = items.length ? `(${items.length})` : "";
+function fill(id, items, empty, countWord) {
+    $(id).innerHTML = items.length ? items.map((i) => row(i)).join("") : `<div class="empty">${empty}</div>`;
+    $(`${id}-count`).textContent = items.length ? `${items.length} ${countWord}` : "";
 }
 
 function render() {
-  const data = state.data;
-  if (!data) return;
-  const needle = state.search.toLowerCase();
-  const since = Date.now() - state.windowHours * 3600 * 1000;
-  const visible = data.items.filter((i) =>
-    !state.hidden.has(i.source) &&
-    (!state.project || i.project === state.project) &&
-    (!needle || `${i.title} ${i.project} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
+    const data = state.data;
+    if (!data) return;
+    const needle = state.search.toLowerCase();
+    const since = Date.now() - state.windowHours * 3600 * 1000;
+    const visible = data.items.filter((i) =>
+        !state.hidden.has(i.source) &&
+        (!state.project || i.project === state.project) &&
+        (!needle || `${i.title} ${i.project} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
 
-  fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.");
-  fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr"), "Keine offenen Sessions.");
-  fill("prs", visible.filter((i) => i.kind === "pr"), "Keine offenen Pull Requests.");
+    fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
+    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr"), "Keine offenen Sessions.", "bereit");
+    fill("prs", visible.filter((i) => i.kind === "pr"), "Keine offenen Pull Requests.", "offen");
 
-  const recent = visible.filter((i) => i.section === "RECENT" && i.time && Date.parse(i.time) >= since);
-  let html = "", day = null;
-  for (const item of recent) {
-    const label = dayLabel(item.time);
-    if (label !== day) { html += `<div class="day">${esc(label)}</div>`; day = label; }
-    html += row(item, "clock");
-  }
-  $("recent").innerHTML = html || `<div class="empty">Nichts im gewählten Zeitraum.</div>`;
-  $("recent-count").textContent = recent.length ? `(${recent.length})` : "";
+    const recent = visible.filter((i) => i.section === "RECENT" && i.time && Date.parse(i.time) >= since);
+    let html = "", day = null;
+    for (const item of recent) {
+        const label = dayLabel(item.time);
+        if (label !== day) { html += `<div class="day">${esc(label)}</div>`; day = label; }
+        html += row(item, "clock");
+    }
+    $("recent").innerHTML = html || `<div class="empty">Nichts im gewählten Zeitraum.</div>`;
+    $("recent-count").textContent = `${recent.length} Einträge`;
 }
 
 function renderChrome() {
-  const data = state.data;
-  $("stamp").textContent = `Stand ${clock(data.generatedAt)}`;
-  $("sources").innerHTML = data.sources.map((s) => {
-    const tag = s.url ? "a" : "span";
-    const href = s.url ? `href="${esc(s.url)}" target="_blank" rel="noopener"` : "";
-    return `<${tag} class="src ${s.ok ? (s.message ? "warn" : "") : "err"}" ${href} title="${esc(s.message || `${s.count} Einträge`)}"><i></i>${esc(s.label)}</${tag}>`;
-  }).join("");
-  $("errors").textContent = data.sources.filter((s) => !s.ok).map((s) => `${s.label}: ${s.message}`).join(" · ");
+    const data = state.data;
+    $("view-meta").textContent = `Stand ${clock(data.generatedAt, true)}`;
+    $("version").textContent = data.version ? `v${data.version}` : "";
+    $("source-line").innerHTML = data.sources.map((s) => {
+        const tag = s.url ? "a" : "span";
+        const href = s.url ? ` href="${esc(s.url)}" target="_blank" rel="noopener"` : "";
+        const level = s.ok ? (s.message ? " repo-chip-warn" : "") : " repo-chip-bad";
+        const dot = s.ok ? (s.message ? "timed_out" : "success") : "failed";
+        const title = s.message || `${s.count} Einträge`;
+        return `<${tag} class="repo-chip${level}"${href} title="${esc(title)}"><span class="status status-${dot}"></span><span>${esc(s.label)}</span><small>${s.ok ? s.count : "Fehler"}</small></${tag}>`;
+    }).join("");
 
-  const projects = [...new Set(data.items.map((i) => i.project).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const select = $("project");
-  const current = state.project;
-  select.innerHTML = `<option value="">alle Projekte</option>` + projects.map((p) => `<option ${p === current ? "selected" : ""}>${esc(p)}</option>`).join("");
+    const problems = data.sources.filter((s) => !s.ok || s.message);
+    const banner = $("source-banner");
+    banner.hidden = problems.length === 0;
+    banner.innerHTML = `<strong>Quellen</strong> ` + problems.map((s) => `${esc(s.label)}: ${esc(s.message)}`).join(" · ");
+
+    const projects = [...new Set(data.items.map((i) => i.project).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    $("project").innerHTML = `<option value="">alle Projekte</option>` +
+        projects.map((p) => `<option${p === state.project ? " selected" : ""}>${esc(p)}</option>`).join("");
 }
 
-function renderToggles() {
-  $("toggles").innerHTML = Object.entries(SOURCES).map(([key, s]) =>
-    `<button class="toggle ${state.hidden.has(key) ? "" : "on"}" data-source="${key}"><b style="background:${s.color}"></b>${esc(s.label)}</button>`).join("");
+function renderSourceChips() {
+    $("source-chips").innerHTML = Object.entries(SOURCES).map(([key, label]) =>
+        `<button class="chip${state.hidden.has(key) ? "" : " is-active"}" type="button" data-source="${key}" aria-pressed="${!state.hidden.has(key)}">${esc(label)}</button>`).join("");
+}
+
+function setLive(ok) {
+    const indicator = $("live-indicator");
+    indicator.className = ok ? "status-success" : "status-error";
+    indicator.textContent = ok ? "live" : "offline";
 }
 
 async function load() {
-  try {
-    const response = await fetch("/api/dashboard", { cache: "no-store" });
-    state.data = await response.json();
-    renderChrome();
-    render();
-  } catch (e) {
-    $("errors").textContent = `Backend nicht erreichbar: ${e.message}`;
-  }
+    try {
+        const response = await fetch("/api/dashboard", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        state.data = await response.json();
+        setLive(true);
+        renderChrome();
+        render();
+    } catch (e) {
+        setLive(false);
+    }
 }
 
-$("toggles").addEventListener("click", (e) => {
-  const button = e.target.closest("[data-source]");
-  if (!button) return;
-  const key = button.dataset.source;
-  state.hidden.has(key) ? state.hidden.delete(key) : state.hidden.add(key);
-  persist(); renderToggles(); render();
+// ---- light or dark over the browser's preference, as in Werkator (RFC 0003) ----
+function currentTheme() {
+    if (document.documentElement.dataset.theme) return document.documentElement.dataset.theme;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function describeTheme() {
+    const button = $("theme-button");
+    button.title = currentTheme() === "dark" ? "Hell anzeigen" : "Dunkel anzeigen";
+    button.setAttribute("aria-label", button.title);
+}
+$("theme-button").addEventListener("click", () => {
+    const next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { storage?.setItem(THEME_KEY, next); } catch (e) {}
+    describeTheme();
+});
+window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", describeTheme);
+describeTheme();
+
+$("reload-button").addEventListener("click", (e) => {
+    const button = e.currentTarget;
+    button.classList.remove("is-reloading");
+    void button.offsetWidth;
+    button.classList.add("is-reloading");
+    load();
+});
+$("source-chips").addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-source]");
+    if (!chip) return;
+    const key = chip.dataset.source;
+    state.hidden.has(key) ? state.hidden.delete(key) : state.hidden.add(key);
+    persist(); renderSourceChips(); render();
 });
 $("project").addEventListener("change", (e) => { state.project = e.target.value; persist(); render(); });
 $("window").value = String(state.windowHours);
 $("window").addEventListener("change", (e) => { state.windowHours = Number(e.target.value); persist(); render(); });
 $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });
 document.addEventListener("click", async (e) => {
-  const button = e.target.closest(".copy");
-  if (!button) return;
-  try { await navigator.clipboard.writeText(button.dataset.cmd); button.textContent = "kopiert ✓"; }
-  catch { button.textContent = "Kopieren fehlgeschlagen"; }
-  setTimeout(() => (button.textContent = "resume kopieren"), 1500);
+    const button = e.target.closest(".copy-button");
+    if (!button) return;
+    try {
+        await navigator.clipboard.writeText(button.dataset.cmd);
+        button.classList.add("is-copied");
+        setTimeout(() => button.classList.remove("is-copied"), 1500);
+    } catch (error) {
+        button.title = "Kopieren fehlgeschlagen";
+    }
 });
 
-renderToggles();
+renderSourceChips();
 load();
 setInterval(() => { if (!document.hidden) load(); }, 5000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });

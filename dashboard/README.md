@@ -10,6 +10,7 @@ and what happened recently — read-only, links back to the tools.
 | Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history` | running and finished builds; `@ai-review` builds as werkrevisor |
 | Gitea, any number of instances | `/api/v1` | open PRs with commit statuses (Werkator, werkrevisor run and verdict), own activity |
 
+The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM Plex, petrol accent, light/dark with a toggle).
 The server binds to `127.0.0.1` only; Gitea tokens and Werkator control tokens stay in the backend.
 
 ## Run
