@@ -91,5 +91,5 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
 - **Gitea:** a token with read scopes, as `token`, `tokenEnv` or `teaLogin` (a login of `~/.config/tea/config.yml`, by name or user).
   `pullRequests: mine` lists PRs created by, assigned to or awaiting review from the user, `all` every open PR the user can see.
 
-Local sources refresh every 2–3 s, Werkator every 15 s, Gitea every 30 s;
+Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time), Gitea every 30 s;
 cached data is served at once while a due source refreshes in the background.

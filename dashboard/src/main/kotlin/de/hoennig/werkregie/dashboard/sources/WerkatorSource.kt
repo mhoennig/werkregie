@@ -11,6 +11,7 @@ import java.net.URLEncoder
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
 
 /**
  * Builds of one Werkator instance, all its repositories. The `@ai-review` builds are the
@@ -21,7 +22,8 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
     override val label = "Werkator ${config.name}"
     override val url = config.url.trimEnd('/')
     override val hint = config.hint
-    override val ttl: Duration = Duration.ofSeconds(15)
+    // a build history takes seconds on a loaded host; asking more often only adds to the load
+    override val ttl: Duration = Duration.ofSeconds(30)
 
     // the control token as cookie, the way Werkator's own pages send it
     private val headers = (config.controlToken ?: config.controlTokenEnv?.let { System.getenv(it) })
@@ -39,15 +41,21 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         // a private repository shows to a visitor without name and url
         val repos = all.mapNotNull { repo -> repo.text("name")?.takeIf { repo.text("url") != null } }
         hiddenRepos = all.size - repos.size
+        // a few at a time: Werkator may share the host with this server and is building meanwhile
+        val slots = Semaphore(PARALLEL_REQUESTS)
         return Executors.newVirtualThreadPerTaskExecutor().use { executor ->
-            repos.map { repo -> executor.submit<List<Item>> { builds(repo, now, since) } }
-                .flatMap { it.get() }
+            repos.map { repo ->
+                executor.submit<List<Item>> {
+                    slots.acquire()
+                    try { builds(repo, now, since) } finally { slots.release() }
+                }
+            }.flatMap { it.get() }
         }
     }
 
     private fun builds(repo: String, now: Instant, since: Instant): List<Item> {
         val encoded = URLEncoder.encode(repo, Charsets.UTF_8)
-        return http.get("$url/api/repos/$encoded/builds/history", headers)
+        return http.get("$url/api/repos/$encoded/builds/history", headers, REQUEST_TIMEOUT)
             .mapNotNull { build -> item(repo, encoded, build, now, since) }
             .take(MAX_PER_REPO)
     }
@@ -93,5 +101,7 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         private const val MAX_PER_REPO = 40
         private val ACTIVE = setOf("running", "pending", "queued")
         private val STALE_AFTER = Duration.ofHours(12)
+        private const val PARALLEL_REQUESTS = 3
+        private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(30)
     }
 }

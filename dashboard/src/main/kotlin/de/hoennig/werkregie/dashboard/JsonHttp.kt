@@ -17,9 +17,9 @@ class JsonHttp(private val mapper: ObjectMapper) {
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
-    fun get(url: String, headers: Map<String, String> = emptyMap()): JsonNode {
+    fun get(url: String, headers: Map<String, String> = emptyMap(), timeout: Duration = Duration.ofSeconds(10)): JsonNode {
         val request = HttpRequest.newBuilder(URI(url))
-            .timeout(Duration.ofSeconds(10))
+            .timeout(timeout)
             .header("Accept", "application/json")
             .apply { headers.forEach { (name, value) -> header(name, value) } }
             .GET()
