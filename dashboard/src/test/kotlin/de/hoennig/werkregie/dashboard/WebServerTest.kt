@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import java.net.URI
 import java.net.http.HttpClient
@@ -62,6 +63,19 @@ class WebServerTest : FunSpec({
     test("verifies a token for the page before it keeps it") {
         get("/api/token/verify", "Authorization", "Bearer ${accessToken.token}").statusCode() shouldBe 204
         get("/api/token/verify", "Authorization", "Bearer wrong").statusCode() shouldBe 401
+    }
+
+    test("forgets a relay on request with the token") {
+        post("/api/relay", report.copy(relay = "old"), "Authorization", "Bearer ${accessToken.token}")
+        fun delete(name: String, vararg headers: String) = client.send(
+            HttpRequest.newBuilder(URI("$base/api/relay/$name")).apply { if (headers.isNotEmpty()) headers(*headers) }.DELETE().build(),
+            HttpResponse.BodyHandlers.ofString(),
+        ).statusCode()
+
+        delete("old") shouldBe 401
+        delete("old", "Authorization", "Bearer ${accessToken.token}") shouldBe 204
+        delete("old", "Authorization", "Bearer ${accessToken.token}") shouldBe 404
+        relays.statuses(Instant.now()).map { it.id } shouldNotContain "relay:old"
     }
 
     test("rejects a report with an invalid relay name") {

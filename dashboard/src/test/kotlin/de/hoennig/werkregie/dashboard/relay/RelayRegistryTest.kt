@@ -55,6 +55,15 @@ class RelayRegistryTest : FunSpec({
         relays.fetch(now.plusSeconds(180), since).first().let { it.section to it.state } shouldBe (Section.RECENT to "closed")
     }
 
+    test("forgets a relay for good, also in the file") {
+        val file = Files.createTempDirectory("state").resolve("relays.json")
+        val relays = registry(file).apply { accept(report("old"), now); accept(report("new"), now) }
+
+        relays.forget("old") shouldBe true
+        relays.forget("old") shouldBe false
+        registry(file).statuses(now).map { it.id } shouldContainExactly listOf("relay:new")
+    }
+
     test("keeps the last reports across a restart") {
         val file = Files.createTempDirectory("state").resolve("relays.json")
         registry(file).apply { accept(report(), now) }.save(now)

@@ -40,6 +40,9 @@ One program, three ways to run it:
   so no other site can make a logged-in browser post to it.
 - **Silent relays:** after `server.relayStaleSeconds` (30) the relay's chip turns yellow with "zuletzt vor …";
   after `server.relayGoneSeconds` (120) its running and open sessions move to the history.
+- **Retired relays:** a relay that reports no more stays as stale until it is forgotten:
+  `werkregie-dashboard forget-relay NAME` on the server host asks the running server (with the token from its state),
+  or edits `relays.json` when no server runs. A relay still running simply reports again.
 - **State:** the last report of every relay is kept in `<stateDir>/relays.json`, so a restarted server is filled at once.
   `stateDir` defaults to `${XDG_STATE_HOME:-~/.local/state}/werkregie`.
 

@@ -51,6 +51,9 @@ class RelayRegistry(
         if (savedAt.plus(SAVE_INTERVAL).isBefore(now)) save(now)
     }
 
+    /** Drops a relay that reports no more; true when it was known. A relay still running reports again. */
+    fun forget(name: String): Boolean = (relays.remove(name) != null).also { removed -> if (removed) save() }
+
     @Synchronized
     fun save(now: Instant = Instant.now()) {
         Files.createDirectories(file.parent)

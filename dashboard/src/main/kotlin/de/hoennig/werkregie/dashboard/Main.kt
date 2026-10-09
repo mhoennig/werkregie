@@ -10,6 +10,10 @@ import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
 import de.hoennig.werkregie.dashboard.sources.CodexSource
 import de.hoennig.werkregie.dashboard.sources.GiteaSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.file.Path
 import java.time.Duration
 import kotlin.system.exitProcess
@@ -23,6 +27,9 @@ werkregie-dashboard [MODUS] [--config DATEI]
                 zeigt echte Daten nur mit dem Zugriffstoken
   relay         liest Claude Code und Codex und meldet sie an relay.serverUrl
   token         gibt das Zugriffstoken des Servers aus (erzeugt es beim ersten Mal)
+  forget-relay NAME
+                entfernt einen Relay, der sich nicht mehr meldet, vom Server
+                (über den laufenden Server, sonst direkt aus relays.json)
   init server|relay [VERZEICHNIS]
                 schreibt systemd-Unit (und für den Server .htaccess) zum Installieren
   version       gibt die Version aus
@@ -47,6 +54,7 @@ fun main(args: Array<String>) {
         "server" -> server(config, configPath, mapper)
         "relay" -> relay(config, mapper)
         "token" -> println(AccessToken(stateDir(config.server).resolve(AccessToken.FILE_NAME)).token)
+        "forget-relay" -> println(forgetRelay(config, mapper, arguments.removeFirstOrNull() ?: fail("forget-relay braucht den Namen des Relays")))
         "init" -> {
             val target = arguments.removeFirstOrNull() ?: fail("init braucht 'server' oder 'relay'")
             val directory = Path.of(arguments.removeFirstOrNull() ?: "werkregie-$target").toAbsolutePath()
@@ -84,6 +92,32 @@ private fun server(config: DashboardConfig, configPath: Path, mapper: ObjectMapp
 private fun relay(config: DashboardConfig, mapper: ObjectMapper) {
     val local = Dashboard(localSources(config, mapper), config.windowHours, version())
     RelayClient(config.relay, local, mapper).runForever()
+}
+
+/** Asks the running server to drop the relay; with no server running, edits its state file. */
+private fun forgetRelay(config: DashboardConfig, mapper: ObjectMapper, name: String): String {
+    if (!RelayRegistry.NAME.matches(name)) fail("ungültiger Relay-Name '$name'")
+    val state = stateDir(config.server)
+    val token = AccessToken(state.resolve(AccessToken.FILE_NAME)).token
+    val host = config.server.bindAddress.let { if (it == "0.0.0.0") "127.0.0.1" else it }
+    val request = HttpRequest.newBuilder(URI("http://$host:${config.port}/api/relay/$name"))
+        .header("Authorization", "Bearer $token")
+        .DELETE()
+        .build()
+    val status = runCatching {
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.discarding()).statusCode()
+    }.getOrNull()
+    val hint = " Läuft der Relay noch, meldet er sich wieder."
+    return when (status) {
+        204 -> "Relay $name entfernt.$hint"
+        404 -> "Relay $name ist dem Server unbekannt."
+        null -> {
+            val relays = RelayRegistry(state.resolve(RelayRegistry.FILE_NAME), mapper, Duration.ZERO, Duration.ZERO)
+            if (relays.forget(name)) "Server läuft nicht: Relay $name aus relays.json entfernt.$hint"
+            else "Server läuft nicht, und relays.json kennt keinen Relay $name."
+        }
+        else -> fail("Server antwortet mit HTTP $status")
+    }
 }
 
 private fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<Source> = buildList {

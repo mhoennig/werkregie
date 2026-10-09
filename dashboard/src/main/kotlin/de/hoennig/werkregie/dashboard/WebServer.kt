@@ -69,8 +69,11 @@ class WebServer(
 
     private fun relay(exchange: HttpExchange) {
         if (relays == null || accessToken == null) return exchange.respond(404, "text/plain", "no relays in this mode".toByteArray())
-        if (exchange.requestMethod != "POST") return exchange.respond(405, "text/plain", "POST only".toByteArray())
         if (!accessToken.matches(exchange.bearer())) return exchange.respond(401, "text/plain", "token required".toByteArray())
+        val path = exchange.requestURI.path
+        if (path.startsWith("/api/relay/")) return forget(exchange, path.removePrefix("/api/relay/"))
+        if (path != "/api/relay") return exchange.respond(404, "text/plain", "not found".toByteArray())
+        if (exchange.requestMethod != "POST") return exchange.respond(405, "text/plain", "POST only".toByteArray())
         val body = exchange.requestBody.readNBytes(MAX_REPORT_BYTES + 1)
         if (body.size > MAX_REPORT_BYTES) return exchange.respond(413, "text/plain", "report too large".toByteArray())
         val report = runCatching { mapper.readValue<RelayReport>(body) }.getOrNull()
@@ -78,6 +81,14 @@ class WebServer(
             ?: return exchange.respond(400, "text/plain", "invalid report".toByteArray())
         relays.accept(report)
         exchange.respond(204, "text/plain", ByteArray(0))
+    }
+
+    /** `DELETE /api/relay/NAME`: what `werkregie-dashboard forget-relay NAME` sends. */
+    private fun forget(exchange: HttpExchange, name: String) {
+        if (exchange.requestMethod != "DELETE") return exchange.respond(405, "text/plain", "DELETE only".toByteArray())
+        if (!RelayRegistry.NAME.matches(name)) return exchange.respond(400, "text/plain", "invalid relay name".toByteArray())
+        val forgotten = relays!!.forget(name)
+        exchange.respond(if (forgotten) 204 else 404, "text/plain", if (forgotten) ByteArray(0) else "unknown relay".toByteArray())
     }
 
     private fun HttpExchange.bearer(): String? =
