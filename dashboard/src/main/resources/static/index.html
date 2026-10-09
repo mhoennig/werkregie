@@ -56,24 +56,24 @@
 
     <div class="board">
         <section class="panel">
-            <h2>Läuft jetzt <em id="running-count"></em></h2>
+            <h2><span class="panel-title">Läuft jetzt <span id="running-sources" class="panel-sources"></span></span><em id="running-count"></em></h2>
             <div id="running" class="panel-body"></div>
             <button class="panel-more" type="button" data-panel="running" hidden></button>
         </section>
         <div class="board-pair">
             <section class="panel">
-                <h2>Offene Sessions <em id="sessions-count"></em></h2>
+                <h2><span class="panel-title">Offene Sessions <span id="sessions-sources" class="panel-sources"></span></span><em id="sessions-count"></em></h2>
                 <div id="sessions" class="panel-body"></div>
             <button class="panel-more" type="button" data-panel="sessions" hidden></button>
             </section>
             <section class="panel">
-                <h2>Offene Pull Requests <em id="prs-count"></em></h2>
+                <h2><span class="panel-title">Offene Pull Requests <span id="prs-sources" class="panel-sources"></span></span><em id="prs-count"></em></h2>
                 <div id="prs" class="panel-body"></div>
             <button class="panel-more" type="button" data-panel="prs" hidden></button>
             </section>
         </div>
         <section class="panel">
-            <h2>Verlauf <em id="recent-count"></em></h2>
+            <h2><span class="panel-title">Verlauf <span id="recent-sources" class="panel-sources"></span></span><em id="recent-count"></em></h2>
             <div id="recent" class="panel-body"></div>
             <button class="panel-more" type="button" data-panel="recent" hidden></button>
         </section>
@@ -232,9 +232,39 @@ function toggle(id) {
     clamp(id);
 }
 
+// ---- which tools feed which panel; the heading names those configured and not filtered out ----
+const PANEL_SOURCES = {
+    running: ["claude", "codex", "werkator", "werkrevisor"],
+    sessions: ["claude"],
+    prs: ["gitea"],
+    recent: ["claude", "codex", "werkator", "werkrevisor", "gitea"],
+};
+const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea" };
+
+/** "Werkator javagil, vm4006": a tool with its configured instances, or null when none is configured. */
+function toolLabel(tool, sources) {
+    // werkrevisor runs are the @ai-review builds of the Werkator instances
+    const kind = tool === "werkrevisor" ? "werkator" : tool;
+    const instances = sources.filter((s) => s.id.split(":")[0] === kind).map((s) => s.id.split(":")[1]).filter(Boolean);
+    if (!sources.some((s) => s.id.split(":")[0] === kind)) return null;
+    return tool === "werkrevisor" || instances.length === 0
+        ? TOOL_NAMES[tool]
+        : `${TOOL_NAMES[tool]} ${instances.join(", ")}`;
+}
+
+function renderPanelSources() {
+    for (const [panel, tools] of Object.entries(PANEL_SOURCES)) {
+        const labels = tools.filter((tool) => !state.hidden.has(tool)).map((tool) => toolLabel(tool, state.data.sources)).filter(Boolean);
+        let text = labels.join(" · ");
+        if (panel === "prs" && labels.length) text += " — mit Commit-Status, z. B. Werkator, werkrevisor";
+        $(`${panel}-sources`).textContent = text ? `aus ${text}` : "keine Quelle ausgewählt";
+    }
+}
+
 function render() {
     const data = state.data;
     if (!data) return;
+    renderPanelSources();
     const needle = state.search.toLowerCase();
     const since = Date.now() - state.windowHours * 3600 * 1000;
     const visible = data.items.filter((i) =>
