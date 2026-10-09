@@ -38,7 +38,13 @@
 
     <div class="filters">
         <div id="source-chips" class="chips" aria-label="Quellen"></div>
-        <select id="project" class="control" aria-label="Projekt"><option value="">alle Projekte</option></select>
+        <!-- the project filter: a combobox whose list narrows to the projects containing the typed text -->
+        <div class="combo">
+            <input id="project" class="control combo-input" type="text" placeholder="alle Projekte" autocomplete="off" spellcheck="false"
+                   role="combobox" aria-label="Projekt" aria-autocomplete="list" aria-expanded="false" aria-controls="project-list">
+            <button id="project-clear" class="combo-clear" type="button" title="Projektfilter löschen" aria-label="Projektfilter löschen" hidden><span class="icon icon-close"></span></button>
+            <ul id="project-list" class="combo-list" role="listbox" aria-label="Projekte" hidden></ul>
+        </div>
         <select id="window" class="control" aria-label="Zeitraum">
             <option value="8">8 Stunden</option>
             <option value="24">24 Stunden</option>
@@ -270,9 +276,9 @@ function renderChrome() {
     banner.hidden = problems.length === 0;
     banner.innerHTML = `<strong>Quellen</strong> ` + problems.map((s) => `${esc(s.label)}: ${esc(s.message)}`).join(" · ");
 
-    const projects = [...new Set(data.items.map((i) => i.project).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    $("project").innerHTML = `<option value="">alle Projekte</option>` +
-        projects.map((p) => `<option${p === state.project ? " selected" : ""}>${esc(p)}</option>`).join("");
+    const counts = new Map();
+    data.items.forEach((i) => i.project && counts.set(i.project, (counts.get(i.project) || 0) + 1));
+    projectCombo.setProjects([...counts].sort(([a], [b]) => a.localeCompare(b)));
 }
 
 function renderSourceChips() {
@@ -298,6 +304,93 @@ async function load() {
         setLive(false);
     }
 }
+
+// ---- the project filter: typing narrows the list to projects containing the text ----
+const projectCombo = (() => {
+    const input = $("project"), list = $("project-list"), clear = $("project-clear");
+    let projects = [], matches = [], active = -1;
+
+    function highlight(name, query) {
+        const at = query ? name.toLowerCase().indexOf(query) : -1;
+        if (at < 0) return esc(name);
+        return esc(name.slice(0, at)) + `<mark>${esc(name.slice(at, at + query.length))}</mark>` + esc(name.slice(at + query.length));
+    }
+
+    function open() {
+        const query = input.value.trim().toLowerCase();
+        // the input still shows the chosen project: offer all, not just that one
+        const filter = query && input.value !== state.project ? query : "";
+        matches = projects.filter(([name]) => name.toLowerCase().includes(filter));
+        active = Math.max(0, matches.findIndex(([name]) => name === state.project));
+        list.innerHTML = matches.length
+            ? matches.map(([name, count], index) =>
+                `<li role="option" id="project-option-${index}" data-index="${index}" class="${index === active ? "is-active" : ""}${name === state.project ? " is-selected" : ""}"` +
+                ` aria-selected="${name === state.project}"><span>${highlight(name, filter)}</span><small>${count}</small></li>`).join("")
+            : `<li class="combo-empty">kein Projekt enthält „${esc(input.value.trim())}“</li>`;
+        list.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+        markActive();
+    }
+
+    function close() {
+        list.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+    }
+
+    function markActive() {
+        list.querySelectorAll("[data-index]").forEach((li) => li.classList.toggle("is-active", Number(li.dataset.index) === active));
+        const current = list.querySelector(`[data-index="${active}"]`);
+        current?.scrollIntoView({ block: "nearest" });
+        current ? input.setAttribute("aria-activedescendant", current.id) : input.removeAttribute("aria-activedescendant");
+    }
+
+    function choose(project) {
+        state.project = project;
+        input.value = project;
+        clear.hidden = !project;
+        persist();
+        render();
+        close();
+    }
+
+    input.addEventListener("focus", () => { input.select(); open(); });
+    input.addEventListener("input", () => {
+        if (!input.value.trim() && state.project) choose("");
+        open();
+    });
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            if (list.hidden) return open();
+            if (matches.length) active = (active + (e.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
+            markActive();
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (!list.hidden && matches[active]) choose(matches[active][0]);
+        } else if (e.key === "Escape") {
+            input.value = state.project;
+            close();
+        }
+    });
+    // a click in the list must not blur the input first
+    list.addEventListener("mousedown", (e) => e.preventDefault());
+    list.addEventListener("click", (e) => {
+        const li = e.target.closest("[data-index]");
+        if (li) choose(matches[Number(li.dataset.index)][0]);
+    });
+    input.addEventListener("blur", () => { input.value = state.project; close(); });
+    clear.addEventListener("click", () => choose(""));
+
+    input.value = state.project;
+    clear.hidden = !state.project;
+    return {
+        setProjects(next) {
+            projects = next;
+            if (!list.hidden) open();
+        },
+    };
+})();
 
 // ---- light or dark over the browser's preference, as in Werkator (RFC 0003) ----
 function currentTheme() {
@@ -335,7 +428,6 @@ $("source-chips").addEventListener("click", (e) => {
 document.querySelectorAll(".panel-more").forEach((button) =>
     button.addEventListener("click", () => toggle(button.dataset.panel)));
 window.addEventListener("resize", () => ["running", "sessions", "prs", "recent"].forEach(clamp));
-$("project").addEventListener("change", (e) => { state.project = e.target.value; persist(); render(); });
 $("window").value = String(state.windowHours);
 $("window").addEventListener("change", (e) => { state.windowHours = Number(e.target.value); persist(); render(); });
 $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });

@@ -102,6 +102,7 @@ code { font-family: var(--mono); font-size: 13px; }
 .icon-theme { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 3a9 9 0 0 0 0 18z' fill='black' stroke='none'/%3E%3C/svg%3E"); }
 .icon-chevron { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); transition: transform 0.25s ease; }
 .icon-chevron.is-open { transform: rotate(180deg); }
+.icon-close { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
 .icon-repos { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 3 9l9 5 9-5-9-5z'/%3E%3Cpath d='M3 14l9 5 9-5'/%3E%3C/svg%3E"); }
 
 /* ---- header: Werkator's — wordmark left, navigation right, a hairline with a soft shadow ---- */
@@ -155,9 +156,26 @@ a.repo-chip:hover { color: var(--accent); }
 select.control { padding-right: 26px; cursor: pointer;
     background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236e7c7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 7px center; background-size: 14px; }
 select.control option { color: var(--text); background: var(--panel); }
-select.control { max-width: 260px; }
 input.control { min-width: 180px; }
 input.control::placeholder { color: var(--ghost); }
+/* the project combobox: the input dresses like a select, its list like a menu */
+.combo { position: relative; display: inline-flex; }
+.combo-input { width: 240px; padding-right: 28px; cursor: text;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236e7c7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 7px center; background-size: 14px; }
+.combo-input:not(:placeholder-shown) { background-image: none; }
+.combo-input::placeholder { color: var(--text); }
+.combo-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--ghost); cursor: pointer; }
+.combo-clear .icon { width: 13px; height: 13px; }
+.combo-clear:hover { color: var(--accent); }
+.combo-clear[hidden] { display: none; }
+.combo-list { position: absolute; z-index: 3; top: calc(100% + 4px); left: 0; min-width: 100%; max-height: 300px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); box-shadow: var(--shadow); }
+.combo-list[hidden] { display: none; }
+.combo-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 5px 10px; font-size: 13px; color: var(--text-2); cursor: pointer; white-space: nowrap; }
+.combo-list li small { font: 400 11.5px var(--mono); color: var(--muted); }
+.combo-list li.is-active { background: var(--accent-soft); color: var(--text); }
+.combo-list li.is-selected { color: var(--accent); font-weight: 500; }
+.combo-list mark { background: transparent; color: var(--accent); font-weight: 600; }
+.combo-list .combo-empty { color: var(--muted); cursor: default; }
 .filters .control-search { margin-left: auto; }
 
 /* ---- panels: Werkator's home panels — a Mono header strip, then rows ---- */
@@ -242,6 +260,8 @@ a.tag:hover { color: var(--accent); border-color: var(--accent); }
     .view-meta { margin-left: 0; flex-basis: 100%; }
     .filters .control-search { margin-left: 0; }
     input.control { min-width: 0; flex: 1 1 140px; }
+    .combo { flex: 1 1 100%; }
+    .combo-input { width: 100%; }
     .row { grid-template-columns: minmax(0, 1fr); }
     .aside { justify-content: flex-start; max-width: none; }
     .site-footer-links { margin-left: 0; }
