@@ -22,7 +22,7 @@ class GiteaSource(
     private val config: GiteaConfig,
     private val http: JsonHttp,
     private val mapper: ObjectMapper,
-    private val tokenLookup: (String) -> String? = { ConfigLoader.teaToken(it) },
+    private val tokenLookup: (String) -> String? = { ConfigLoader.teaToken(it, config.url) },
 ) : Source {
     override val id = "gitea:${config.name}"
     override val label = "Gitea ${config.name}"
@@ -35,7 +35,10 @@ class GiteaSource(
         config.token
             ?: config.tokenEnv?.let { System.getenv(it) }
             ?: config.teaLogin?.let(tokenLookup)
-            ?: throw IllegalStateException("kein Token konfiguriert (token, tokenEnv oder teaLogin)")
+            ?: throw IllegalStateException(
+                config.teaLogin?.let { "tea-Login '$it' für ${config.url} nicht gefunden" }
+                    ?: "kein Token konfiguriert (token, tokenEnv oder teaLogin)",
+            )
 
     override fun fetch(now: Instant, since: Instant): List<Item> {
         val headers = mapOf("Authorization" to "token ${token()}")

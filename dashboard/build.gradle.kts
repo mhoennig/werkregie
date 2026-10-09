@@ -41,6 +41,8 @@ dependencies {
 application {
     mainClass = "de.hoennig.werkregie.dashboard.MainKt"
     applicationName = "werkregie-dashboard"
+    // sqlite-jdbc loads its native library
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.test {

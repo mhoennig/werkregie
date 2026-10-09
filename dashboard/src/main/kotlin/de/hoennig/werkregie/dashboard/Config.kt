@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.fasterxml.jackson.databind.JsonNode
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -47,7 +48,8 @@ data class GiteaConfig(
     val url: String,
     val token: String? = null,
     val tokenEnv: String? = null,
-    // reuses the token of a login in ~/.config/tea/config.yml, so no secret lives in this file
+    // reuses the token of a login in ~/.config/tea/config.yml, so no secret lives in this file:
+    // the login's name, or the user name of a login for this url
     val teaLogin: String? = null,
     // "mine": created by, assigned to or review requested from the token's user; "all": every open PR the user can see
     val pullRequests: String = "mine",
@@ -62,10 +64,14 @@ object ConfigLoader {
     fun load(path: Path): DashboardConfig =
         if (Files.exists(path)) yaml.readValue(path.toFile()) else DashboardConfig()
 
-    fun teaToken(login: String, teaConfig: Path = expandHome("~/.config/tea/config.yml")): String? {
+    /** The token of the tea login named [login], or else of the login of user [login] on [url]. */
+    fun teaToken(login: String, url: String, teaConfig: Path = expandHome("~/.config/tea/config.yml")): String? {
         if (!Files.exists(teaConfig)) return null
-        val logins = yaml.readTree(teaConfig.toFile())["logins"] ?: return null
-        return logins.firstOrNull { it["name"]?.asText() == login }?.get("token")?.asText()
+        val logins = yaml.readTree(teaConfig.toFile())["logins"]?.toList() ?: return null
+        val sameHost = { entry: JsonNode -> entry["url"]?.asText()?.trimEnd('/') == url.trimEnd('/') }
+        val match = logins.firstOrNull { it["name"]?.asText() == login }
+            ?: logins.firstOrNull { it["user"]?.asText() == login && sameHost(it) }
+        return match?.get("token")?.asText()
     }
 }
 
