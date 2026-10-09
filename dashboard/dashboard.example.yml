@@ -1,0 +1,29 @@
+# Werkregie-Dashboard — copy to ~/.config/werkregie/dashboard.yml
+# (or pass the path as first argument / WERKREGIE_DASHBOARD_CONFIG).
+port: 4747
+windowHours: 168          # how far back the backend collects the history
+
+claude:
+  enabled: true           # ~/.config/Claude/claude-code-sessions + ~/.claude/sessions
+codex:
+  enabled: true           # ~/.codex/state_5.sqlite + rollout files
+  includeSubagents: false
+
+# any number of Werkator instances; the API is read anonymously
+werkators:
+  - name: javagil
+    url: https://werkator.example.org
+  - name: other
+    url: http://localhost:18090
+    hint: "tunnel: tools/remote --env-file .env.other port-forward start"
+
+# any number of Gitea instances; the token needs read access only
+giteas:
+  - name: javagil
+    url: https://git.example.org
+    teaLogin: javagil       # token of this login in ~/.config/tea/config.yml
+    pullRequests: all       # all open PRs visible to the user
+  - name: company
+    url: https://gitea.example.com
+    tokenEnv: WERKREGIE_TOKEN_COMPANY   # or token: <token>
+    pullRequests: mine      # created by, assigned to or review requested from the user
