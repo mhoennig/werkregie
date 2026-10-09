@@ -1,5 +1,6 @@
 package de.hoennig.werkregie.dashboard
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -135,6 +136,8 @@ private fun warm(dashboard: Dashboard) = Thread.ofVirtual().start { dashboard.sn
 
 fun mapper(): ObjectMapper = ObjectMapper()
     .registerKotlinModule()
+    // a relay may be newer than its server: fields the server does not know yet are skipped
+    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
     .registerModule(JavaTimeModule())
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 

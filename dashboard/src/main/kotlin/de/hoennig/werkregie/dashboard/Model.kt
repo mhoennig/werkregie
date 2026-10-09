@@ -26,6 +26,9 @@ data class Item(
     val url: String? = null,
     val command: String? = null,
     val badges: List<Badge> = emptyList(),
+    // the repository the project is, where the shown name does not say it, e.g. a folder `hsadmin-ng`
+    // checked out from `hs.hsadmin.ng`; the page matches projects by repository name without owner
+    val repository: String? = null,
 )
 
 data class SourceStatus(

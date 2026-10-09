@@ -40,8 +40,9 @@ class CodexSource(private val config: CodexConfig, private val mapper: ObjectMap
             // `name` holds the short thread name; older versions only have `title`, the first prompt
             val name = if ("name" in columns) "coalesce(nullif(name, ''), title)" else "title"
             val model = if ("model" in columns) "model" else "null"
+            val origin = if ("git_origin_url" in columns) "git_origin_url" else "null"
             val sql = """
-                select id, $name as name, cwd, updated_at, archived, source, git_branch, rollout_path, $model as model
+                select id, $name as name, cwd, updated_at, archived, source, git_branch, rollout_path, $model as model, $origin as origin
                 from threads where updated_at >= ? order by updated_at desc limit 300
             """.trimIndent()
             connection.prepareStatement(sql).use { statement ->
@@ -74,6 +75,7 @@ class CodexSource(private val config: CodexConfig, private val mapper: ObjectMap
                                         Projects.shortPath(cwd),
                                     ).joinToString(" · "),
                                     command = "codex resume ${rows.getString("id")}",
+                                    repository = Projects.repositoryName(rows.getString("origin")) ?: Projects.repository(cwd),
                                 ),
                             )
                         }

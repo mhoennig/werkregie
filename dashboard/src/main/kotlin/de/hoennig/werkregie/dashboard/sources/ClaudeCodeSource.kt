@@ -89,6 +89,7 @@ class ClaudeCodeSource(
             project = Projects.of(cwd),
             detail = listOfNotNull(node.text("model"), Projects.shortPath(cwd)).joinToString(" · "),
             command = node.text("cliSessionId")?.let { resumeCommand(cwd, it) },
+            repository = Projects.repository(cwd),
         )
     }
 
@@ -103,6 +104,7 @@ class ClaudeCodeSource(
         project = Projects.of(live.cwd),
         detail = Projects.shortPath(live.cwd),
         command = resumeCommand(live.cwd, live.sessionId),
+        repository = Projects.repository(live.cwd),
     )
 
     private fun sectionOf(status: String) = if (status == "busy") Section.RUNNING else Section.OPEN

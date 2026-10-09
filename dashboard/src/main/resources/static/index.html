@@ -135,7 +135,12 @@ const THEME_KEY = "werkregie-theme";
 const SETTINGS_KEY = "werkregie-settings";
 const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 const saved = (() => { try { return JSON.parse(storage?.getItem(SETTINGS_KEY) || "{}"); } catch (e) { return {}; } })();
-const state = { data: null, hidden: new Set(saved.hidden || []), expanded: new Set(saved.expanded || []), project: saved.project || "", windowHours: saved.windowHours || 24, search: "" };
+// one project under every source: the repository name without its owner, in lower case — Gitea says
+// "mi/werkcrappit", Werkator "werkcrappit", a session the folder it runs in or the repository checked out there
+const projectKey = (name) => (name ? name.split("/").pop().toLowerCase() : "");
+const keyOf = (item) => projectKey(item.repository || item.project);
+
+const state = { data: null, hidden: new Set(saved.hidden || []), expanded: new Set(saved.expanded || []), project: projectKey(saved.project), windowHours: saved.windowHours || 24, search: "" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -189,7 +194,7 @@ function row(item, timeMode) {
             ${title}
             <div class="meta">
                 <span class="origin">${esc(SOURCES[item.source] || item.source)} · ${esc(item.origin)}</span>
-                ${item.project ? `<span class="project">${esc(item.project)}</span>` : ""}
+                ${item.project ? `<span class="project"${item.repository && projectKey(item.repository) !== projectKey(item.project) ? ` title="Repository ${esc(item.repository)}"` : ""}>${esc(item.project)}</span>` : ""}
                 ${item.detail ? `<span class="detail">${esc(item.detail)}</span>` : ""}
             </div>
         </div>
@@ -293,8 +298,8 @@ function render() {
     const since = Date.now() - state.windowHours * 3600 * 1000;
     const visible = data.items.filter((i) =>
         !state.hidden.has(i.source) &&
-        (!state.project || i.project === state.project) &&
-        (!needle || `${i.title} ${i.project} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
+        (!state.project || keyOf(i) === state.project) &&
+        (!needle || `${i.title} ${i.project} ${i.repository || ""} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
 
     fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
     fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr"), "Keine offenen Sessions.", "bereit");
@@ -334,7 +339,7 @@ function renderChrome() {
     describeTokenButton();
 
     const counts = new Map();
-    data.items.forEach((i) => i.project && counts.set(i.project, (counts.get(i.project) || 0) + 1));
+    data.items.map(keyOf).filter(Boolean).forEach((key) => counts.set(key, (counts.get(key) || 0) + 1));
     projectCombo.setProjects([...counts].sort(([a], [b]) => a.localeCompare(b)));
 }
 
