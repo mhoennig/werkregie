@@ -100,6 +100,8 @@ code { font-family: var(--mono); font-size: 13px; }
 .icon-copy { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='11' height='11' rx='2'/%3E%3Cpath d='M5 15V6a2 2 0 0 1 2-2h9'/%3E%3C/svg%3E"); }
 .icon-restart { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5'/%3E%3C/svg%3E"); }
 .icon-theme { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 3a9 9 0 0 0 0 18z' fill='black' stroke='none'/%3E%3C/svg%3E"); }
+.icon-chevron { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); transition: transform 0.25s ease; }
+.icon-chevron.is-open { transform: rotate(180deg); }
 .icon-repos { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 3 9l9 5 9-5-9-5z'/%3E%3Cpath d='M3 14l9 5 9-5'/%3E%3C/svg%3E"); }
 
 /* ---- header: Werkator's — wordmark left, navigation right, a hairline with a soft shadow ---- */
@@ -168,6 +170,14 @@ input.control::placeholder { color: var(--ghost); }
 .day { padding: 7px 14px; border-bottom: 1px solid var(--line-2); background: var(--bg); color: var(--muted); font: 500 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
 .row + .day { border-top: 1px solid var(--line); }
 .empty { padding: 22px 14px; color: var(--muted); text-align: center; font-size: 14px; }
+
+/* three and a half rows, the half one fading out, until the panel is opened */
+.panel-body { position: relative; overflow: hidden; transition: max-height 0.35s ease; }
+.panel-body.is-clamped { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade, 30px)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade, 30px)), transparent); }
+.panel-more { appearance: none; display: flex; width: 100%; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border: 0; border-top: 1px solid var(--line); background: var(--bg); color: var(--accent); font: 500 12.5px var(--sans); cursor: pointer; }
+.panel-more:hover { background: var(--accent-soft); }
+.panel-more[hidden] { display: none; }
 
 .row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 4px 14px; align-items: start; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 .row:last-child { border-bottom: 0; }

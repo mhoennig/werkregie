@@ -51,21 +51,25 @@
     <div class="board">
         <section class="panel">
             <h2>Läuft jetzt <em id="running-count"></em></h2>
-            <div id="running"></div>
+            <div id="running" class="panel-body"></div>
+            <button class="panel-more" type="button" data-panel="running" hidden></button>
         </section>
         <div class="board-pair">
             <section class="panel">
                 <h2>Offene Sessions <em id="sessions-count"></em></h2>
-                <div id="sessions"></div>
+                <div id="sessions" class="panel-body"></div>
+            <button class="panel-more" type="button" data-panel="sessions" hidden></button>
             </section>
             <section class="panel">
                 <h2>Offene Pull Requests <em id="prs-count"></em></h2>
-                <div id="prs"></div>
+                <div id="prs" class="panel-body"></div>
+            <button class="panel-more" type="button" data-panel="prs" hidden></button>
             </section>
         </div>
         <section class="panel">
             <h2>Verlauf <em id="recent-count"></em></h2>
-            <div id="recent"></div>
+            <div id="recent" class="panel-body"></div>
+            <button class="panel-more" type="button" data-panel="recent" hidden></button>
         </section>
     </div>
 </main>
@@ -104,12 +108,12 @@ const THEME_KEY = "werkregie-theme";
 const SETTINGS_KEY = "werkregie-settings";
 const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 const saved = (() => { try { return JSON.parse(storage?.getItem(SETTINGS_KEY) || "{}"); } catch (e) { return {}; } })();
-const state = { data: null, hidden: new Set(saved.hidden || []), project: saved.project || "", windowHours: saved.windowHours || 24, search: "" };
+const state = { data: null, hidden: new Set(saved.hidden || []), expanded: new Set(saved.expanded || []), project: saved.project || "", windowHours: saved.windowHours || 24, search: "" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function persist() {
-    try { storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], project: state.project, windowHours: state.windowHours })); } catch (e) {}
+    try { storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], expanded: [...state.expanded], project: state.project, windowHours: state.windowHours })); } catch (e) {}
 }
 
 function ago(iso) {
@@ -169,6 +173,57 @@ function row(item, timeMode) {
 function fill(id, items, empty, countWord) {
     $(id).innerHTML = items.length ? items.map((i) => row(i)).join("") : `<div class="empty">${empty}</div>`;
     $(`${id}-count`).textContent = items.length ? `${items.length} ${countWord}` : "";
+    clamp(id);
+}
+
+// ---- each panel shows three and a half rows, the half one fading out, until it is opened ----
+const VISIBLE_ROWS = 3;
+
+/** The height of the closed panel: down to the middle of the first hidden row. */
+function clampHeight(body) {
+    const rows = body.querySelectorAll(".row");
+    if (rows.length <= VISIBLE_ROWS) return null;
+    const half = rows[VISIBLE_ROWS];
+    return { height: half.offsetTop + half.offsetHeight / 2, fade: half.offsetHeight / 2, total: rows.length };
+}
+
+function clamp(id) {
+    const body = $(id);
+    const button = document.querySelector(`.panel-more[data-panel="${id}"]`);
+    const closed = clampHeight(body);
+    button.hidden = closed === null;
+    if (closed === null) {
+        body.classList.remove("is-clamped");
+        body.style.maxHeight = "";
+        return;
+    }
+    const open = state.expanded.has(id);
+    button.innerHTML = open
+        ? `Weniger anzeigen <span class="icon icon-chevron is-open"></span>`
+        : `Alle ${closed.total} anzeigen <span class="icon icon-chevron"></span>`;
+    button.setAttribute("aria-expanded", String(open));
+    body.classList.toggle("is-clamped", !open);
+    body.style.setProperty("--fade", `${closed.fade}px`);
+    // while sliding open the height is set by toggle(); afterwards an open panel has no limit
+    if (!body.classList.contains("is-sliding")) body.style.maxHeight = open ? "" : `${closed.height}px`;
+}
+
+function toggle(id) {
+    const body = $(id);
+    const closed = clampHeight(body);
+    if (!closed) return;
+    const opening = !state.expanded.has(id);
+    opening ? state.expanded.add(id) : state.expanded.delete(id);
+    persist();
+    // slide between the two heights; max-height cannot animate to or from "none"
+    body.classList.add("is-sliding");
+    body.style.maxHeight = `${opening ? closed.height : body.scrollHeight}px`;
+    void body.offsetHeight;
+    body.style.maxHeight = `${opening ? body.scrollHeight : closed.height}px`;
+    const done = () => { body.classList.remove("is-sliding"); clamp(id); };
+    body.addEventListener("transitionend", done, { once: true });
+    setTimeout(() => body.classList.contains("is-sliding") && done(), 600);
+    clamp(id);
 }
 
 function render() {
@@ -194,6 +249,7 @@ function render() {
     }
     $("recent").innerHTML = html || `<div class="empty">Nichts im gewählten Zeitraum.</div>`;
     $("recent-count").textContent = `${recent.length} Einträge`;
+    clamp("recent");
 }
 
 function renderChrome() {
@@ -276,6 +332,9 @@ $("source-chips").addEventListener("click", (e) => {
     state.hidden.has(key) ? state.hidden.delete(key) : state.hidden.add(key);
     persist(); renderSourceChips(); render();
 });
+document.querySelectorAll(".panel-more").forEach((button) =>
+    button.addEventListener("click", () => toggle(button.dataset.panel)));
+window.addEventListener("resize", () => ["running", "sessions", "prs", "recent"].forEach(clamp));
 $("project").addEventListener("change", (e) => { state.project = e.target.value; persist(); render(); });
 $("window").value = String(state.windowHours);
 $("window").addEventListener("change", (e) => { state.windowHours = Number(e.target.value); persist(); render(); });
