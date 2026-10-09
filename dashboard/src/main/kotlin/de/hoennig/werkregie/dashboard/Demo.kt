@@ -1,0 +1,58 @@
+package de.hoennig.werkregie.dashboard
+
+import java.time.Duration
+import java.time.Instant
+
+/**
+ * What a visitor without the access token sees: invented sessions, builds and pull requests of
+ * invented projects, so the page shows what it does without showing anything real.
+ */
+object Demo {
+    fun snapshot(now: Instant, version: String): Snapshot {
+        fun ago(minutes: Long) = now.minus(Duration.ofMinutes(minutes))
+        val items = listOf(
+            session("claude", "laptop · Desktop", Section.RUNNING, "Checkout-Flow auf Events umstellen", "busy", ago(0), "shop-backend", "claude-opus · worktree checkout-events"),
+            session("codex", "laptop · IDE/Desktop", Section.RUNNING, "Offline-Modus der Merkliste", "busy", ago(1), "mobile-app", "gpt · ⎇ feature/offline-wishlist"),
+            build("werkator", "build", Section.RUNNING, "feature/checkout-events", "running", ago(2), "shop-backend", "a41c9e07"),
+            session("claude", "laptop · Desktop", Section.OPEN, "Flaky Integrationstest analysieren", "idle", ago(12), "shop-backend", "claude-opus · ~/Projekte/shop-backend"),
+            session("claude", "laptop · Terminal", Section.OPEN, "Release-Notes 2.4 entwerfen", "idle", ago(48), "docs-site", "~/Projekte/docs-site"),
+            pullRequest("#214 Checkout publishes order events", "pending", ago(3), "acme/shop-backend", listOf(
+                Badge("werkator", "pending", title = "build running"),
+                Badge("werkrevisor Lauf", "pending", title = "review queued"),
+            )),
+            pullRequest("#88 Merkliste ohne Netz", "success", ago(35), "acme/mobile-app", listOf(
+                Badge("werkator", "success", title = "build succeeded after 04:12"),
+                Badge("werkrevisor Urteil GREEN", "green", title = "GREEN PASS"),
+            )),
+            pullRequest("#41 Suche im Handbuch", "failure", ago(140), "acme/docs-site", listOf(
+                Badge("werkator", "failure", title = "build failed after 00:52"),
+                Badge("werkrevisor Urteil ORANGE", "orange", title = "ORANGE FINDINGS"),
+            )),
+            build("werkrevisor", "review", Section.RECENT, "feature/offline-wishlist", "success", ago(34), "mobile-app", "c03e11d2 · 96 s"),
+            build("werkator", "build", Section.RECENT, "feature/offline-wishlist", "success", ago(37), "mobile-app", "c03e11d2 · 4 min"),
+            Item("gitea", "acme", "activity", Section.RECENT, "3 Commits auf feature/checkout-events", "push", ago(5), "acme/shop-backend", "Order events carry the payment reference"),
+            session("codex", "laptop · CLI", Section.RECENT, "Abhängigkeiten aktualisieren", "done", ago(95), "shop-backend", "gpt · ⎇ main"),
+            build("werkator", "build", Section.RECENT, "main", "failed", ago(130), "docs-site", "77b0e5a1 · 52 s"),
+            Item("gitea", "acme", "activity", Section.RECENT, "gemergt PR #212 Steuersätze aus der Konfiguration", "merge_pull_request", ago(180), "acme/shop-backend"),
+            session("claude", "laptop · Desktop", Section.RECENT, "Steuersätze konfigurierbar machen", "closed", ago(200), "shop-backend", "claude-opus · ~/Projekte/shop-backend"),
+        )
+        val sources = listOf(
+            status("relay:laptop", "Relay laptop", 6, listOf("claude", "codex")),
+            status("werkator:acme", "Werkator acme", 4),
+            status("gitea:acme", "Gitea acme", 5),
+        )
+        return Snapshot(version, now, 24, items, sources, Access.DEMO)
+    }
+
+    private fun session(source: String, origin: String, section: Section, title: String, state: String, time: Instant, project: String, detail: String) =
+        Item(source, origin, "session", section, title, state, time, project, detail)
+
+    private fun build(source: String, kind: String, section: Section, title: String, state: String, time: Instant, project: String, detail: String) =
+        Item(source, "acme", kind, section, title, state, time, project, detail)
+
+    private fun pullRequest(title: String, state: String, time: Instant, project: String, badges: List<Badge>) =
+        Item("gitea", "acme", "pr", Section.OPEN, title, state, time, project, "von demo", badges = badges)
+
+    private fun status(id: String, label: String, count: Int, tools: List<String> = emptyList()) =
+        SourceStatus(id, label, ok = true, message = null, url = null, count = count, fetchedAt = null, tools = tools)
+}

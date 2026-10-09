@@ -36,12 +36,27 @@ data class SourceStatus(
     val url: String?,
     val count: Int,
     val fetchedAt: Instant?,
+    // the tools a relay reports, e.g. ["claude", "codex"]; empty for a source that is one tool
+    val tools: List<String> = emptyList(),
 )
+
+/** Who sees what: `open` in local mode, `granted` with the access token, `demo` without it. */
+enum class Access { OPEN, GRANTED, DEMO }
 
 data class Snapshot(
     val version: String,
     val generatedAt: Instant,
     val windowHours: Long,
+    val items: List<Item>,
+    val sources: List<SourceStatus>,
+    val access: Access = Access.OPEN,
+)
+
+/** What a relay sends to the server: the full current state of its local sources, every few seconds. */
+data class RelayReport(
+    val relay: String,
+    val version: String,
+    val sentAt: Instant,
     val items: List<Item>,
     val sources: List<SourceStatus>,
 )

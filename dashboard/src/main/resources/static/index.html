@@ -20,6 +20,8 @@
         <nav class="site-nav" aria-label="Dashboard">
             <span class="current nav-item"><span class="icon icon-home"></span><span class="nav-label">Übersicht</span></span>
             <span id="live-indicator" class="status-unknown" title="Verbindung zum Backend">…</span>
+            <!-- on a server: the way in to real data, as Werkator's control-token button -->
+            <button id="token-button" class="icon-button" type="button" hidden><span class="icon icon-key"></span></button>
             <button id="theme-button" class="icon-button" type="button"><span class="icon icon-theme"></span></button>
             <button id="reload-button" class="icon-button reload-button" type="button" title="Neu laden" aria-label="Neu laden"><span class="icon icon-restart"></span></button>
         </nav>
@@ -33,6 +35,11 @@
         <h1>Übersicht</h1>
         <span class="view-explanation">was gerade läuft und was zuletzt geschah</span>
         <span id="view-meta" class="view-meta"></span>
+    </div>
+    <div id="demo-banner" class="demo-banner" role="status" hidden>
+        <strong>Demo</strong>
+        <span>Erfundene Beispieldaten – mit dem Zugriffstoken siehst du die echten.</span>
+        <button class="chip is-active" type="button" data-open-token>Token eingeben</button>
     </div>
     <div id="source-banner" class="watcher-banner" role="status" hidden></div>
 
@@ -79,6 +86,20 @@
         </section>
     </div>
 </main>
+
+<dialog id="token-dialog" class="token-dialog" aria-labelledby="token-title">
+    <form method="dialog">
+        <h2 id="token-title">Zugriffstoken</h2>
+        <p>Auf dem Server gibt <code>werkregie-dashboard token</code> es aus. Der Browser behält es als Cookie.</p>
+        <input id="token-input" class="control" type="password" autocomplete="off" spellcheck="false" aria-label="Zugriffstoken">
+        <p id="token-error" class="token-error" hidden></p>
+        <div class="dialog-actions">
+            <!-- a plain button, so Enter in the input saves instead of cancelling -->
+            <button id="token-cancel" class="chip" type="button">Abbrechen</button>
+            <button id="token-save" class="chip is-active" type="submit" value="save">Speichern</button>
+        </div>
+    </form>
+</dialog>
 
 <footer class="site-footer">
     <span>
@@ -245,8 +266,11 @@ const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator"
 function toolLabel(tool, sources) {
     // werkrevisor runs are the @ai-review builds of the Werkator instances
     const kind = tool === "werkrevisor" ? "werkator" : tool;
-    const instances = sources.filter((s) => s.id.split(":")[0] === kind).map((s) => s.id.split(":")[1]).filter(Boolean);
-    if (!sources.some((s) => s.id.split(":")[0] === kind)) return null;
+    const own = sources.filter((s) => s.id.split(":")[0] === kind);
+    // on a server, Claude Code and Codex come from the relays that report them
+    const relays = sources.filter((s) => s.id.startsWith("relay:") && (s.tools || []).includes(tool));
+    if (own.length === 0 && relays.length === 0) return null;
+    const instances = [...own.map((s) => s.id.split(":")[1]), ...relays.map((s) => s.id.slice("relay:".length))].filter(Boolean);
     return tool === "werkrevisor" || instances.length === 0
         ? TOOL_NAMES[tool]
         : `${TOOL_NAMES[tool]} ${instances.join(", ")}`;
@@ -305,6 +329,9 @@ function renderChrome() {
     const banner = $("source-banner");
     banner.hidden = problems.length === 0;
     banner.innerHTML = `<strong>Quellen</strong> ` + problems.map((s) => `${esc(s.label)}: ${esc(s.message)}`).join(" · ");
+
+    $("demo-banner").hidden = data.access !== "DEMO";
+    describeTokenButton();
 
     const counts = new Map();
     data.items.forEach((i) => i.project && counts.set(i.project, (counts.get(i.project) || 0) + 1));
@@ -421,6 +448,64 @@ const projectCombo = (() => {
         },
     };
 })();
+
+// ---- the access token of a server: kept as a cookie, checked before it is kept ----
+const TOKEN_COOKIE = "werkregie_token";
+const hasToken = () => document.cookie.split(";").some((c) => c.trim().startsWith(`${TOKEN_COOKIE}=`));
+
+function storeToken(token) {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = token
+        ? `${TOKEN_COOKIE}=${token}; Path=/; Max-Age=31536000; SameSite=Strict${secure}`
+        : `${TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Strict${secure}`;
+}
+
+function describeTokenButton() {
+    const button = $("token-button");
+    // local mode needs no token
+    button.hidden = state.data?.access === "OPEN";
+    button.classList.toggle("has-token", hasToken());
+    button.title = hasToken() ? "Zugriffstoken vergessen" : "Zugriffstoken eingeben";
+    button.setAttribute("aria-label", button.title);
+}
+
+function openTokenDialog() {
+    $("token-input").value = "";
+    $("token-error").hidden = true;
+    $("token-dialog").showModal();
+}
+
+$("token-button").addEventListener("click", () => {
+    if (!hasToken()) return openTokenDialog();
+    if (confirm("Zugriffstoken in diesem Browser vergessen?")) {
+        storeToken(null);
+        describeTokenButton();
+        load();
+    }
+});
+document.addEventListener("click", (e) => { if (e.target.closest("[data-open-token]")) openTokenDialog(); });
+$("token-dialog").addEventListener("close", () => { $("token-input").value = ""; });
+$("token-cancel").addEventListener("click", () => $("token-dialog").close());
+$("token-save").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const token = $("token-input").value.trim();
+    const error = $("token-error");
+    if (!/^[A-Za-z0-9._-]+$/.test(token)) {
+        error.textContent = "Das Token besteht nur aus Buchstaben und Ziffern.";
+        error.hidden = false;
+        return;
+    }
+    const response = await fetch("/api/token/verify", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
+    if (!response || response.status !== 204) {
+        error.textContent = response ? "Der Server kennt dieses Token nicht." : "Server nicht erreichbar.";
+        error.hidden = false;
+        return;
+    }
+    storeToken(token);
+    $("token-dialog").close();
+    describeTokenButton();
+    load();
+});
 
 // ---- light or dark over the browser's preference, as in Werkator (RFC 0003) ----
 function currentTheme() {

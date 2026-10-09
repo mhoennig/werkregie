@@ -30,6 +30,14 @@ class ConfigLoaderTest : FunSpec({
         ConfigLoader.teaToken("mi", "https://other.example", tea) shouldBe "token-of-mi-elsewhere"
     }
 
+    test("the example configurations are valid") {
+        listOf("dashboard.example.yml", "dashboard.server.example.yml", "dashboard.relay.example.yml").forEach { name ->
+            ConfigLoader.load(java.nio.file.Path.of(name))
+        }
+        ConfigLoader.load(java.nio.file.Path.of("dashboard.server.example.yml")).server.publicBaseUrl shouldBe "https://regie.example.org/"
+        ConfigLoader.load(java.nio.file.Path.of("dashboard.relay.example.yml")).relay.tokenFile shouldBe "~/.config/werkregie/relay-token"
+    }
+
     test("a user without a login on that host has no token") {
         ConfigLoader.teaToken("mi", "https://third.example", tea) shouldBe null
     }

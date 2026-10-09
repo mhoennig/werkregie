@@ -4,7 +4,7 @@
 Description=Werkregie-Dashboard (localhost)
 
 [Service]
-ExecStart=%h/Projekte/werkregie/dashboard/build/install/werkregie-dashboard/bin/werkregie-dashboard
+ExecStart=%h/Projekte/werkregie/dashboard/build/install/werkregie-dashboard/bin/werkregie-dashboard local
 # EnvironmentFile=%h/.config/werkregie/tokens.env   # e.g. WERKREGIE_TOKEN_HOSTSHARING=…
 Restart=on-failure
 

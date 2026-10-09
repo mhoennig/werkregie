@@ -6,11 +6,14 @@ plugins {
 }
 
 group = "de.hoennig"
-version = "0.1.0"
+version = "0.2.0"
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+        // jlink cuts the bundle's runtime out of this JDK, native libraries included: Temurin is
+        // built against an old glibc and starts on Hostsharing's hosts (Werkator, PR#62)
+        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 
@@ -50,6 +53,43 @@ tasks.processResources {
     val version = project.version.toString()
     inputs.property("version", version)
     filesMatching("werkregie.properties") { expand("version" to version) }
+}
+
+// ---- the runtime bundle for a host without Java: own JRE + jars + launcher (as Werkator's, ADR 0006) ----
+
+val bundleRuntime = tasks.register<Exec>("bundleRuntime") {
+    description = "Cuts a minimal JRE for the runtime bundle with jlink."
+    val output = layout.buildDirectory.dir("bundle-runtime")
+    val jdk = javaToolchains.launcherFor(java.toolchain).map { it.metadata.installationPath }
+    outputs.dir(output)
+    doFirst {
+        delete(output)
+        executable = jdk.get().file("bin/jlink").asFile.absolutePath
+    }
+    args(
+        // jdeps: Jackson needs java.desktop (java.beans); jdk.crypto.ec for TLS to Werkator and Gitea
+        "--add-modules", "java.base,java.desktop,java.net.http,java.sql,jdk.httpserver,jdk.crypto.ec",
+        "--strip-debug", "--no-header-files", "--no-man-pages", "--compress=zip-6",
+        "--output", output.get().asFile.absolutePath,
+    )
+}
+
+val runtimeBundle = tasks.register<Tar>("runtimeBundle") {
+    description = "Packs werkregie-dashboard-runtime-linux-x64.tar.gz: jre/, lib/, bin/."
+    group = "distribution"
+    archiveFileName = "werkregie-dashboard-runtime-linux-x64.tar.gz"
+    destinationDirectory = layout.buildDirectory.dir("distributions")
+    compression = Compression.GZIP
+    // reproducible archives normalize file modes since Gradle 9; jlink's executables must keep theirs
+    useFileSystemPermissions()
+    into("werkregie-dashboard") {
+        into("jre") { from(bundleRuntime) }
+        into("lib") { from(tasks.jar, configurations.runtimeClasspath) }
+        into("bin") {
+            from("src/bundle/bin")
+            filePermissions { unix("rwxr-xr-x") }
+        }
+    }
 }
 
 tasks.test {

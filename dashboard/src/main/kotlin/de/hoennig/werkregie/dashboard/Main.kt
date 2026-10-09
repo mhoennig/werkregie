@@ -4,87 +4,119 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.sun.net.httpserver.HttpExchange
-import com.sun.net.httpserver.HttpServer
+import de.hoennig.werkregie.dashboard.relay.RelayClient
+import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
 import de.hoennig.werkregie.dashboard.sources.CodexSource
 import de.hoennig.werkregie.dashboard.sources.GiteaSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.nio.file.Path
-import java.util.concurrent.Executors
+import java.time.Duration
+import kotlin.system.exitProcess
+
+private const val USAGE = """
+werkregie-dashboard [MODUS] [--config DATEI]
+
+  local         (Standard) Dashboard nur auf diesem Rechner: liest Claude Code, Codex,
+                Werkator und Gitea selbst, ohne Token, nur über localhost erreichbar
+  server        Dashboard auf einem Host: liest Werkator und Gitea, nimmt Relays an,
+                zeigt echte Daten nur mit dem Zugriffstoken
+  relay         liest Claude Code und Codex und meldet sie an relay.serverUrl
+  token         gibt das Zugriffstoken des Servers aus (erzeugt es beim ersten Mal)
+  init server|relay [VERZEICHNIS]
+                schreibt systemd-Unit (und für den Server .htaccess) zum Installieren
+  version       gibt die Version aus
+
+Konfiguration: --config, sonst WERKREGIE_DASHBOARD_CONFIG, sonst ~/.config/werkregie/dashboard.yml
+"""
 
 fun main(args: Array<String>) {
-    val configPath = args.firstOrNull()?.let(Path::of)
-        ?: System.getenv("WERKREGIE_DASHBOARD_CONFIG")?.let(Path::of)
-        ?: ConfigLoader.defaultPath
+    val arguments = args.toMutableList()
+    val configPath = arguments.indexOf("--config").takeIf { it >= 0 }?.let { index ->
+        arguments.removeAt(index)
+        Path.of(arguments.removeAtOrNull(index) ?: fail("--config braucht eine Datei"))
+    } ?: System.getenv("WERKREGIE_DASHBOARD_CONFIG")?.let(Path::of) ?: ConfigLoader.defaultPath
+    val mode = arguments.removeFirstOrNull() ?: "local"
+    if (mode in setOf("-h", "--help", "help")) return println(USAGE.trimIndent())
+    if (mode == "version") return println(version())
+
     val config = ConfigLoader.load(configPath)
-    val mapper = ObjectMapper()
-        .registerKotlinModule()
-        .registerModule(JavaTimeModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-    val dashboard = Dashboard(sources(config, mapper), config.windowHours, version())
-
-    // loopback only: the page shows private work and the backend holds the Gitea tokens
-    val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), config.port), 0)
-    server.executor = Executors.newVirtualThreadPerTaskExecutor()
-    server.createContext("/api/dashboard") { exchange ->
-        exchange.respond(200, "application/json", mapper.writeValueAsBytes(dashboard.snapshot()))
+    val mapper = mapper()
+    when (mode) {
+        "local" -> local(config, configPath, mapper)
+        "server" -> server(config, configPath, mapper)
+        "relay" -> relay(config, mapper)
+        "token" -> println(AccessToken(stateDir(config.server).resolve(AccessToken.FILE_NAME)).token)
+        "init" -> {
+            val target = arguments.removeFirstOrNull() ?: fail("init braucht 'server' oder 'relay'")
+            val directory = Path.of(arguments.removeFirstOrNull() ?: "werkregie-$target").toAbsolutePath()
+            println(Deployment(launcher(), configPath.toAbsolutePath()).write(target, directory, config.port))
+        }
+        else -> fail("unbekannter Modus '$mode'\n${USAGE.trimIndent()}")
     }
-    server.createContext("/") { exchange -> StaticFiles.serve(exchange) }
-    server.start()
-    // warm the caches, so the first page load does not wait for the remote servers
-    Thread.ofVirtual().start { dashboard.snapshot() }
-    println("Werkregie-Dashboard: http://localhost:${config.port}/  (Konfiguration: $configPath)")
 }
 
-private fun sources(config: DashboardConfig, mapper: ObjectMapper): List<Source> {
+private fun local(config: DashboardConfig, configPath: Path, mapper: ObjectMapper) {
     val http = JsonHttp(mapper)
-    return buildList {
-        if (config.claude.enabled) add(ClaudeCodeSource(config.claude, mapper))
-        if (config.codex.enabled) add(CodexSource(config.codex, mapper))
-        config.werkators.forEach { add(WerkatorSource(it, http)) }
-        config.giteas.forEach { add(GiteaSource(it, http, mapper)) }
-    }
+    val dashboard = Dashboard(localSources(config, mapper) + remoteSources(config, http, mapper), config.windowHours, version())
+    // loopback only: the page shows private work and the backend holds the Gitea tokens
+    val port = WebServer("127.0.0.1", config.port, dashboard, mapper).start()
+    warm(dashboard)
+    println("Werkregie-Dashboard (lokal): http://localhost:$port/  (Konfiguration: $configPath)")
 }
+
+private fun server(config: DashboardConfig, configPath: Path, mapper: ObjectMapper) {
+    val state = stateDir(config.server)
+    val accessToken = AccessToken(state.resolve(AccessToken.FILE_NAME)).also { it.token }
+    val relays = RelayRegistry(
+        state.resolve(RelayRegistry.FILE_NAME),
+        mapper,
+        stale = Duration.ofSeconds(config.server.relayStaleSeconds),
+        gone = Duration.ofSeconds(config.server.relayGoneSeconds),
+    )
+    Runtime.getRuntime().addShutdownHook(Thread { runCatching { relays.save() } })
+    val dashboard = Dashboard(remoteSources(config, JsonHttp(mapper), mapper) + relays, config.windowHours, version())
+    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays).start()
+    warm(dashboard)
+    println("Werkregie-Dashboard (Server): ${config.server.bindAddress}:$port  (Konfiguration: $configPath, Zustand: $state)")
+}
+
+private fun relay(config: DashboardConfig, mapper: ObjectMapper) {
+    val local = Dashboard(localSources(config, mapper), config.windowHours, version())
+    RelayClient(config.relay, local, mapper).runForever()
+}
+
+private fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<Source> = buildList {
+    if (config.claude.enabled) add(ClaudeCodeSource(config.claude, mapper))
+    if (config.codex.enabled) add(CodexSource(config.codex, mapper))
+}
+
+private fun remoteSources(config: DashboardConfig, http: JsonHttp, mapper: ObjectMapper): List<Source> = buildList {
+    config.werkators.forEach { add(WerkatorSource(it, http)) }
+    config.giteas.forEach { add(GiteaSource(it, http, mapper)) }
+}
+
+// fills the caches, so the first page load does not wait for the remote servers
+private fun warm(dashboard: Dashboard) = Thread.ofVirtual().start { dashboard.snapshot() }
+
+fun mapper(): ObjectMapper = ObjectMapper()
+    .registerKotlinModule()
+    .registerModule(JavaTimeModule())
+    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
 private fun version(): String =
-    Main::class.java.getResourceAsStream("/werkregie.properties")
+    Deployment::class.java.getResourceAsStream("/werkregie.properties")
         ?.use { stream -> java.util.Properties().apply { load(stream) }.getProperty("version") }
         ?: "dev"
 
-/** The page and its assets from the classpath; anything outside `static/` is not reachable. */
-private object StaticFiles {
-    private val safePath = Regex("^/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$")
-    private val types = mapOf(
-        "html" to "text/html; charset=utf-8",
-        "css" to "text/css; charset=utf-8",
-        "js" to "text/javascript; charset=utf-8",
-        "svg" to "image/svg+xml",
-        "woff2" to "font/woff2",
-    )
+/** The start script of this installation: `<home>/lib/<jar>` → `<home>/bin/werkregie-dashboard`. */
+private fun launcher(): Path =
+    Path.of(Deployment::class.java.protectionDomain.codeSource.location.toURI())
+        .parent.parent.resolve("bin/werkregie-dashboard")
 
-    fun serve(exchange: HttpExchange) {
-        val path = exchange.requestURI.path.let { if (it == "/") "/index.html" else it }
-        val resource = path.takeIf { safePath.matches(it) && ".." !in it }
-            ?.let { Main::class.java.getResource("/static$it") }
-        val type = types[path.substringAfterLast('.')]
-        if (resource == null || type == null) {
-            exchange.respond(404, "text/plain", "not found".toByteArray())
-        } else {
-            exchange.respond(200, type, resource.readBytes())
-        }
-    }
+private fun MutableList<String>.removeAtOrNull(index: Int) = if (index < size) removeAt(index) else null
+
+private fun fail(message: String): Nothing {
+    System.err.println(message)
+    exitProcess(2)
 }
-
-private fun HttpExchange.respond(status: Int, contentType: String, body: ByteArray) {
-    use {
-        responseHeaders.add("Content-Type", contentType)
-        responseHeaders.add("Cache-Control", "no-store")
-        sendResponseHeaders(status, body.size.toLong())
-        responseBody.write(body)
-    }
-}
-
-private object Main

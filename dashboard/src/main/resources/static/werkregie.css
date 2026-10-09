@@ -103,6 +103,7 @@ code { font-family: var(--mono); font-size: 13px; }
 .icon-chevron { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); transition: transform 0.25s ease; }
 .icon-chevron.is-open { transform: rotate(180deg); }
 .icon-close { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E"); }
+.icon-key { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='15' r='4'/%3E%3Cpath d='M10.8 12.2 20 3M17 6l2.5 2.5M14 9l2.5 2.5'/%3E%3C/svg%3E"); }
 .icon-repos { --icon: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 3 9l9 5 9-5-9-5z'/%3E%3Cpath d='M3 14l9 5 9-5'/%3E%3C/svg%3E"); }
 
 /* ---- header: Werkator's — wordmark left, navigation right, a hairline with a soft shadow ---- */
@@ -124,6 +125,8 @@ code { font-family: var(--mono); font-size: 13px; }
 #live-indicator.status-error { color: var(--clay); border-color: var(--clay); }
 .icon-button { appearance: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); color: var(--text-2); cursor: pointer; }
 .icon-button:hover { color: var(--accent); border-color: var(--accent-soft-2); background: var(--accent-soft); }
+.icon-button.has-token { color: var(--accent); border-color: var(--accent-soft-2); }
+.icon-button[hidden] { display: none; }
 .reload-button.is-reloading .icon { animation: reload-spin 0.6s ease-out; }
 @keyframes reload-spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: 0.35; } }
@@ -144,6 +147,24 @@ a.repo-chip:hover { color: var(--accent); }
 .watcher-banner { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 8px 0 0; padding: 9px 12px; border: 1px solid var(--clay); border-radius: 6px; background: var(--clay-soft); color: var(--clay); font-size: 13px; }
 .watcher-banner strong { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .watcher-banner[hidden] { display: none; }
+
+/* the demo notice: the accent, not the clay of a problem */
+.demo-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0 0; padding: 9px 12px; border: 1px solid var(--accent-soft-2); border-radius: 6px; background: var(--accent-soft); color: var(--text-2); font-size: 13px; }
+.demo-banner strong { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.demo-banner .chip { margin-left: auto; }
+.demo-banner[hidden] { display: none; }
+
+/* the token dialog: a panel like the others */
+.token-dialog { width: min(440px, calc(100% - 36px)); padding: 0; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); color: var(--text); box-shadow: 0 12px 32px rgb(0 0 0 / 0.25); }
+.token-dialog::backdrop { background: rgb(20 22 22 / 0.4); }
+.token-dialog form { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+.token-dialog h2 { margin: 0 -16px 4px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); font: 500 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.token-dialog p { margin: 0; font-size: 13px; color: var(--text-2); }
+.token-dialog .control { width: 100%; height: 32px; font-family: var(--mono); }
+.token-error { color: var(--clay) !important; }
+.token-error[hidden] { display: none; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.dialog-actions .chip { padding: 4px 12px; font-size: 13px; }
 
 /* ---- filters: Werkator's chips, and form controls dressed alike ---- */
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 18px; }

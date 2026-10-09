@@ -1,0 +1,13 @@
+# Werkregie-Dashboard in mode `relay` on a machine with coding agents.
+windowHours: 168
+
+claude:
+  enabled: true
+codex:
+  enabled: true
+
+relay:
+  serverUrl: https://regie.example.org/
+  tokenFile: ~/.config/werkregie/relay-token   # the server's access token, mode 0600; or token / tokenEnv
+  # name: laptop                               # default: the host name
+  intervalSeconds: 5

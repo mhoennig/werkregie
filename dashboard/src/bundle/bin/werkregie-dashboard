@@ -1,0 +1,6 @@
+#!/bin/sh
+# Launcher of the runtime bundle: its own JRE, so the host needs no Java (as Werkator's, ADR 0006).
+APP_HOME=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+# JAVA_OPTS, e.g. -Xmx128m, comes from the environment or the systemd unit
+exec "$APP_HOME/jre/bin/java" $JAVA_OPTS --enable-native-access=ALL-UNNAMED \
+    -cp "$APP_HOME/lib/*" de.hoennig.werkregie.dashboard.MainKt "$@"

@@ -1,0 +1,25 @@
+# Werkregie-Dashboard in mode `server` on a host — e.g. ~/.config/werkregie/dashboard.yml there.
+port: 31234                   # the localhost port of the booked "eigener Serverdienst"
+windowHours: 168
+
+# Claude Code and Codex come from the relays, not from the host
+claude: { enabled: false }
+codex: { enabled: false }
+
+server:
+  bindAddress: 127.0.0.1      # Apache proxies to it via .htaccess
+  publicBaseUrl: https://regie.example.org/
+  # stateDir: ~/.local/state/werkregie   # access-token and relays.json
+  relayStaleSeconds: 30
+  relayGoneSeconds: 120
+
+werkators:
+  - name: javagil
+    url: https://werkator.example.org
+    controlTokenEnv: WERKREGIE_WERKATOR_JAVAGIL   # private repositories; or controlToken: <token>
+
+giteas:
+  - name: javagil
+    url: https://git.example.org
+    tokenEnv: WERKREGIE_TOKEN_JAVAGIL             # or token: <token>; no tea on the host
+    pullRequests: all

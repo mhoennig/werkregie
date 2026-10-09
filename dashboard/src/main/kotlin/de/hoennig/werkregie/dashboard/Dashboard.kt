@@ -24,6 +24,11 @@ interface Source {
     fun note(): String? = null
 }
 
+/** A source standing for several things, e.g. the relays: it reports one status per relay. */
+interface MultiStatusSource : Source {
+    fun statuses(now: Instant): List<SourceStatus>
+}
+
 /**
  * Fetches all sources in parallel, each with its own cache. Cached items are served at once
  * while a due source refreshes in the background; only a source never fetched before is waited for.
@@ -32,7 +37,7 @@ interface Source {
 class Dashboard(
     private val sources: List<Source>,
     private val windowHours: Long,
-    private val version: String = "dev",
+    val version: String = "dev",
     private val executor: ExecutorService = Executors.newVirtualThreadPerTaskExecutor(),
 ) {
     private class Entry(
@@ -45,15 +50,16 @@ class Dashboard(
 
     private val entries = sources.associate { it.id to Entry() }
 
-    fun snapshot(now: Instant = Instant.now()): Snapshot {
+    fun snapshot(now: Instant = Instant.now(), access: Access = Access.OPEN): Snapshot {
         val since = now.minus(Duration.ofHours(windowHours))
         val firstFetches = sources.mapNotNull { source -> refreshIfDue(source, now, since) }
         firstFetches.forEach { runCatching { it.get(FIRST_FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS) } }
 
-        val statuses = sources.map { source ->
+        val statuses = sources.flatMap { source ->
+            if (source is MultiStatusSource) return@flatMap source.statuses(now)
             val entry = entries.getValue(source.id)
             synchronized(entry) {
-                SourceStatus(
+                listOf(SourceStatus(
                     id = source.id,
                     label = source.label,
                     ok = entry.error == null,
@@ -61,17 +67,19 @@ class Dashboard(
                     url = source.url,
                     count = entry.items.size,
                     fetchedAt = entry.fetchedAt,
-                )
+                ))
             }
         }
         val items = sources.flatMap { source -> entries.getValue(source.id).let { synchronized(it) { it.items } } }
             .sortedByDescending { it.time ?: Instant.EPOCH }
-        return Snapshot(version, now, windowHours, items, statuses)
+        return Snapshot(version, now, windowHours, items, statuses, access)
     }
 
     /** Starts a background refresh when the ttl is over; returns it only if nothing was fetched yet. */
     private fun refreshIfDue(source: Source, now: Instant, since: Instant): Future<*>? {
         val entry = entries.getValue(source.id)
+        // a source without a ttl holds its data in memory already, e.g. the relays: read it now
+        if (source.ttl.isZero) return refresh(source, entry, now, since).let { null }
         synchronized(entry) {
             entry.refreshing?.takeIf { !it.isDone }?.let { return if (entry.fetchedAt == null) it else null }
             // failures wait for the ttl as well, so a dead server is not asked on every poll

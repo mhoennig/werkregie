@@ -16,6 +16,35 @@ data class DashboardConfig(
     val codex: CodexConfig = CodexConfig(),
     val werkators: List<WerkatorConfig> = emptyList(),
     val giteas: List<GiteaConfig> = emptyList(),
+    val server: ServerConfig = ServerConfig(),
+    val relay: RelayConfig = RelayConfig(),
+)
+
+/** Mode `server`: the dashboard on a host, fed by relays; `port` above is the port it listens on. */
+data class ServerConfig(
+    // behind a reverse proxy, e.g. Hostsharing's Apache, loopback is all it needs
+    val bindAddress: String = "127.0.0.1",
+    // the address the browser and the relays use, e.g. https://regie.example.org/; for `init`
+    val publicBaseUrl: String? = null,
+    // access token and relay states; default ${XDG_STATE_HOME:-~/.local/state}/werkregie
+    val stateDir: String? = null,
+    // a relay silent for this long is shown as stale ...
+    val relayStaleSeconds: Long = 30,
+    // ... and after this long its running and open sessions count as ended
+    val relayGoneSeconds: Long = 120,
+)
+
+/** Mode `relay`: reads the local agents and reports them to a server. */
+data class RelayConfig(
+    // the server's public base URL, e.g. https://regie.example.org/
+    val serverUrl: String? = null,
+    // the server's access token (`werkregie-dashboard token` on the server prints it)
+    val token: String? = null,
+    val tokenEnv: String? = null,
+    val tokenFile: String? = null,
+    // how this machine is named on the dashboard; default the host name
+    val name: String? = null,
+    val intervalSeconds: Long = 5,
 )
 
 data class ClaudeConfig(
@@ -74,6 +103,11 @@ object ConfigLoader {
         return match?.get("token")?.asText()
     }
 }
+
+fun stateDir(config: ServerConfig): Path =
+    config.stateDir?.let(::expandHome)
+        ?: (System.getenv("XDG_STATE_HOME")?.takeIf { it.isNotBlank() }?.let(Path::of) ?: expandHome("~/.local/state"))
+            .resolve("werkregie")
 
 fun expandHome(path: String): Path =
     Path.of(if (path.startsWith("~/")) System.getProperty("user.home") + path.substring(1) else path)

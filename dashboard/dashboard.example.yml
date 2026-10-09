@@ -1,5 +1,5 @@
 # Werkregie-Dashboard — copy to ~/.config/werkregie/dashboard.yml
-# (or pass the path as first argument / WERKREGIE_DASHBOARD_CONFIG).
+# (or pass --config FILE / WERKREGIE_DASHBOARD_CONFIG). Mode `local`; for server and relay see the other examples.
 port: 4747
 windowHours: 168          # how far back the backend collects the history
 
