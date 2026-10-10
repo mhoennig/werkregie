@@ -1,0 +1,76 @@
+package de.hoennig.werkregie.dashboard.sources
+
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
+import java.time.Instant
+
+class MatrixMessagesTest : FunSpec({
+    val message = MatrixMessage(
+        eventId = "\$event",
+        roomId = "!room:example.org",
+        roomName = "Team",
+        direct = false,
+        sender = "Anna",
+        time = Instant.parse("2026-10-10T12:00:00Z"),
+        text = "Hallo zusammen",
+        mentionsMe = false,
+    )
+
+    // Scenario#8.04
+    test("a direct message shows, marked as direct") {
+        val direct = message.copy(direct = true)
+        MatrixMessages.reason(direct, emptySet()) shouldBe "direct"
+        val item = MatrixMessages.item(direct, "direct", "example.org", "matrix.to")
+        item.title shouldBe "Hallo zusammen"
+        item.detail shouldBe "Anna"
+        item.flags.single().kind shouldBe "direct"
+    }
+
+    // Scenario#8.05
+    test("a mention in any room shows, marked as mention") {
+        MatrixMessages.reason(message.copy(mentionsMe = true), emptySet()) shouldBe "mention"
+    }
+
+    test("a mention is found in m.mentions, by user ID or by display name") {
+        MatrixMessages.mentions("egal", setOf("@me:example.org"), "@me:example.org", "Mi") shouldBe true
+        MatrixMessages.mentions("frag @me:example.org", null, "@me:example.org", "Mi") shouldBe true
+        MatrixMessages.mentions("Mi: schau mal", null, "@me:example.org", "Mi") shouldBe true
+        MatrixMessages.mentions("Mittag?", null, "@me:example.org", "Mi") shouldBe false
+    }
+
+    // Scenario#8.06
+    test("every message of a configured room shows, marked as room") {
+        MatrixMessages.reason(message, setOf("!room:example.org")) shouldBe "room"
+    }
+
+    // Scenario#8.07
+    test("a message of another room, without a mention, stays hidden") {
+        MatrixMessages.reason(message, setOf("!other:example.org")) shouldBe null
+    }
+
+    // Scenario#8.08
+    test("a message the device cannot decrypt shows as encrypted, with room, sender and time") {
+        val item = MatrixMessages.item(message.copy(text = null), "room", "example.org", "matrix.to")
+        item.title shouldBe "verschlüsselt"
+        item.state shouldBe "encrypted"
+        item.detail shouldBe "Team · Anna"
+        item.time shouldBe message.time
+    }
+
+    // Scenario#8.09
+    test("only the start of the text goes into the row, on one line") {
+        val long = "> zitierte Zeile\nErste Zeile\n\n" + "x".repeat(200)
+        val title = MatrixMessages.item(message.copy(text = long), "room", "example.org", "matrix.to").title
+        title.length shouldBe MatrixMessages.SNIPPET_LENGTH
+        title shouldNotContain "\n"
+        title shouldNotContain "zitierte"
+    }
+
+    // Scenario#8.10
+    test("a message links to itself, by matrix.to or Element Desktop's schemes") {
+        MatrixMessages.link("matrix.to", "!room:example.org", "\$event") shouldBe "https://matrix.to/#/!room:example.org/\$event"
+        MatrixMessages.link("element", "!room:example.org", "\$event") shouldBe "element://vector/webapp/#/room/!room:example.org/\$event"
+        MatrixMessages.link("io.element.desktop", "!r:x", "\$e") shouldBe "io.element.desktop://vector/webapp/#/room/!r:x/\$e"
+    }
+})

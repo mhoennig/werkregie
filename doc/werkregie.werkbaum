@@ -24,16 +24,19 @@
           " drafts carry none, are dimmed and sorted last.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
-      - [ ] #dash.matrix: Matrix messages with the user's own account (L)
-        - [x] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
+      - [~] #dash.matrix: Matrix messages with the user's own account
+        " Werkregie PR#8: walking skeleton; encrypted messages need verification and keys.
+        - [^] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
           " Werkregie PR#5: it does; the spike is in dashboard/spikes/matrix-sdk.
-        - [ ] Login as a device of its own, in the relay (S) :#dash.matrix.sdk
+        - [^] Login as a device of its own, in the relay (S) :#dash.matrix.sdk
+          " Werkregie PR#8: werkregie-dashboard matrix login; the session lives in an H2 file.
         - [ ] Device verified by emoji comparison (S)
         - [ ] Room keys from the key backup (S)
-        - [ ] Direct messages, mentions in every room, configured rooms (S)
-        - [ ] The server gets room, sender, time and the start of the text (S)
-        - [ ] Panel for the messages (S)
-        - [ ] #dash.matrix.link: Link into Element (XS)
+        - [^] Direct messages, mentions in every room, configured rooms (S)
+        - [^] The server gets room, sender, time and the start of the text (S)
+        - [^] Panel for the messages (S)
+        - [^] #dash.matrix.link: Link into Element (XS)
+        + [ ] Older messages than the first sync brings (S)
     - [^] #dash.page: Page
       - [^] Panels: Läuft jetzt, Offene Sessions, Offene Pull Requests, Verlauf (S)
         " Three and a half rows until opened; headings name the tools the rows come from.
@@ -49,10 +52,10 @@
         - [^] forget-relay NAME (XS)
         - [^] init server: systemd unit and .htaccess (XS)
         - [^] Runtime bundle with its own JRE (S)
-      - [^] #dash.relay: relay: reports local sessions to the server every 5 s (S)
+      - [^] #dash.relay: relay: reports local sessions to the server every 5 s
         " On think as a systemd user unit; outgoing connections only.
         + [ ] Relays on the Omarchy hosts (XS)
-    - [~] #dash.pwa: Frontend as a PWA (M)
+    - [~] #dash.pwa: Frontend as a PWA
       - [^] Web app manifest and icons (XS)
         " Werkregie PR#2; the title bar follows the header's light or dark colour.
       - [^] Service worker: app shell offline, API never cached (S)
@@ -61,6 +64,7 @@
       - [ ] Installed and checked on Android, iOS and desktop (XS)
       + [?] Push notification when a pull request needs the user
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
+    - [?] #dash.store: One database for Werkregie, to be discussed
   - [ ] #ops: Build and delivery
     - [ ] #ops.werkator: Werkator builds werkregie (S)
     - [ ] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
@@ -88,6 +92,9 @@
 #dash.pwa
   User request of 2026-10-10: the Werkregie frontend becomes a progressive
   web app, installable on phone and desktop.
+
+  User decision of 2026-10-10: the last state, with pull request and session
+  data, may be kept in the browser's storage for the offline view.
 
   The service worker caches the page, styles, fonts and icons only. The API
   answers carry private data behind the access token and are never cached by
@@ -128,7 +135,15 @@
 #dash.matrix.link
   Element Desktop opens element:// links (io.element.desktop:// for the
   stable app when a nightly build holds element://); on a phone matrix.to
-  opens Element. Which form, configurable or chosen by the device, is open.
+  opens Element. PR#8 makes it configurable as matrix.link, matrix.to by
+  default.
+
+#dash.store
+  The Matrix client needs a store; Trixnity's Exposed repositories need
+  R2DBC, which SQLite does not offer, so PR#8 uses an H2 file for it.
+  sqlite-jdbc stays as long as Werkregie reads Codex: it only reads Codex'
+  own database. Whether Werkregie gets one database of its own, H2 or
+  another, and what moves into it, is to be discussed.
 
 #dash.notify
   Werkregie posts what a pull request asks of whom into a Matrix room, for

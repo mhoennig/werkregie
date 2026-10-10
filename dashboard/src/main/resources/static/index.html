@@ -84,6 +84,12 @@
             <button class="panel-more" type="button" data-panel="prs" hidden></button>
             </section>
         </div>
+        <!-- only where a Matrix source is configured -->
+        <section id="messages-panel" class="panel" hidden>
+            <h2><span class="panel-title">Nachrichten <span id="messages-sources" class="panel-sources"></span></span><em id="messages-count"></em></h2>
+            <div id="messages" class="panel-body"></div>
+            <button class="panel-more" type="button" data-panel="messages" hidden></button>
+        </section>
         <section class="panel">
             <h2><span class="panel-title">Verlauf <span id="recent-sources" class="panel-sources"></span></span><em id="recent-count"></em></h2>
             <div id="recent" class="panel-body"></div>
@@ -118,7 +124,7 @@
 </footer>
 
 <script>
-const SOURCES = { claude: "Claude", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea" };
+const SOURCES = { claude: "Claude", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", matrix: "Matrix" };
 
 // Werkator's status classes: accent for good and running, clay for failed, amber for timeouts,
 // an outlined dot for waiting, ghost for everything that is over without a verdict
@@ -136,6 +142,8 @@ const FLAGS = {
     stuck: ["⚠", "Festgefahren"], rework: ["🔧", "Nacharbeit"], approve: ["✋", "Dein Approval"],
     merge: ["➜", "Mergen"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
 };
+// why a Matrix message shows
+const MESSAGE_FLAGS = { direct: ["✉", "Direkt"], mention: ["@", "Erwähnung"], room: ["#", "Raum"] };
 const FLAG_ORDER = Object.keys(FLAGS);
 // the ones that ask something of the user, not of others
 const FOR_YOU = new Set(["stuck", "rework", "approve", "merge"]);
@@ -178,7 +186,7 @@ function dayLabel(iso) {
 }
 
 function statusHtml(item) {
-    if (item.kind === "activity") return "";
+    if (item.kind === "activity" || item.kind === "message") return "";
     const [cls, word] = STATUS[item.state] || ["unknown", item.state.replaceAll("_", " ")];
     return `<span class="status status-${cls}">${esc(word)}</span>`;
 }
@@ -206,7 +214,7 @@ function row(item, timeMode) {
         : "";
     const whenHtml = `<div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>`;
     const flagHtml = flags.map((flag) => {
-        const [symbol, name] = FLAGS[flag.kind] || ["•", flag.kind];
+        const [symbol, name] = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || ["•", flag.kind];
         const reason = flag.reason ? ` <span class="flag-reason">${esc(flag.reason)}</span>` : "";
         return `<span class="flag flag-${esc(flag.kind)}" title="${esc(name)}${flag.reason ? `: ${esc(flag.reason)}` : ""}">${symbol} ${esc(name)}${reason}</span>`;
     }).join("");
@@ -215,7 +223,8 @@ function row(item, timeMode) {
                 ${item.project ? `<span class="project"${item.repository && projectKey(item.repository) !== projectKey(item.project) ? ` title="Repository ${esc(item.repository)}"` : ""}>${esc(item.project)}</span>` : ""}
                 ${item.detail ? `<span class="detail">${esc(item.detail)}</span>` : ""}
             </div>`;
-    const aside = `<div class="aside">${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>`;
+    // a one-line row, e.g. a Matrix message, carries its markers at the end
+    const aside = `<div class="aside">${stacked ? "" : flagHtml}${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>`;
     // a pull request carries many status chips: they get a line of their own above the title
     if (stacked) {
         return `<div class="${classes}">
@@ -294,9 +303,10 @@ const PANEL_SOURCES = {
     running: ["claude", "codex", "werkator", "werkrevisor"],
     sessions: ["claude"],
     prs: ["gitea"],
+    messages: ["matrix"],
     recent: ["claude", "codex", "werkator", "werkrevisor", "gitea"],
 };
-const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea" };
+const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", matrix: "Matrix" };
 
 /** "Werkator javagil, vm4006": a tool with its configured instances, or null when none is configured. */
 function toolLabel(tool, sources) {
@@ -333,7 +343,9 @@ function render() {
         (!needle || `${i.title} ${i.project} ${i.repository || ""} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
 
     fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
-    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr"), "Keine offenen Sessions.", "bereit");
+    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr" && i.kind !== "message"), "Keine offenen Sessions.", "bereit");
+    $("messages-panel").hidden = !toolLabel("matrix", data.sources) && !data.items.some((i) => i.source === "matrix");
+    fill("messages", visible.filter((i) => i.kind === "message" && i.time && Date.parse(i.time) >= since), "Keine Nachrichten im gewählten Zeitraum.", "Nachrichten");
     // the most urgent marker first, then the unmarked ones as Gitea orders them, drafts last
     const prs = visible.filter((i) => i.kind === "pr");
     const rank = (i) => i.flags?.length ? FLAG_ORDER.indexOf(i.flags[0].kind) : i.state === "draft" ? FLAG_ORDER.length + 1 : FLAG_ORDER.length;
@@ -342,7 +354,7 @@ function render() {
     const forYou = prs.filter((i) => (i.flags || []).some((f) => FOR_YOU.has(f.kind))).length;
     if (forYou) $("prs-count").innerHTML = `<strong class="flag-count">${forYou} für dich</strong> · ${prs.length} offen`;
 
-    const recent = visible.filter((i) => i.section === "RECENT" && i.time && Date.parse(i.time) >= since);
+    const recent = visible.filter((i) => i.section === "RECENT" && i.kind !== "message" && i.time && Date.parse(i.time) >= since);
     let html = "", day = null;
     for (const item of recent) {
         const label = dayLabel(item.time);
@@ -586,7 +598,7 @@ $("source-chips").addEventListener("click", (e) => {
 });
 document.querySelectorAll(".panel-more").forEach((button) =>
     button.addEventListener("click", () => toggle(button.dataset.panel)));
-window.addEventListener("resize", () => ["running", "sessions", "prs", "recent"].forEach(clamp));
+window.addEventListener("resize", () => ["running", "sessions", "prs", "messages", "recent"].forEach(clamp));
 $("window").value = String(state.windowHours);
 $("window").addEventListener("change", (e) => { state.windowHours = Number(e.target.value); persist(); render(); });
 $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });

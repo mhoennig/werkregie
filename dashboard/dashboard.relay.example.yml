@@ -6,6 +6,13 @@ claude:
 codex:
   enabled: true
 
+# Matrix with your own account (modes local and relay); sign in once with `werkregie-dashboard matrix login`
+# matrix:
+#   homeserver: example.org       # server name or base URL; no default
+#   rooms:                        # every message of these rooms; direct messages and mentions show anyway
+#     - "!roomid:example.org"
+#   link: matrix.to               # or element / io.element.desktop for Element Desktop
+
 relay:
   serverUrl: https://regie.example.org/
   tokenFile: ~/.config/werkregie/relay-token   # the server's access token, mode 0600; or token / tokenEnv

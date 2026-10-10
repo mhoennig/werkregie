@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "de.hoennig"
-version = "0.3.2"
+version = "0.4.0"
 
 java {
     toolchain {
@@ -28,6 +28,7 @@ repositories {
 }
 
 val jacksonVersion = "2.22.3"
+val trixnityVersion = "5.9.2"
 
 dependencies {
     // no web framework: the JDK's HttpServer and HttpClient are enough for a localhost dashboard
@@ -35,6 +36,14 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jacksonVersion")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
     implementation("org.xerial:sqlite-jdbc:3.53.4.0")
+    // Matrix with the user's own account, end-to-end encrypted rooms included (werkregie PR#8)
+    implementation("de.connect2x.trixnity:trixnity-client:$trixnityVersion")
+    implementation("de.connect2x.trixnity:trixnity-client-cryptodriver-vodozemac:$trixnityVersion")
+    implementation("de.connect2x.trixnity:trixnity-client-repository-exposed:$trixnityVersion")
+    // the client's store: Trixnity's Exposed repositories need R2DBC, which SQLite does not offer
+    implementation("io.r2dbc:r2dbc-h2:1.1.0.RELEASE")
+    // Trixnity's Ktor version; the Java engine uses the JDK's HttpClient, as the other sources do
+    implementation("io.ktor:ktor-client-java:3.5.2")
     runtimeOnly("org.slf4j:slf4j-nop:2.0.20")
 
     testImplementation("io.kotest:kotest-runner-junit5:6.2.5")
@@ -44,7 +53,7 @@ dependencies {
 application {
     mainClass = "de.hoennig.werkregie.dashboard.MainKt"
     applicationName = "werkregie-dashboard"
-    // sqlite-jdbc loads its native library
+    // sqlite-jdbc and vodozemac load their native libraries
     applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
@@ -67,8 +76,10 @@ val bundleRuntime = tasks.register<Exec>("bundleRuntime") {
         executable = jdk.get().file("bin/jlink").asFile.absolutePath
     }
     args(
-        // jdeps: Jackson needs java.desktop (java.beans); jdk.crypto.ec for TLS to Werkator and Gitea
-        "--add-modules", "java.base,java.desktop,java.net.http,java.sql,jdk.httpserver,jdk.crypto.ec",
+        // jdeps: Jackson needs java.desktop (java.beans); jdk.crypto.ec for TLS to Werkator and Gitea;
+        // Trixnity, Ktor and coroutines need java.logging, java.management, java.instrument and jdk.unsupported
+        "--add-modules", "java.base,java.desktop,java.net.http,java.sql,jdk.httpserver,jdk.crypto.ec," +
+            "java.logging,java.management,java.instrument,jdk.unsupported",
         "--strip-debug", "--no-header-files", "--no-man-pages", "--compress=zip-6",
         "--output", output.get().asFile.absolutePath,
     )

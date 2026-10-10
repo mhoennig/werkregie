@@ -38,12 +38,15 @@ object Demo {
             build("werkator", "build", Section.RECENT, "feature/offline-wishlist", "success", ago(37), "mobile-app", "c03e11d2 · 4 min"),
             Item("gitea", "acme", "activity", Section.RECENT, "3 Commits auf feature/checkout-events", "push", ago(5), "acme/shop-backend", "Order events carry the payment reference"),
             session("codex", "laptop · CLI", Section.RECENT, "Abhängigkeiten aktualisieren", "done", ago(95), "shop-backend", "gpt · ⎇ main"),
+            message("Kannst du dir den Checkout-PR heute noch ansehen?", ago(8), "Anna", "direct"),
+            message("@du die Rabattregeln für Großkunden sind jetzt im Handbuch", ago(52), "Team Shop · Ben", "mention"),
+            message("verschlüsselt", ago(130), "Release-Planung · Carla", "room", state = "encrypted"),
             build("werkator", "build", Section.RECENT, "main", "failed", ago(130), "docs-site", "77b0e5a1 · 52 s"),
             Item("gitea", "acme", "activity", Section.RECENT, "gemergt PR #212 Steuersätze aus der Konfiguration", "merge_pull_request", ago(180), "acme/shop-backend"),
             session("claude", "laptop · Desktop", Section.RECENT, "Steuersätze konfigurierbar machen", "closed", ago(200), "shop-backend", "claude-opus · ~/Projekte/shop-backend"),
         )
         val sources = listOf(
-            status("relay:laptop", "Relay laptop", 6, listOf("claude", "codex")),
+            status("relay:laptop", "Relay laptop", 9, listOf("claude", "codex", "matrix")),
             status("werkator:acme", "Werkator acme", 4),
             status("gitea:acme", "Gitea acme", 5),
         )
@@ -58,6 +61,10 @@ object Demo {
 
     private fun pullRequest(title: String, state: String, time: Instant, project: String, badges: List<Badge>, flags: List<Flag> = emptyList()) =
         Item("gitea", "acme", "pr", Section.OPEN, title, state, time, project, "von demo", badges = badges, flags = flags)
+
+    private fun message(title: String, time: Instant, detail: String, reason: String, state: String = "message") =
+        Item("matrix", "example.org", "message", Section.OPEN, title, state, time, detail = detail,
+            url = "https://matrix.to/#/!demo:example.org", flags = listOf(Flag(reason)))
 
     private fun status(id: String, label: String, count: Int, tools: List<String> = emptyList()) =
         SourceStatus(id, label, ok = true, message = null, url = null, count = count, fetchedAt = null, tools = tools)

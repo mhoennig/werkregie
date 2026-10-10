@@ -10,6 +10,7 @@ import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
 import de.hoennig.werkregie.dashboard.sources.CodexSource
 import de.hoennig.werkregie.dashboard.sources.GiteaSource
+import de.hoennig.werkregie.dashboard.sources.MatrixSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
 import java.net.URI
 import java.net.http.HttpClient
@@ -28,6 +29,8 @@ werkregie-dashboard [MODUS] [--config DATEI]
                 zeigt echte Daten nur mit dem Zugriffstoken
   relay         liest Claude Code und Codex und meldet sie an relay.serverUrl
   token         gibt das Zugriffstoken des Servers aus (erzeugt es beim ersten Mal)
+  matrix login  meldet Werkregie als eigenes Gerät deines Matrix-Kontos an (matrix.homeserver);
+                Benutzer und Passwort fragt es ab, die Sitzung liegt im Zustandsverzeichnis
   forget-relay NAME
                 entfernt einen Relay, der sich nicht mehr meldet, vom Server
                 (über den laufenden Server, sonst direkt aus relays.json)
@@ -55,6 +58,10 @@ fun main(args: Array<String>) {
         "server" -> server(config, configPath, mapper)
         "relay" -> relay(config, mapper)
         "token" -> println(AccessToken(stateDir(config.server).resolve(AccessToken.FILE_NAME)).token)
+        "matrix" -> {
+            if (arguments.removeFirstOrNull() != "login") fail("matrix kennt nur 'login'")
+            println(matrixLogin(config))
+        }
         "forget-relay" -> println(forgetRelay(config, mapper, arguments.removeFirstOrNull() ?: fail("forget-relay braucht den Namen des Relays")))
         "init" -> {
             val target = arguments.removeFirstOrNull() ?: fail("init braucht 'server' oder 'relay'")
@@ -121,9 +128,27 @@ private fun forgetRelay(config: DashboardConfig, mapper: ObjectMapper, name: Str
     }
 }
 
-private fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<Source> = buildList {
+internal fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<Source> = buildList {
     if (config.claude.enabled) add(ClaudeCodeSource(config.claude, mapper))
     if (config.codex.enabled) add(CodexSource(config.codex, mapper))
+    // no homeserver, no Matrix: nothing is assumed
+    config.matrix?.takeIf { it.homeserver != null }?.let { add(MatrixSource(it, stateDir(config.server), mapper)) }
+}
+
+private fun matrixLogin(config: DashboardConfig): String {
+    val matrix = config.matrix?.takeIf { it.homeserver != null } ?: fail("matrix.homeserver ist nicht konfiguriert")
+    val console = System.console() ?: fail("matrix login braucht ein Terminal")
+    val user = console.readLine("Matrix-Benutzer (z. B. @name:server): ")?.trim().orEmpty()
+    val password = console.readPassword("Passwort: ")?.let(::String).orEmpty()
+    if (user.isEmpty() || password.isEmpty()) fail("Benutzer und Passwort nötig")
+    val host = java.net.InetAddress.getLocalHost().hostName.substringBefore('.')
+    val (userId, deviceId) = runCatching { MatrixSource.login(matrix, stateDir(config.server), user, password, "Werkregie $host") }
+        .getOrElse { fail("Anmeldung fehlgeschlagen: ${it.message}") }
+    return """
+        Angemeldet als $userId, Gerät $deviceId ("Werkregie $host").
+        Verschlüsselte Nachrichten liest das Gerät erst, wenn es Schlüssel hat; bis dahin zeigt es sie als "verschlüsselt".
+        Läuft der Relay oder der lokale Modus schon, starte ihn neu.
+    """.trimIndent()
 }
 
 private fun remoteSources(config: DashboardConfig, http: JsonHttp, mapper: ObjectMapper): List<Source> = buildList {

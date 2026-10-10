@@ -16,6 +16,7 @@ data class DashboardConfig(
     val codex: CodexConfig = CodexConfig(),
     val werkators: List<WerkatorConfig> = emptyList(),
     val giteas: List<GiteaConfig> = emptyList(),
+    val matrix: MatrixConfig? = null,
     val server: ServerConfig = ServerConfig(),
     val relay: RelayConfig = RelayConfig(),
 )
@@ -85,6 +86,17 @@ data class GiteaConfig(
     val maxPullRequests: Int = 30,
     // accounts whose approval is no human's, such as werkrevisor's
     val reviewBots: List<String> = listOf("ai-reviewer"),
+)
+
+/** Matrix with the user's own account, read in the modes `local` and `relay`; `matrix login` signs in. */
+data class MatrixConfig(
+    // server name or base URL; no default, so that no homeserver is assumed
+    val homeserver: String? = null,
+    // rooms whose every message shows, by room ID; direct messages and mentions show anyway
+    val rooms: List<String> = emptyList(),
+    // where a message links to: "matrix.to", "element" or "io.element.desktop" (Element Desktop's own schemes)
+    val link: String = "matrix.to",
+    val maxMessages: Int = 200,
 )
 
 object ConfigLoader {

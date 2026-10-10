@@ -9,6 +9,7 @@ and what happened recently — read-only, links back to the tools.
 | Codex (ChatGPT Desktop, IDE, CLI) | `~/.codex/state_5.sqlite` (read-only), rollout files | threads, running turns, resume command |
 | Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history` | running and finished builds; `@ai-review` builds as werkrevisor |
 | Gitea, any number of instances | `/api/v1` | open PRs with commit statuses (Werkator, werkrevisor run and verdict), own activity |
+| Matrix, with the user's own account | client-server API through Trixnity (`de.connect2x.trixnity`) | direct messages, mentions in every room, every message of configured rooms |
 
 The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM Plex, petrol accent, light/dark with a toggle).
 
@@ -87,6 +88,25 @@ best in a file of its own (`relay.tokenFile`, mode 0600). Then:
 ```bash
 build/install/werkregie-dashboard/bin/werkregie-dashboard init relay ~/werkregie-init   # prints how to enable the unit
 ```
+
+## Matrix
+
+Werkregie reads Matrix as a device of the user's own account,
+so that end-to-end encrypted rooms are readable once the device has their keys.
+It runs in the modes `local` and `relay`, never on the server: the device keys stay on the user's machine.
+
+1. Configure `matrix.homeserver`; there is no default.
+2. Stop the relay or the local mode, then sign in; it asks for user and password:
+   ```bash
+   werkregie-dashboard matrix login
+   ```
+3. Start the relay or the local mode again.
+
+The session and the keys live in `<stateDir>/matrix/` (mode 0700):
+an H2 database `client.mv.db` and the shown rows in `messages.json`.
+To sign in anew, delete that directory and remove the device "Werkregie <host>" in Element.
+A relay reports only the start of each text, at most 80 characters, to the server.
+Until the device is verified and has the keys, an encrypted message shows as "verschlüsselt", with room, sender and time.
 
 ## Configuration
 

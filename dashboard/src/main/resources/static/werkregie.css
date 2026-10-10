@@ -255,6 +255,9 @@ a.title:hover { color: var(--accent); }
 .flag-approve, .flag-merge { --flag: var(--amber); }
 .flag-review { --flag: var(--blue); }
 .flag-approved { --flag: var(--green); }
+/* Matrix messages: addressed to the user, or from a room the user follows */
+.flag-direct, .flag-mention { --flag: var(--amber); }
+.flag-room { --flag: var(--blue); }
 .flag { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border-radius: 4px; background: var(--flag); color: var(--bg); font: 600 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 .flag-reason { font-weight: 400; text-transform: none; letter-spacing: 0; font-family: var(--sans); }
 .flag-count { font-weight: 600; color: var(--clay); }

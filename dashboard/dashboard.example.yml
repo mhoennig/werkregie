@@ -27,3 +27,10 @@ giteas:
     url: https://gitea.example.com
     tokenEnv: WERKREGIE_TOKEN_COMPANY   # or token: <token>
     pullRequests: mine      # created by, assigned to or review requested from the user
+
+# Matrix with your own account (modes local and relay); sign in once with `werkregie-dashboard matrix login`
+# matrix:
+#   homeserver: example.org       # server name or base URL; no default
+#   rooms:                        # every message of these rooms; direct messages and mentions show anyway
+#     - "!roomid:example.org"
+#   link: matrix.to               # or element / io.element.desktop for Element Desktop
