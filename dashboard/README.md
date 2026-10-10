@@ -12,6 +12,11 @@ and what happened recently — read-only, links back to the tools.
 
 The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM Plex, petrol accent, light/dark with a toggle).
 
+The page installs as an app (PWA): `manifest.webmanifest`, icons and the service worker `sw.js` in `static/`.
+The service worker keeps the page, styles and fonts for a start without network, fetching them anew first whenever it can;
+it never touches `/api/`, so no data outlives the page. The PNG icons are rendered from the SVGs, e.g.
+`inkscape icon-maskable.svg -w 512 -h 512 -o icon-maskable-512.png`.
+
 ## Modes
 
 One program, three ways to run it:

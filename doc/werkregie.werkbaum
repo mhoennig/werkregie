@@ -41,9 +41,11 @@
       - [^] #dash.relay: relay: reports local sessions to the server every 5 s (S)
         " On think as a systemd user unit; outgoing connections only.
         + [ ] Relays on the Omarchy hosts (XS)
-    - [ ] #dash.pwa: Frontend as a PWA (M)
-      - [ ] Web app manifest and icons (XS)
-      - [ ] Service worker: app shell offline, API never cached (S)
+    - [~] #dash.pwa: Frontend as a PWA (M)
+      - [x] Web app manifest and icons (XS)
+        " Werkregie PR#2; the title bar follows the header's light or dark colour.
+      - [x] Service worker: app shell offline, API never cached (S)
+        " Werkregie PR#2: network first; Chrome finds no installability errors.
       - [ ] Last state shown offline, marked as stale (S)
       - [ ] Installed and checked on Android, iOS and desktop (XS)
       + [?] Push notification when a pull request needs the user

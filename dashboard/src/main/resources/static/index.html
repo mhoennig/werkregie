@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Übersicht — Werkregie</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- installable as an app (PWA): manifest, icons, and the bar colour that follows the header -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Werkregie">
+<meta id="theme-color" name="theme-color" content="#ffffff">
 <link rel="stylesheet" href="/werkregie.css">
 <!-- The reader's light/dark choice, applied before the first paint, as in Werkator (RFC 0003). -->
 <script>try{var t=localStorage.getItem("werkregie-theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}}catch(e){}</script>
@@ -553,6 +558,8 @@ function describeTheme() {
     const button = $("theme-button");
     button.title = currentTheme() === "dark" ? "Hell anzeigen" : "Dunkel anzeigen";
     button.setAttribute("aria-label", button.title);
+    // the installed app's title bar takes the header's colour
+    $("theme-color").content = getComputedStyle(document.body).backgroundColor;
 }
 $("theme-button").addEventListener("click", () => {
     const next = currentTheme() === "dark" ? "light" : "dark";
@@ -599,6 +606,8 @@ renderSourceChips();
 load();
 setInterval(() => { if (!document.hidden) load(); }, 5000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+// installable and startable offline; the service worker never keeps the data
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>
 </body>
 </html>

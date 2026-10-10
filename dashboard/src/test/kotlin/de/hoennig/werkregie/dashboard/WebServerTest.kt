@@ -2,6 +2,7 @@ package de.hoennig.werkregie.dashboard
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
@@ -86,6 +87,21 @@ class WebServerTest : FunSpec({
         get("/").statusCode() shouldBe 200
         get("/werkregie.css").statusCode() shouldBe 200
         get("/werkregie.properties").statusCode() shouldBe 404
+    }
+
+    test("serves what makes the page an installable app") {
+        get("/manifest.webmanifest").headers().firstValue("Content-Type").get() shouldBe "application/manifest+json"
+        get("/sw.js").headers().firstValue("Content-Type").get() shouldBe "text/javascript; charset=utf-8"
+        listOf("/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/apple-touch-icon.png").forEach { icon ->
+            get(icon).headers().firstValue("Content-Type").get() shouldBe "image/png"
+        }
+    }
+
+    test("the service worker keeps only files the server has") {
+        val shell = Regex("""const SHELL = \[(.*?)];""", RegexOption.DOT_MATCHES_ALL).find(get("/sw.js").body())!!.groupValues[1]
+        val paths = Regex(""""(/[^"]*)"""").findAll(shell).map { it.groupValues[1] }.toList()
+        paths.size shouldBe 10
+        paths.forEach { path -> withClue(path) { get(path).statusCode() shouldBe 200 } }
     }
 })
 
