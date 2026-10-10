@@ -68,6 +68,9 @@
     - [ ] #ops.port: Port 18091 confirmed with Hostsharing (XS)
     - [^] #ops.deps: Kotlin 2.4, Gradle 9.8.1 and current libraries (XS)
       " Werkregie PR#6; JDK 21 stays, as Werkator's.
+    - [^] #ops.workflow: The shared agentic workflow of all werk repositories (S)
+      " Werkregie PR#7: doc/agentic-workflow.md, AGENTS.md, CLAUDE.md and PR documents.
+    - [ ] #ops.master: Master copy of the shared workflow, once every repository has it (XS) :#ops.workflow
   - [?] #orchestrator: Orchestrator for agentic software development
     " Designed in doc/agentic-flow.werkbaum; nodes move here once they are decided.
 
