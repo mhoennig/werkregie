@@ -30,9 +30,7 @@
     --amber: #b8860b;
     --amber-soft: #f9f0d2;
     --blue: #3a62b0;
-    --blue-soft: #e6ecf8;
     --green: #2e7d4a;
-    --green-soft: #e2f1e7;
     --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
     --shadow: 0 2px 6px rgb(20 22 22 / 0.05);
@@ -61,9 +59,7 @@
         --amber: #e3b341;
         --amber-soft: #3d3418;
         --blue: #8eaef0;
-        --blue-soft: #252f47;
         --green: #7cc793;
-        --green-soft: #213a2a;
         --shadow: 0 2px 6px rgb(0 0 0 / 0.25);
     }
 }
@@ -88,9 +84,7 @@
     --amber: #e3b341;
     --amber-soft: #3d3418;
     --blue: #8eaef0;
-    --blue-soft: #252f47;
     --green: #7cc793;
-    --green-soft: #213a2a;
     --shadow: 0 2px 6px rgb(0 0 0 / 0.25);
 }
 
@@ -256,13 +250,11 @@ a.title:hover { color: var(--accent); }
 .row-stacked .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
 .row-stacked .meta { margin-top: 0; }
 
-/* pull request markers: a bar and a tint in the colour of the most urgent, a filled chip for each */
-.row[class*="flag-"] { box-shadow: inset 4px 0 0 var(--flag); }
-.row[class*="flag-"], .row[class*="flag-"]:hover { background: var(--flag-soft); }
-.flag-stuck, .flag-rework { --flag: var(--clay); --flag-soft: var(--clay-soft); }
-.flag-approve, .flag-merge { --flag: var(--amber); --flag-soft: var(--amber-soft); }
-.flag-review { --flag: var(--blue); --flag-soft: var(--blue-soft); }
-.flag-approved { --flag: var(--green); --flag-soft: var(--green-soft); }
+/* pull request markers: a filled chip each, the row itself stays plain so the rows stay apart */
+.flag-stuck, .flag-rework { --flag: var(--clay); }
+.flag-approve, .flag-merge { --flag: var(--amber); }
+.flag-review { --flag: var(--blue); }
+.flag-approved { --flag: var(--green); }
 .flag { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border-radius: 4px; background: var(--flag); color: var(--bg); font: 600 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 .flag-reason { font-weight: 400; text-transform: none; letter-spacing: 0; font-family: var(--sans); }
 .flag-count { font-weight: 600; color: var(--clay); }

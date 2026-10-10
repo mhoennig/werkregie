@@ -194,7 +194,7 @@ function row(item, timeMode) {
     const stacked = item.kind === "pr";
     const flags = item.flags || [];
     const classes = ["row", stacked ? "row-stacked" : "", item.section === "RUNNING" ? "is-running" : "", failed ? "is-failed" : "",
-        flags.length ? `flag-${flags[0].kind}` : "", item.state === "draft" ? "is-draft" : ""].join(" ");
+        item.state === "draft" ? "is-draft" : ""].join(" ");
     const when = item.time ? (timeMode === "clock" ? clock(item.time) : ago(item.time)) : "";
     const copy = item.command
         ? `<button class="copy-button" type="button" data-cmd="${esc(item.command)}" title="Resume-Befehl kopieren: ${esc(item.command)}" aria-label="Resume-Befehl kopieren"><span class="icon icon-copy"></span></button>`
