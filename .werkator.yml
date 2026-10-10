@@ -1,0 +1,31 @@
+# Werkator CI configuration for werkregie (built by https://werkator.javagil.de).
+# Reference: https://github.com/mhoennig/werkator/blob/main/docs/configuration.md
+werkator:
+  version:
+    since: "1.0.1"
+
+gitea:
+  baseUrl: https://git.javagil.de
+  owner: mi
+  repo: werkregie
+  statusContext: werkator
+
+artifacts:
+  retentionPerBranch: 3
+
+watcher:
+  newBranchMaxAge: 5d
+
+builds:
+  # The gradle wrapper is committed, so the build environment needs a JDK
+  # and nothing else; werkdock's rootfs has JDK 21, as the dashboard needs.
+  default:
+    trigger:
+      onPush: true
+    cleanCommand: rm -rf dashboard/build
+    buildCommand: cd dashboard && ./gradlew --console=plain --no-daemon build
+    timeout: 10m
+    artifactDirs:
+      - dashboard/build/reports
+    stdoutLog: build.stdout.log
+    stderrLog: build.stderr.log
