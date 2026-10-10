@@ -25,7 +25,8 @@
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
       - [ ] #dash.matrix: Matrix messages with the user's own account (L)
-        - [ ] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
+        - [x] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
+          " Werkregie PR#5: it does; the spike is in dashboard/spikes/matrix-sdk.
         - [ ] Login as a device of its own, in the relay (S) :#dash.matrix.sdk
         - [ ] Device verified by emoji comparison (S)
         - [ ] Room keys from the key backup (S)
@@ -106,6 +107,20 @@
 
   Reading Element Desktop's own store was dropped: it has no interface, and
   its data lies encrypted in IndexedDB.
+
+#dash.matrix.sdk
+  Checked with Trixnity 5.9.2 on 2026-10-10, without signing in anywhere.
+  It compiles with the dashboard's Kotlin 2.2.21 on Temurin 21 and pulls
+  kotlin-stdlib 2.3.21. vodozemac comes through JNI: the jar carries the
+  native library for Linux x86-64 and aarch64 and unpacks it into the temp
+  directory, which must allow execution; it needs glibc 2.34 (mih09 has
+  2.36). Olm and Megolm round trips work, and so do discovery and versions
+  against matrix.org and the user's homeserver.
+
+  For the bundle: 49 jars and 24 MB more, and jlink needs java.logging,
+  java.management, java.instrument and jdk.unsupported besides the
+  modules it has. The client's store comes next:
+  trixnity-client-repository-exposed on the sqlite-jdbc the dashboard has.
 
 #dash.matrix.link
   Element Desktop opens element:// links (io.element.desktop:// for the
