@@ -24,6 +24,15 @@
           " drafts carry none, are dimmed and sorted last.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
+      - [ ] #dash.matrix: Matrix messages with the user's own account (L)
+        - [ ] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
+        - [ ] Login as a device of its own, in the relay (S) :#dash.matrix.sdk
+        - [ ] Device verified by emoji comparison (S)
+        - [ ] Room keys from the key backup (S)
+        - [ ] Direct messages, mentions in every room, configured rooms (S)
+        - [ ] The server gets room, sender, time and the start of the text (S)
+        - [ ] Panel for the messages (S)
+        - [ ] #dash.matrix.link: Link into Element (XS)
     - [^] #dash.page: Page
       - [^] Panels: Läuft jetzt, Offene Sessions, Offene Pull Requests, Verlauf (S)
         " Three and a half rows until opened; headings name the tools the rows come from.
@@ -50,6 +59,7 @@
       - [ ] Last state shown offline, marked as stale (S)
       - [ ] Installed and checked on Android, iOS and desktop (XS)
       + [?] Push notification when a pull request needs the user
+    + [?] #dash.notify: Matrix as a notification channel, for colleagues too
   - [ ] #ops: Build and delivery
     - [ ] #ops.werkator: Werkator builds werkregie (S)
     - [ ] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
@@ -78,6 +88,32 @@
   the service worker; offline the page shows the last state it holds, marked
   with its age. The local mode on localhost counts as a
   secure context, so the PWA works there too.
+
+#dash.matrix
+  User request of 2026-10-10: messages that matter to the user show in
+  Werkregie, read-only. Werkregie signs in with the user's own account as a
+  device of its own, because many rooms are end-to-end encrypted and only a
+  device of the account can read them. It runs in the relay, so the device
+  keys stay on the user's machine.
+
+  The homeserver is configured; there is no default, and no real homeserver
+  appears in the repository. Shown: every direct message, mentions in every
+  room (found after decryption, since the server cannot see them in encrypted
+  rooms), and all messages of the configured rooms. The server gets only room,
+  sender, time and the start of the text.
+
+  Reading Element Desktop's own store was dropped: it has no interface, and
+  its data lies encrypted in IndexedDB.
+
+#dash.matrix.link
+  Element Desktop opens element:// links (io.element.desktop:// for the
+  stable app when a nightly build holds element://); on a phone matrix.to
+  opens Element. Which form, configurable or chosen by the device, is open.
+
+#dash.notify
+  Werkregie posts what a pull request asks of whom into a Matrix room, for
+  colleagues too. A separate feature, later. A bot account of its own will
+  do; which events go to whom is open.
 
 #ops.github
   GitHub carries main only. Until Werkator does it, main is pushed by hand
