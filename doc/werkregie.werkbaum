@@ -1,0 +1,85 @@
+%% Werkregie, planned with Werkbaum (https://werkbaum.javagil.de): what exists, what comes next.
+%% Status: [^] live on mih09 or in use, [x] merged but not in use, [~] in work, [ ] planned, [?] idea, [-] dropped.
+%% Each PR updates this file. The block behind --- explains the nodes with an id.
+%% View: https://werkbaum.javagil.de/?sourceUrl=https://git.javagil.de/mi/werkregie/raw/branch/main/doc/werkregie.werkbaum
+
+[~] #werkregie: Werkregie https://git.javagil.de/mi/werkregie
+  - [^] #dash: Dashboard https://werkregie.javagil.de
+    " What the coding agents and the build pipeline are doing, read-only, with links back to the tools.
+    - [^] #dash.sources: Sources
+      - [^] #dash.claude: Claude Code sessions, Desktop and terminal (S)
+        " Busy, waiting and closed sessions; the resume command to copy.
+      - [^] #dash.codex: Codex threads, Desktop, IDE and CLI (S)
+        " Codex' SQLite state read-only; a running turn from the tail of the rollout file.
+      - [^] #dash.werkator: Werkator builds, any number of instances (S)
+        " Running and finished builds, @ai-review builds as werkrevisor;
+        " three repositories at a time with a 30 s timeout; the control token reveals private repositories.
+      - [^] #dash.gitea: Gitea, any number of instances
+        - [^] Open pull requests, scope mine or all (S)
+          " The token comes from a tea login, by name or user.
+        - [^] Commit statuses: Werkator, werkrevisor run and verdict (S)
+        - [^] #dash.flags: Markers by what a pull request asks of whom (S)
+          " Festgefahren, Nacharbeit, Dein Approval, Mergen, Wartet auf Review, Von dir approved;
+          " drafts carry none, are dimmed and sorted last.
+        - [^] Own activity in the history (XS)
+      - [^] #dash.projects: Projects matched by repository name across sources (XS)
+    - [^] #dash.page: Page
+      - [^] Panels: Läuft jetzt, Offene Sessions, Offene Pull Requests, Verlauf (S)
+        " Three and a half rows until opened; headings name the tools the rows come from.
+      - [^] Filters: source chips, project combobox, time window, search (S)
+      - [^] Two-line pull request rows with coloured marker chips (XS)
+      - [^] Werkator's design, light and dark with a toggle (S)
+      - [^] Reloads every 5 s while visible; cached data served at once (XS)
+    - [^] #dash.modes: Modes
+      - [^] #dash.local: local: everything read on this machine, loopback only, no token (XS)
+      - [^] #dash.server: server: Werkator, Gitea and relays on a host
+        - [^] Access token as cookie or bearer; demo data without it (S)
+        - [^] Relay registry: stale, gone, kept in relays.json (S)
+        - [^] forget-relay NAME (XS)
+        - [^] init server: systemd unit and .htaccess (XS)
+        - [^] Runtime bundle with its own JRE (S)
+      - [^] #dash.relay: relay: reports local sessions to the server every 5 s (S)
+        " On think as a systemd user unit; outgoing connections only.
+        + [ ] Relays on the Omarchy hosts (XS)
+    - [ ] #dash.pwa: Frontend as a PWA (M)
+      - [ ] Web app manifest and icons (XS)
+      - [ ] Service worker: app shell offline, API never cached (S)
+      - [ ] Last state shown offline, marked as stale (S)
+      - [ ] Installed and checked on Android, iOS and desktop (XS)
+      + [?] Push notification when a pull request needs the user
+  - [ ] #ops: Build and delivery
+    - [ ] #ops.werkator: Werkator builds werkregie (S)
+    - [ ] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
+    - [ ] #ops.github: Werkator pushes a green main to GitHub (XS) :#ops.werkator
+    - [ ] #ops.port: Port 18091 confirmed with Hostsharing (XS)
+  - [?] #orchestrator: Orchestrator for agentic software development
+    " Designed in doc/agentic-flow.werkbaum; nodes move here once they are decided.
+
+---
+
+#dash.flags
+  Most urgent first: Festgefahren (werkrevisor escalated, RED for an hour
+  without a new commit, ERROR, or a run without verdict), Nacharbeit (conflict
+  or red build on the user's own pull request), Dein Approval (a foreign pull
+  request without werkrevisor or with a final YELLOW or ORANGE), Mergen (the
+  user's own pull request approved by another human), Wartet auf Review (the
+  user's own pull request waits for another human), Von dir approved.
+  Only the chips are coloured, not the row.
+
+#dash.pwa
+  User request of 2026-10-10: the Werkregie frontend becomes a progressive
+  web app, installable on phone and desktop.
+
+  The service worker caches the page, styles, fonts and icons only. The API
+  answers carry private data behind the access token and are never cached by
+  the service worker; offline the page shows the last state it holds, marked
+  with its age. The local mode on localhost counts as a
+  secure context, so the PWA works there too.
+
+#ops.github
+  GitHub carries main only. Until Werkator does it, main is pushed by hand
+  with git push github.
+
+#ops.port
+  The server runs on port 18091, picked because it was free; Hostsharing has
+  not confirmed it for the booked service yet.
