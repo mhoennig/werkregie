@@ -1,6 +1,7 @@
 %% Werkregie, planned with Werkbaum (https://werkbaum.javagil.de): what exists, what comes next.
-%% Status: [^] live on mih09 or in use, [x] merged but not in use, [~] in work, [ ] planned, [?] idea, [-] dropped.
-%% Each PR updates this file. The block behind --- explains the nodes with an id.
+%% Status: [^] live on mih09 or in use, [x] done but not in use, [~] in work, [ ] planned, [?] idea, [-] dropped.
+%% Each PR updates this file with the status its merge brings: main is what runs, there are no release commits,
+%% so the PR that finishes a feature already sets it to [^]. The block behind --- explains the nodes with an id.
 %% View: https://werkbaum.javagil.de/?sourceUrl=https://git.javagil.de/mi/werkregie/raw/branch/main/doc/werkregie.werkbaum
 
 [~] #werkregie: Werkregie https://git.javagil.de/mi/werkregie
@@ -42,9 +43,9 @@
         " On think as a systemd user unit; outgoing connections only.
         + [ ] Relays on the Omarchy hosts (XS)
     - [~] #dash.pwa: Frontend as a PWA (M)
-      - [x] Web app manifest and icons (XS)
+      - [^] Web app manifest and icons (XS)
         " Werkregie PR#2; the title bar follows the header's light or dark colour.
-      - [x] Service worker: app shell offline, API never cached (S)
+      - [^] Service worker: app shell offline, API never cached (S)
         " Werkregie PR#2: network first; Chrome finds no installability errors.
       - [ ] Last state shown offline, marked as stale (S)
       - [ ] Installed and checked on Android, iOS and desktop (XS)
