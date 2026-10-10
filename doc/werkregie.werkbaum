@@ -66,9 +66,10 @@
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
     - [?] #dash.store: One database for Werkregie, to be discussed
   - [ ] #ops: Build and delivery
-    - [~] #ops.werkator: Werkator builds werkregie (S)
-      " Werkregie PR#9: .werkator.yml; mih09 registers the repository.
-    - [ ] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
+    - [^] #ops.werkator: Werkator builds werkregie (S)
+      " Werkregie PR#9: .werkator.yml; mih09 registers the repository since 2026-10-10.
+    - [~] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
+      " Werkregie PR#10: risk categories; branch protection and the reviewer's rights follow.
     - [ ] #ops.github: Werkator pushes a green main to GitHub (XS) :#ops.werkator
     - [ ] #ops.port: Port 18091 confirmed with Hostsharing (XS)
     - [^] #ops.deps: Kotlin 2.4, Gradle 9.8.1 and current libraries (XS)

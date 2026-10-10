@@ -1,0 +1,22 @@
+# werkrevisor rules for werkregie; werkrevisor reads this file at the head of the default branch, never from a PR,
+# and every change of it needs a human review.
+# The host config on the review machine holds the other rules; see config/werkregie.toml in werkrevisor.
+
+[path_judge]
+# The host config sets scope = "all", so Jev asks each changed file the risk categories of this template.
+# Measured on werkregie PR#2, #5, #6, #8 and #9; see doc/prs/2026-10-10-PR#10-werkrevisor-rules.md.
+risk_template = "jvm-spring-backend"
+
+# The dashboard has one user and no business transactions;
+# it does run SQL (Codex' SQLite state) and stores records (the Matrix session in H2), so those categories stay.
+[[risk.categories]]
+name = "object_level_authorization"
+action = "off"
+
+[[risk.categories]]
+name = "transaction_integrity"
+action = "off"
+
+[[risk.categories]]
+name = "business_invariants"
+action = "off"
