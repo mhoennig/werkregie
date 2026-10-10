@@ -65,6 +65,8 @@
     - [ ] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
     - [ ] #ops.github: Werkator pushes a green main to GitHub (XS) :#ops.werkator
     - [ ] #ops.port: Port 18091 confirmed with Hostsharing (XS)
+    - [^] #ops.deps: Kotlin 2.4, Gradle 9.8.1 and current libraries (XS)
+      " Werkregie PR#6; JDK 21 stays, as Werkator's.
   - [?] #orchestrator: Orchestrator for agentic software development
     " Designed in doc/agentic-flow.werkbaum; nodes move here once they are decided.
 
