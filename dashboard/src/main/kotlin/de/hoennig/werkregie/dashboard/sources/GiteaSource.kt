@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.hoennig.werkregie.dashboard.Badge
 import de.hoennig.werkregie.dashboard.ConfigLoader
+import de.hoennig.werkregie.dashboard.Flag
 import de.hoennig.werkregie.dashboard.GiteaConfig
 import de.hoennig.werkregie.dashboard.Item
 import de.hoennig.werkregie.dashboard.JsonHttp
@@ -46,7 +47,7 @@ class GiteaSource(
         return Executors.newVirtualThreadPerTaskExecutor().use { executor ->
             val activities = executor.submit<List<Item>> { activities(login, headers, since) }
             val pullRequests = openPullRequests(headers)
-                .map { pr -> executor.submit<Item> { pullRequestItem(pr, headers) } }
+                .map { pr -> executor.submit<Item> { pullRequestItem(pr, login, headers) } }
             pullRequests.map { it.get() } + activities.get()
         }
     }
@@ -60,7 +61,7 @@ class GiteaSource(
             .take(config.maxPullRequests)
     }
 
-    private fun pullRequestItem(issue: JsonNode, headers: Map<String, String>): Item {
+    private fun pullRequestItem(issue: JsonNode, login: String, headers: Map<String, String>): Item {
         val repo = issue["repository"]?.text("full_name") ?: "?"
         val number = issue["number"]?.asLong()
         // the search result lacks the head commit, the PR itself has it
@@ -72,6 +73,18 @@ class GiteaSource(
         val draft = pull?.get("draft")?.asBoolean() == true ||
             issue.text("title")?.let { DRAFT_PREFIX.containsMatchIn(it) } == true
         val combined = statuses.map { it.text("status") ?: "" }.let(::combine)
+        val author = issue["user"]?.text("login")
+        val conflict = pull?.get("mergeable")?.asBoolean()?.not() == true
+        val reviews = if (draft || sha == null) emptyList() else
+            runCatching { http.get("$api/repos/$repo/pulls/$number/reviews", headers).toList() }.getOrDefault(emptyList())
+        val pullRequest = PullRequest(
+            own = author == login,
+            draft = draft,
+            conflict = conflict,
+            statuses = statuses,
+            approvers = reviews.filter { it.isApprovalOf(sha) }.mapNotNull { it["user"]?.text("login") },
+            requested = pull?.get("requested_reviewers")?.mapNotNull { it.text("login") }.orEmpty(),
+        )
         return Item(
             source = "gitea",
             origin = config.name,
@@ -82,19 +95,93 @@ class GiteaSource(
             time = issue.text("updated_at")?.let(::instant),
             project = repo,
             detail = listOfNotNull(
-                issue["user"]?.text("login")?.let { "von $it" },
+                author?.let { "von $it" },
                 pull?.get("head")?.text("ref")?.let { "⎇ $it" },
-                pull?.get("mergeable")?.asBoolean()?.takeIf { !it }?.let { "Konflikt" },
+                "Konflikt".takeIf { conflict },
             ).joinToString(" · "),
             url = issue.text("html_url"),
             badges = statuses.sortedBy { it.text("context") }.map(::statusBadge),
+            flags = flags(pullRequest, login, Instant.now()),
         )
     }
+
+    /** What [flags] needs to know of a pull request; [approvers] approved its head commit. */
+    internal data class PullRequest(
+        val own: Boolean,
+        val draft: Boolean,
+        val conflict: Boolean,
+        val statuses: List<JsonNode>,
+        val approvers: List<String> = emptyList(),
+        val requested: List<String> = emptyList(),
+    )
+
+    /** What the pull request asks of whom, most urgent first; nothing for a draft. */
+    internal fun flags(pr: PullRequest, login: String, now: Instant): List<Flag> {
+        if (pr.draft) return emptyList()
+        val gate = pr.statuses.firstOrNull { it.text("context") == GATE }
+        val assessment = pr.statuses.firstOrNull { it.text("context") == ASSESSMENT }
+        val reviewed = gate != null || assessment != null
+        val running = gate?.text("status") == "pending"
+        val verdict = assessment?.let(::verdictOf)
+        val humans = pr.approvers.filter { approver -> config.reviewBots.none { it.equals(approver, ignoreCase = true) } }
+        // a human has to look: no werkrevisor reviews the PR, or its review has finished with YELLOW or ORANGE
+        val humanNeeded = !reviewed || !running && verdict in setOf("YELLOW", "ORANGE")
+        val werkrevisor = if (reviewed) "werkrevisor $verdict" else "kein werkrevisor"
+        val failedBuilds = pr.statuses
+            .filter { it.text("context")?.startsWith(REVIEW_PREFIX) == false && it.text("status") in setOf("failure", "error") }
+            .mapNotNull { it.text("context") }
+        return buildList {
+            if (reviewed && !running) stuckReason(verdict, assessment, now)?.let { add(Flag("stuck", it)) }
+            if (pr.own && pr.conflict) add(Flag("rework", "Konflikt"))
+            if (pr.own && failedBuilds.isNotEmpty()) add(Flag("rework", "Build rot: ${failedBuilds.joinToString(", ")}"))
+            if (!pr.own && login !in pr.approvers && humanNeeded) add(Flag("approve", werkrevisor))
+            val others = humans.filter { it != login }
+            if (pr.own && others.isNotEmpty()) add(Flag("merge", "approved von ${others.joinToString(", ")}"))
+            if (pr.own && others.isEmpty() && humanNeeded) {
+                val asked = pr.requested.filter { it != login }
+                add(Flag("review", if (asked.isEmpty()) "niemand angefragt" else "angefragt: ${asked.joinToString(", ")}"))
+            }
+            if (!pr.own && login in pr.approvers) add(Flag("approved"))
+        }
+    }
+
+    /** Agent and werkrevisor do not get on: werkrevisor escalated, RED stays without a new commit, or the review failed. */
+    private fun stuckReason(verdict: String?, assessment: JsonNode?, now: Instant): String? {
+        val since = assessment?.let { it.text("updated_at") ?: it.text("created_at") }?.let(::instant)
+        return when (verdict) {
+            null -> "werkrevisor ohne Urteil"
+            "ERROR" -> "werkrevisor ERROR"
+            "RED" -> when {
+                assessment?.text("description")?.contains("escalated to") == true -> "RED, an Menschen eskaliert"
+                since != null && Duration.between(since, now) >= STUCK_AFTER ->
+                    "RED seit ${duration(Duration.between(since, now))} ohne neuen Commit"
+                else -> null
+            }
+            else -> null
+        }
+    }
+
+    private fun duration(duration: Duration) = when {
+        duration.toHours() < 1 -> "${duration.toMinutes()} min"
+        duration.toDays() < 1 -> "${duration.toHours()} h"
+        else -> "${duration.toDays()} d"
+    }
+
+    /** An approval of this very head commit that is neither stale nor dismissed. */
+    private fun JsonNode.isApprovalOf(sha: String?) =
+        text("state") == "APPROVED" && text("commit_id") == sha &&
+            get("stale")?.asBoolean() != true && get("dismissed")?.asBoolean() != true
+
+    /** werkrevisor's verdict in its assessment status: named in the text, or else told by the commit status. */
+    private fun verdictOf(status: JsonNode): String? =
+        status.text("description")?.let { VERDICT.find(it)?.value }
+            ?: status.text("description")?.let { text -> VERDICT_TEXTS.entries.firstOrNull { text.startsWith(it.key) }?.value }
+            ?: VERDICT_STATES[status.text("status")]
 
     internal fun statusBadge(status: JsonNode): Badge {
         val context = status.text("context") ?: "?"
         val description = status.text("description")
-        val verdict = description?.let { VERDICT.find(it)?.value }
+        val verdict = if (context == ASSESSMENT) verdictOf(status) else description?.let { VERDICT.find(it)?.value }
         return Badge(
             // werkrevisor reports the run of its build as ai-review/gate and its verdict as ai-review/assessment
             label = when {
@@ -200,6 +287,21 @@ class GiteaSource(
 
     companion object {
         private const val REVIEW_PREFIX = "ai-review/"
+        private const val GATE = "ai-review/gate"
+        private const val ASSESSMENT = "ai-review/assessment"
+        // in the agents' ping-pong a fix for RED never takes longer
+        private val STUCK_AFTER: Duration = Duration.ofHours(1)
+        // werkrevisor's report.STATUS_TEXTS and STATUS_STATES
+        private val VERDICT_TEXTS = mapOf(
+            "AI review passed" to "GREEN",
+            "human review required" to "YELLOW",
+            "AI findings" to "ORANGE",
+            "rule violated" to "RED",
+            "review not completed" to "ERROR",
+        )
+        private val VERDICT_STATES = mapOf(
+            "success" to "GREEN", "pending" to "YELLOW", "warning" to "ORANGE", "failure" to "RED", "error" to "ERROR",
+        )
         private val REVIEW_ASPECTS = mapOf("gate" to "Lauf", "assessment" to "Urteil")
         private val VERDICT = Regex("\\b(GREEN|YELLOW|ORANGE|RED|ERROR)\\b")
         private val DRAFT_PREFIX = Regex("^\\s*(WIP|\\[WIP]|Draft)\\b", RegexOption.IGNORE_CASE)

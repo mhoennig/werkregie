@@ -126,6 +126,14 @@ const STATUS = {
     interrupted: ["unknown", "abgebrochen"], closed: ["unknown", "beendet"], archived: ["unknown", "archiviert"],
     stale: ["unknown", "veraltet"], draft: ["unknown", "entwurf"],
 };
+// pull request markers, most urgent first: symbol and name
+const FLAGS = {
+    stuck: ["⚠", "Festgefahren"], rework: ["🔧", "Nacharbeit"], approve: ["✋", "Dein Approval"],
+    merge: ["➜", "Mergen"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
+};
+const FLAG_ORDER = Object.keys(FLAGS);
+// the ones that ask something of the user, not of others
+const FOR_YOU = new Set(["stuck", "rework", "approve", "merge"]);
 const TAG = {
     pending: "tag-run", running: "tag-run", success: "tag-ok", green: "tag-ok",
     yellow: "tag-warn", warning: "tag-warn", orange: "tag-bad", red: "tag-bad", failure: "tag-bad", error: "tag-bad",
@@ -183,22 +191,40 @@ function row(item, timeMode) {
         ? `<a class="title" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
         : `<span class="title">${esc(item.title)}</span>`;
     const failed = (STATUS[item.state] || [])[0] === "failed" && item.kind !== "pr";
-    const classes = ["row", item.section === "RUNNING" ? "is-running" : "", failed ? "is-failed" : ""].join(" ");
+    const stacked = item.kind === "pr";
+    const flags = item.flags || [];
+    const classes = ["row", stacked ? "row-stacked" : "", item.section === "RUNNING" ? "is-running" : "", failed ? "is-failed" : "",
+        flags.length ? `flag-${flags[0].kind}` : "", item.state === "draft" ? "is-draft" : ""].join(" ");
     const when = item.time ? (timeMode === "clock" ? clock(item.time) : ago(item.time)) : "";
     const copy = item.command
         ? `<button class="copy-button" type="button" data-cmd="${esc(item.command)}" title="Resume-Befehl kopieren: ${esc(item.command)}" aria-label="Resume-Befehl kopieren"><span class="icon icon-copy"></span></button>`
         : "";
-    return `<div class="${classes}">
-        <div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>
-        <div class="what">
-            ${title}
-            <div class="meta">
+    const whenHtml = `<div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>`;
+    const flagHtml = flags.map((flag) => {
+        const [symbol, name] = FLAGS[flag.kind] || ["•", flag.kind];
+        const reason = flag.reason ? ` <span class="flag-reason">${esc(flag.reason)}</span>` : "";
+        return `<span class="flag flag-${esc(flag.kind)}" title="${esc(name)}${flag.reason ? `: ${esc(flag.reason)}` : ""}">${symbol} ${esc(name)}${reason}</span>`;
+    }).join("");
+    const meta = `<div class="meta">
                 <span class="origin">${esc(SOURCES[item.source] || item.source)} · ${esc(item.origin)}</span>
                 ${item.project ? `<span class="project"${item.repository && projectKey(item.repository) !== projectKey(item.project) ? ` title="Repository ${esc(item.repository)}"` : ""}>${esc(item.project)}</span>` : ""}
                 ${item.detail ? `<span class="detail">${esc(item.detail)}</span>` : ""}
-            </div>
+            </div>`;
+    const aside = `<div class="aside">${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>`;
+    // a pull request carries many status chips: they get a line of their own above the title
+    if (stacked) {
+        return `<div class="${classes}">
+        <div class="row-head">${whenHtml}${flagHtml}${aside}</div>
+        <div class="what">${title}${meta}</div>
+    </div>`;
+    }
+    return `<div class="${classes}">
+        ${whenHtml}
+        <div class="what">
+            ${title}
+            ${meta}
         </div>
-        <div class="aside">${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>
+        ${aside}
     </div>`;
 }
 
@@ -303,7 +329,13 @@ function render() {
 
     fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
     fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr"), "Keine offenen Sessions.", "bereit");
-    fill("prs", visible.filter((i) => i.kind === "pr"), "Keine offenen Pull Requests.", "offen");
+    // the most urgent marker first, then the unmarked ones as Gitea orders them, drafts last
+    const prs = visible.filter((i) => i.kind === "pr");
+    const rank = (i) => i.flags?.length ? FLAG_ORDER.indexOf(i.flags[0].kind) : i.state === "draft" ? FLAG_ORDER.length + 1 : FLAG_ORDER.length;
+    fill("prs", prs.map((item, index) => ({ item, index })).sort((a, b) => rank(a.item) - rank(b.item) || a.index - b.index).map((x) => x.item),
+        "Keine offenen Pull Requests.", "offen");
+    const forYou = prs.filter((i) => (i.flags || []).some((f) => FOR_YOU.has(f.kind))).length;
+    if (forYou) $("prs-count").innerHTML = `<strong class="flag-count">${forYou} für dich</strong> · ${prs.length} offen`;
 
     const recent = visible.filter((i) => i.section === "RECENT" && i.time && Date.parse(i.time) >= since);
     let html = "", day = null;

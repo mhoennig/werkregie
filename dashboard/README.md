@@ -93,6 +93,12 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   `tools/remote --env-file .env.<instance> werkator control-token` prints it.
 - **Gitea:** a token with read scopes, as `token`, `tokenEnv` or `teaLogin` (a login of `~/.config/tea/config.yml`, by name or user).
   `pullRequests: mine` lists PRs created by, assigned to or awaiting review from the user, `all` every open PR the user can see.
+  Each PR is marked by what it asks of whom, most urgent first:
+  ⚠ *Festgefahren* (werkrevisor escalated, RED for an hour without a new commit, ERROR, or a run without verdict),
+  🔧 *Nacharbeit* (conflict or red build on the user's own PR), ✋ *Dein Approval* (a foreign PR without werkrevisor
+  or with a final YELLOW/ORANGE), ➜ *Mergen* (the user's own PR approved by another human),
+  ⏳ *Wartet auf Review* (the user's own PR waits for another human), ✓ *Von dir approved*. Drafts carry no marker.
+  `reviewBots` (default `[ai-reviewer]`) names accounts whose approval is no human's.
 
 Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time), Gitea every 30 s;
 cached data is served at once while a due source refreshes in the background.

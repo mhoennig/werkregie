@@ -83,6 +83,8 @@ data class GiteaConfig(
     // "mine": created by, assigned to or review requested from the token's user; "all": every open PR the user can see
     val pullRequests: String = "mine",
     val maxPullRequests: Int = 30,
+    // accounts whose approval is no human's, such as werkrevisor's
+    val reviewBots: List<String> = listOf("ai-reviewer"),
 )
 
 object ConfigLoader {

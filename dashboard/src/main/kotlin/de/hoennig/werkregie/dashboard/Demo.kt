@@ -22,12 +22,18 @@ object Demo {
             )),
             pullRequest("#88 Merkliste ohne Netz", "success", ago(35), "acme/mobile-app", listOf(
                 Badge("werkator", "success", title = "build succeeded after 04:12"),
-                Badge("werkrevisor Urteil GREEN", "green", title = "GREEN PASS"),
+                Badge("werkrevisor Urteil GREEN", "green", title = "AI review passed"),
             )),
             pullRequest("#41 Suche im Handbuch", "failure", ago(140), "acme/docs-site", listOf(
                 Badge("werkator", "failure", title = "build failed after 00:52"),
-                Badge("werkrevisor Urteil ORANGE", "orange", title = "ORANGE FINDINGS"),
-            )),
+                Badge("werkrevisor Urteil ORANGE", "orange", title = "AI findings; a developer approval after checking them unlocks the merge"),
+            ), flags = listOf(Flag("approve", "werkrevisor ORANGE"))),
+            pullRequest("#17 Dunkles Farbschema", "open", ago(260), "acme/mobile-app", emptyList(), flags = listOf(Flag("review", "niemand angefragt"))),
+            pullRequest("#213 Rabatte je Kundengruppe", "failure", ago(75), "acme/shop-backend", listOf(
+                Badge("werkator", "success", title = "build succeeded after 03:40"),
+                Badge("werkrevisor Lauf", "failure", title = "build failed after 01:10"),
+                Badge("werkrevisor Urteil RED", "red", title = "rule violated; a new commit that fixes it is required"),
+            ), flags = listOf(Flag("stuck", "RED seit 1 h ohne neuen Commit"))),
             build("werkrevisor", "review", Section.RECENT, "feature/offline-wishlist", "success", ago(34), "mobile-app", "c03e11d2 · 96 s"),
             build("werkator", "build", Section.RECENT, "feature/offline-wishlist", "success", ago(37), "mobile-app", "c03e11d2 · 4 min"),
             Item("gitea", "acme", "activity", Section.RECENT, "3 Commits auf feature/checkout-events", "push", ago(5), "acme/shop-backend", "Order events carry the payment reference"),
@@ -50,8 +56,8 @@ object Demo {
     private fun build(source: String, kind: String, section: Section, title: String, state: String, time: Instant, project: String, detail: String) =
         Item(source, "acme", kind, section, title, state, time, project, detail)
 
-    private fun pullRequest(title: String, state: String, time: Instant, project: String, badges: List<Badge>) =
-        Item("gitea", "acme", "pr", Section.OPEN, title, state, time, project, "von demo", badges = badges)
+    private fun pullRequest(title: String, state: String, time: Instant, project: String, badges: List<Badge>, flags: List<Flag> = emptyList()) =
+        Item("gitea", "acme", "pr", Section.OPEN, title, state, time, project, "von demo", badges = badges, flags = flags)
 
     private fun status(id: String, label: String, count: Int, tools: List<String> = emptyList()) =
         SourceStatus(id, label, ok = true, message = null, url = null, count = count, fetchedAt = null, tools = tools)

@@ -29,7 +29,17 @@ data class Item(
     // the repository the project is, where the shown name does not say it, e.g. a folder `hsadmin-ng`
     // checked out from `hs.hsadmin.ng`; the page matches projects by repository name without owner
     val repository: String? = null,
+    // what this asks of whom, most urgent first, e.g. a pull request waiting for the user's approval
+    val flags: List<Flag> = emptyList(),
 )
+
+/**
+ * A marker on a pull request, by urgency: `stuck` (agent and werkrevisor do not get on), `rework`
+ * (the user's own PR has a conflict or a red build), `approve` (waits for the user's approval),
+ * `merge` (the user's own PR is approved), `review` (the user's own PR waits for another human),
+ * `approved` (the user approved it, the merge is still to come).
+ */
+data class Flag(val kind: String, val reason: String? = null)
 
 data class SourceStatus(
     val id: String,
