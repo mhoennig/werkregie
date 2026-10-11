@@ -16,6 +16,8 @@ data class MatrixMessage(
     // null while the device has no key for it
     val text: String?,
     val mentionsMe: Boolean,
+    // arrived after the user last read its room, in Element or any other client
+    val unread: Boolean = false,
 )
 
 /**
@@ -82,6 +84,28 @@ object MatrixMessages {
         time = message.time,
         detail = if (message.direct) message.sender else "${message.roomName} · ${message.sender}",
         url = link(linkStyle, message.roomId, message.eventId),
-        flags = listOf(Flag(reason)),
+        flags = listOfNotNull(Flag(reason), if (message.unread) Flag(UNREAD) else null),
     )
+
+    /** The row with its read state as of [readUntil], the time the user last read its room. */
+    fun read(item: Item, readUntil: Instant): Item {
+        val unread = (item.time ?: Instant.EPOCH).isAfter(readUntil)
+        val flags = item.flags.filter { it.kind != UNREAD } + listOfNotNull(if (unread) Flag(UNREAD) else null)
+        return if (flags == item.flags) item else item.copy(flags = flags)
+    }
+
+    /**
+     * The rows of the period, and the last row of each direct chat and configured room however old,
+     * so that a quiet conversation keeps one line.
+     */
+    fun visible(items: Collection<Item>, since: Instant): List<Item> {
+        val last = items.filter { item -> item.flags.any { it.kind == "direct" || it.kind == "room" } }
+            .groupBy { item -> item.url?.let(::ids)?.first }
+            .filterKeys { it != null }
+            .values.map { rows -> rows.maxBy { it.time ?: Instant.EPOCH } }
+            .toSet()
+        return items.filter { (it.time ?: Instant.EPOCH).isAfter(since) || it in last }
+    }
+
+    const val UNREAD = "unread"
 }

@@ -143,7 +143,7 @@ const FLAGS = {
     merge: ["➜", "Mergen"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
 };
 // why a Matrix message shows
-const MESSAGE_FLAGS = { direct: ["✉", "Direkt"], mention: ["@", "Erwähnung"], room: ["#", "Raum"] };
+const MESSAGE_FLAGS = { unread: ["●", "Neu"], direct: ["✉", "Direkt"], mention: ["@", "Erwähnung"], room: ["#", "Raum"] };
 const FLAG_ORDER = Object.keys(FLAGS);
 // the ones that ask something of the user, not of others
 const FOR_YOU = new Set(["stuck", "rework", "approve", "merge"]);
@@ -207,7 +207,8 @@ function row(item, timeMode) {
     const stacked = item.kind === "pr";
     const flags = item.flags || [];
     const classes = ["row", stacked ? "row-stacked" : "", item.section === "RUNNING" ? "is-running" : "", failed ? "is-failed" : "",
-        item.state === "draft" ? "is-draft" : ""].join(" ");
+        item.state === "draft" ? "is-draft" : "",
+        item.kind === "message" && !flags.some((f) => f.kind === "unread") ? "is-read" : ""].join(" ");
     const when = item.time ? (timeMode === "clock" ? clock(item.time) : ago(item.time)) : "";
     const copy = item.command
         ? `<button class="copy-button" type="button" data-cmd="${esc(item.command)}" title="Resume-Befehl kopieren: ${esc(item.command)}" aria-label="Resume-Befehl kopieren"><span class="icon icon-copy"></span></button>`
@@ -240,6 +241,37 @@ function row(item, timeMode) {
         </div>
         ${aside}
     </div>`;
+}
+
+// a direct chat or a configured room keeps its last message, however old; its link without the event names it
+function conversationOf(item) {
+    if (!item.url || !(item.flags || []).some((f) => f.kind === "direct" || f.kind === "room")) return null;
+    return item.url.slice(0, item.url.lastIndexOf("/"));
+}
+
+function renderMessages(messages, since) {
+    const last = new Set();
+    const seen = new Set();
+    for (const item of [...messages].sort((a, b) => Date.parse(b.time) - Date.parse(a.time))) {
+        const conversation = conversationOf(item);
+        if (conversation && !seen.has(conversation)) { seen.add(conversation); last.add(item); }
+    }
+    const shown = messages.filter((i) => (i.time && Date.parse(i.time) >= since) || last.has(i));
+    fill("messages", shown, "Keine Nachrichten im gewählten Zeitraum.", "Nachrichten");
+    const older = messages.length - shown.length;
+    if (shown.length === 0 && older > 0 && state.windowHours < 168) {
+        $("messages").innerHTML = `<div class="empty">${older} ältere ${older === 1 ? "Nachricht" : "Nachrichten"} ·
+            <button class="link-button" type="button" data-window-hours="168">7 Tage zeigen</button></div>`;
+    }
+    const unread = shown.filter((i) => (i.flags || []).some((f) => f.kind === "unread")).length;
+    if (unread) $("messages-count").innerHTML = `<strong class="flag-count">${unread} neu</strong> · ${shown.length} Nachrichten`;
+}
+
+function setWindow(hours) {
+    state.windowHours = hours;
+    $("window").value = String(hours);
+    persist();
+    render();
 }
 
 function fill(id, items, empty, countWord) {
@@ -345,7 +377,7 @@ function render() {
     fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
     fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr" && i.kind !== "message"), "Keine offenen Sessions.", "bereit");
     $("messages-panel").hidden = !toolLabel("matrix", data.sources) && !data.items.some((i) => i.source === "matrix");
-    fill("messages", visible.filter((i) => i.kind === "message" && i.time && Date.parse(i.time) >= since), "Keine Nachrichten im gewählten Zeitraum.", "Nachrichten");
+    renderMessages(visible.filter((i) => i.kind === "message"), since);
     // the most urgent marker first, then the unmarked ones as Gitea orders them, drafts last
     const prs = visible.filter((i) => i.kind === "pr");
     const rank = (i) => i.flags?.length ? FLAG_ORDER.indexOf(i.flags[0].kind) : i.state === "draft" ? FLAG_ORDER.length + 1 : FLAG_ORDER.length;
@@ -600,7 +632,11 @@ document.querySelectorAll(".panel-more").forEach((button) =>
     button.addEventListener("click", () => toggle(button.dataset.panel)));
 window.addEventListener("resize", () => ["running", "sessions", "prs", "messages", "recent"].forEach(clamp));
 $("window").value = String(state.windowHours);
-$("window").addEventListener("change", (e) => { state.windowHours = Number(e.target.value); persist(); render(); });
+$("window").addEventListener("change", (e) => setWindow(Number(e.target.value)));
+$("messages").addEventListener("click", (e) => {
+    const offer = e.target.closest("[data-window-hours]");
+    if (offer) setWindow(Number(offer.dataset.windowHours));
+});
 $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });
 document.addEventListener("click", async (e) => {
     const button = e.target.closest(".copy-button");

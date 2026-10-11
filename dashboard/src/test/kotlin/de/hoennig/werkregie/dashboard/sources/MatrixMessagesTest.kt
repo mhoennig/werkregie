@@ -89,4 +89,42 @@ class MatrixMessagesTest : FunSpec({
         MatrixMessages.isRecoveryKey("correct horse battery staple") shouldBe false
         MatrixMessages.isRecoveryKey("EsTc LW2K PGiF wKEA 3As5 g5c4 BXwk qeeJ ZJV8 Q9fu gUMN UE40") shouldBe false
     }
+
+    fun row(room: String, event: String, reason: String, time: String) =
+        MatrixMessages.item(message.copy(roomId = room, eventId = event, time = Instant.parse(time)), reason, "example.org", "matrix.to")
+    val since = Instant.parse("2026-10-10T12:00:00Z")
+
+    // Scenario#13.01
+    test("a direct chat keeps its last message, however old") {
+        val old = row("!dm:x", "\$1", "direct", "2026-09-01T10:00:00Z")
+        MatrixMessages.visible(listOf(old), since) shouldBe listOf(old)
+    }
+
+    // Scenario#13.02
+    test("a configured room keeps its last message, however old") {
+        val old = row("!team:x", "\$1", "room", "2026-09-01T10:00:00Z")
+        MatrixMessages.visible(listOf(old), since) shouldBe listOf(old)
+    }
+
+    // Scenario#13.03
+    test("older messages of a conversation stay within the period, and old mentions are not kept") {
+        val older = row("!dm:x", "\$1", "direct", "2026-09-01T10:00:00Z")
+        val last = row("!dm:x", "\$2", "direct", "2026-09-02T10:00:00Z")
+        val recent = row("!team:x", "\$3", "room", "2026-10-11T10:00:00Z")
+        val oldMention = row("!other:x", "\$4", "mention", "2026-09-03T10:00:00Z")
+        MatrixMessages.visible(listOf(older, last, recent, oldMention), since) shouldBe listOf(last, recent)
+    }
+
+    // Scenario#13.04
+    test("an unread message carries the mark") {
+        val item = MatrixMessages.item(message.copy(unread = true), "direct", "example.org", "matrix.to")
+        item.flags.map { it.kind } shouldBe listOf("direct", "unread")
+    }
+
+    // Scenario#13.05, Scenario#13.06
+    test("a read receipt after a message takes its mark, one before keeps it") {
+        val item = MatrixMessages.item(message.copy(unread = true), "direct", "example.org", "matrix.to")
+        MatrixMessages.read(item, message.time.plusSeconds(60)).flags.map { it.kind } shouldBe listOf("direct")
+        MatrixMessages.read(item, message.time.minusSeconds(60)).flags.map { it.kind } shouldBe listOf("direct", "unread")
+    }
 })

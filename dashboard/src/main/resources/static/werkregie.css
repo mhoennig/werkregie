@@ -258,6 +258,11 @@ a.title:hover { color: var(--accent); }
 /* Matrix messages: addressed to the user, or from a room the user follows */
 .flag-direct, .flag-mention { --flag: var(--amber); }
 .flag-room { --flag: var(--blue); }
+.flag-unread { --flag: var(--clay); }
+/* a message the user read in Element or elsewhere: still there, but quiet */
+.row.is-read { opacity: 0.6; }
+.row.is-read:hover { opacity: 1; }
+.link-button { border: 0; padding: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
 .flag { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border-radius: 4px; background: var(--flag); color: var(--bg); font: 600 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 .flag-reason { font-weight: 400; text-transform: none; letter-spacing: 0; font-family: var(--sans); }
 .flag-count { font-weight: 600; color: var(--clay); }

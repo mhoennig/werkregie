@@ -39,6 +39,12 @@
         - [^] Direct messages, mentions in every room, configured rooms (S)
         - [^] The server gets room, sender, time and the start of the text (S)
         - [^] Panel for the messages (S)
+        - [^] #dash.matrix.last: Each direct chat and configured room keeps its last message (S)
+          " Werkregie PR#13; mentions stay within the period.
+        - [^] #dash.matrix.read: Unread messages stand out, read ones are subdued (S)
+          " Werkregie PR#13: read as the user's read receipts say, from Element or any client.
+        - [^] An empty panel counts the older messages and offers 7 days (XS)
+        - [ ] #dash.matrix.accounts: Several Matrix accounts and servers (M)
         - [^] #dash.matrix.link: Link into Element (XS)
         + [ ] Older messages than the first sync brings (S)
     - [^] #dash.page: Page
@@ -137,6 +143,11 @@
   java.management, java.instrument and jdk.unsupported besides the
   modules it has. The client's store comes next:
   trixnity-client-repository-exposed on the sqlite-jdbc the dashboard has.
+
+#dash.matrix.accounts
+  matrix becomes a list of named accounts, as giteas; a single block is still
+  read. Each account gets its own directory matrix/<name>/ with store, lock
+  and messages.json, a source matrix:<name>, and matrix login|verify <name>.
 
 #dash.matrix.link
   Element Desktop opens element:// links (io.element.desktop:// for the

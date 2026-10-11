@@ -10,6 +10,7 @@ import de.connect2x.trixnity.client.create
 import de.connect2x.trixnity.client.cryptodriver.vodozemac.vodozemac
 import de.connect2x.trixnity.client.media.inMemory
 import de.connect2x.trixnity.client.room
+import de.connect2x.trixnity.client.store.RoomUserReceipts
 import de.connect2x.trixnity.client.store.TimelineEvent
 import de.connect2x.trixnity.client.store.repository.exposed.exposed
 import de.connect2x.trixnity.client.key
@@ -31,6 +32,7 @@ import de.hoennig.werkregie.dashboard.Item
 import de.hoennig.werkregie.dashboard.MatrixConfig
 import de.hoennig.werkregie.dashboard.Source
 import io.ktor.http.Url
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -48,6 +50,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -73,6 +76,8 @@ class MatrixSource(
     private val saved = dir.resolve("messages.json")
     private val rooms = config.rooms.toSet()
     private val items = LinkedHashMap<String, Item>()
+    private val watched = ConcurrentHashMap.newKeySet<String>()
+    private val readUntil = ConcurrentHashMap<String, Instant>()
 
     @Volatile
     private var error: String? = null
@@ -91,10 +96,10 @@ class MatrixSource(
         if (!loggedIn(dir)) throw IllegalStateException(NOT_LOGGED_IN)
         // a lock once taken is never given back to null, whichever thread asks
         synchronized(this) { if (lock == null) lock = tryLock(dir) }
-        if (lock == null) return readSaved().filter { (it.time ?: Instant.EPOCH).isAfter(since) }
+        if (lock == null) return MatrixMessages.visible(readSaved(), since)
         started.value
         error?.let { throw IllegalStateException(it) }
-        return synchronized(items) { items.values.filter { (it.time ?: Instant.EPOCH).isAfter(since) } }
+        return synchronized(items) { MatrixMessages.visible(items.values.toList(), since) }
     }
 
     override fun note(): String? = if (lock == null) "liest mit; ein anderer Prozess synchronisiert" else null
@@ -121,14 +126,37 @@ class MatrixSource(
             // listen first, so that the events of the first sync count, too
             launch {
                 client.room.getTimelineEventsFromNowOn(decryptionTimeout = 10.seconds).collect { event ->
-                    runCatching { message(client, event) }.getOrNull()?.let(::add)
+                    runCatching { message(client, event) }.getOrNull()?.let { add(it); watchReceipts(this@coroutineScope, client, it.roomId) }
                 }
             }
             client.startSync()
+            val known = synchronized(items) { items.values.mapNotNull { item -> item.url?.let(MatrixMessages::ids)?.first }.toSet() }
+            known.forEach { watchReceipts(this, client, it) }
             // rows shown as encrypted get another try: the device may have their keys by now
             launch { decryptAgain(client) }
         }
     }
+
+    /** Follows the user's read receipts in [roomId]: a row read in Element or elsewhere loses its mark. */
+    private fun watchReceipts(scope: CoroutineScope, client: MatrixClient, roomId: String) {
+        if (!watched.add(roomId)) return
+        scope.launch {
+            client.user.getReceiptsById(RoomId(roomId), client.userId).collect { receipts ->
+                val read = readUntil(receipts) ?: return@collect
+                readUntil[roomId] = read
+                synchronized(items) {
+                    val before = items.toMap()
+                    items.replaceAll { _, item ->
+                        if (item.url?.let(MatrixMessages::ids)?.first == roomId) MatrixMessages.read(item, read) else item
+                    }
+                    if (items != before) save(items.values.toList())
+                }
+            }
+        }
+    }
+
+    private fun readUntil(receipts: RoomUserReceipts?): Instant? =
+        receipts?.receipts?.values?.maxOfOrNull { it.receipt.timestamp }?.let(Instant::ofEpochMilli)
 
     private suspend fun decryptAgain(client: MatrixClient) {
         val encrypted = synchronized(items) { items.values.filter { it.state == "encrypted" }.mapNotNull { it.url } }
@@ -152,16 +180,19 @@ class MatrixSource(
         val room = client.room.getById(event.roomId).first()
         val sender = client.user.getById(event.roomId, event.sender).first()?.name ?: event.sender.full
         val me = client.user.getById(event.roomId, client.userId).first()?.name
+        val time = Instant.ofEpochMilli(event.originTimestamp)
+        val read = readUntil[event.roomId.full] ?: readUntil(client.user.getReceiptsById(event.roomId, client.userId).first())
         return MatrixMessage(
             eventId = event.id.full,
             roomId = event.roomId.full,
             roomName = room?.name?.explicitName ?: sender,
             direct = room?.isDirect == true,
             sender = sender,
-            time = Instant.ofEpochMilli(event.originTimestamp),
+            time = time,
             text = text,
             mentionsMe = text != null &&
                 MatrixMessages.mentions(text, content.mentions?.users?.map { it.full }?.toSet(), client.userId.full, me),
+            unread = read == null || time.isAfter(read),
         )
     }
 

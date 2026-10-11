@@ -115,6 +115,9 @@ One process per machine runs the client, the one that holds `sync.lock`:
 a relay and the local mode share the state directory, and two clients with the same keys would spoil each other's sessions.
 The other process shows the same messages from `messages.json` and takes over when the first one ends.
 Until the device has the keys, an encrypted message shows as "verschlüsselt", with room, sender and time.
+Each direct chat and configured room keeps its last message in the panel, however old.
+A message the user has not read yet, as the user's read receipts say, is marked "Neu";
+read ones are subdued.
 
 ## Configuration
 
