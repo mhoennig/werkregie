@@ -21,4 +21,11 @@ class DeploymentTest : FunSpec({
         htaccess shouldContain "RewriteRule .* http://127.0.0.1:31234%{REQUEST_URI} [proxy]"
         htaccess shouldContain "ErrorDocument 503 /werkregie-maintenance.html"
     }
+
+    test("the maintenance page loads the requested address again every 15 seconds") {
+        val page = deployment.maintenancePage()
+
+        page shouldContain """<meta http-equiv="refresh" content="15">"""
+        page shouldContain "Neuer Versuch alle 15 Sekunden"
+    }
 })

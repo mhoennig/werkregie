@@ -55,6 +55,8 @@ class Deployment(private val launcher: Path, private val configPath: Path) {
         <html lang="de">
         <head>
         <meta charset="utf-8">
+        <!-- Apache serves this page at the requested address, so a reload asks for the dashboard again -->
+        <meta http-equiv="refresh" content="$RETRY_SECONDS">
         <title>Werkregie — Neustart</title>
         <style>
             body { font-family: sans-serif; background: #242928; color: #f4f5f5; display: flex;
@@ -67,7 +69,7 @@ class Deployment(private val launcher: Path, private val configPath: Path) {
         <body>
         <div>
             <h1>Werkregie startet neu</h1>
-            <p>Bitte in einer Minute erneut laden.</p>
+            <p>Neuer Versuch alle $RETRY_SECONDS Sekunden …</p>
         </div>
         </body>
         </html>
@@ -115,6 +117,7 @@ class Deployment(private val launcher: Path, private val configPath: Path) {
 
     companion object {
         const val SERVER_UNIT = "werkregie-dashboard.service"
+        const val RETRY_SECONDS = 15
         const val RELAY_UNIT = "werkregie-relay.service"
         const val MAINTENANCE_PAGE = "werkregie-maintenance.html"
     }

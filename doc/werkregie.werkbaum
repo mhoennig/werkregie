@@ -95,6 +95,8 @@
         - [^] Relay registry: stale, gone, kept in relays.json (S)
         - [^] forget-relay NAME (XS)
         - [^] init server: systemd unit and .htaccess (XS)
+        - [^] The restart page reloads itself every 15 s (XS)
+          " Werkregie PR#28.
         - [^] Runtime bundle with its own JRE (S)
       - [^] #dash.relay: relay: reports local sessions to the server every 5 s
         " On think as a systemd user unit; outgoing connections only.
