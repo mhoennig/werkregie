@@ -264,6 +264,8 @@ a.title:hover { color: var(--accent); }
 .flag-approved { --flag: var(--green); }
 /* Matrix messages: addressed to the user, or from a room the user follows */
 .flag-direct, .flag-mention { --flag: var(--amber); }
+.flag-unknown { --flag: var(--amber); }
+.flag-hidden { --flag: var(--ghost); }
 .flag-room { --flag: var(--blue); }
 .flag-unread { --flag: var(--clay); }
 /* a message the user read in Element or elsewhere: still there, but quiet */
@@ -281,6 +283,9 @@ a.title:hover { color: var(--accent); }
 .status { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 .status-success, .status-running { color: var(--accent); }
+.status-task { color: var(--text-2); }
+.status-task::before { background: var(--dot, currentColor); }
+
 .status-running::before { animation: pulse 1.4s ease-in-out infinite; }
 .status-failed { color: var(--clay); }
 .status-timed_out { color: var(--amber); }

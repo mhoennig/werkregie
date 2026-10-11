@@ -2,6 +2,8 @@ package de.hoennig.werkregie.dashboard.sources
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sun.net.httpserver.HttpServer
+import de.hoennig.werkregie.dashboard.ConfigLoader
+import de.hoennig.werkregie.dashboard.Flag
 import de.hoennig.werkregie.dashboard.JsonHttp
 import de.hoennig.werkregie.dashboard.Section
 import de.hoennig.werkregie.dashboard.TaskboardConfig
@@ -54,15 +56,15 @@ class TaigaSourceTest : FunSpec({
         val url get() = "http://127.0.0.1:${server.address.port}"
     }
 
-    fun config(url: String, statuses: List<String> = listOf("In Arbeit", "Bereit")) = TaskboardConfig(
+    fun config(url: String, statuses: List<Any> = listOf(listOf("In Arbeit", "In Progress"), "Bereit", listOf("Neu", "New"))) = TaskboardConfig(
         name = "team", type = "taiga", url = url, username = "anna", passwordEnv = "TAIGA_PASSWORD",
-        projects = listOf("shop"), statuses = statuses,
+        projects = listOf("shop"), statuses = statuses, hiddenStatuses = listOf("Erledigt", "Verworfen"),
     )
     val env = mapOf("TAIGA_PASSWORD" to "secret")
     val now = Instant.parse("2026-10-11T12:00:00Z")
 
-    fun story(ref: Int, subject: String, status: String) =
-        """{"ref":$ref,"subject":"$subject","status_extra_info":{"name":"$status","is_closed":false},
+    fun story(ref: Int, subject: String, status: String, color: String = "#70728F") =
+        """{"ref":$ref,"subject":"$subject","status_extra_info":{"name":"$status","color":"$color","is_closed":false},
             "project_extra_info":{"slug":"shop","name":"Shop"},"modified_date":"2026-10-10T08:00:00.000Z"}"""
 
     test("the open stories, tasks and issues assigned to the user, in each configured project") {
@@ -96,12 +98,53 @@ class TaigaSourceTest : FunSpec({
         }
     }
 
-    test("the configured statuses rank first, in their order; any other open status after them") {
+    test("the configured statuses rank in their order; equal names share a place, regardless of case") {
         val source = TaigaSource(config("https://taiga.example"), JsonHttp(mapper), env::get)
         source.rank("In Arbeit") shouldBe 0
-        source.rank("bereit") shouldBe 1
-        source.rank("Neu") shouldBe 2
-        source.rank("Bereit zum Test") shouldBe 2
+        source.rank("in progress") shouldBe 0
+        source.rank("Bereit") shouldBe 1
+        source.rank("New") shouldBe 2
+    }
+
+    test("statuses in YAML: single names and lists of equal names") {
+        val file = java.nio.file.Files.createTempFile("dashboard", ".yml")
+        java.nio.file.Files.writeString(
+            file,
+            """
+            taskboards:
+              - name: team
+                type: taiga
+                url: https://taiga.example
+                statuses:
+                  - [In Arbeit, In Progress]
+                  - Bereit
+                hiddenStatuses: [Erledigt]
+            """.trimIndent(),
+        )
+        val board = ConfigLoader.load(file).taskboards.single()
+        val source = TaigaSource(board, JsonHttp(mapper), env::get)
+        source.rank("In Progress") shouldBe 0
+        source.rank("Bereit") shouldBe 1
+        source.rank("Erledigt") shouldBe 2
+    }
+
+    test("an unknown status comes first and is marked; a hidden one comes last and is marked for the page") {
+        val source = TaigaSource(config("https://taiga.example"), JsonHttp(mapper), env::get)
+        fun item(status: String) = source.item(TaigaSource.Kind.STORY, mapper.readTree(story(1, "x", status)), "shop")
+        source.rank("Bereit zum Test") shouldBe -1
+        item("Bereit zum Test").flags shouldBe listOf(Flag("unknown"))
+        source.rank("Erledigt") shouldBe 3
+        item("verworfen").flags shouldBe listOf(Flag("hidden"))
+        item("Bereit").flags shouldBe emptyList()
+    }
+
+    test("the status keeps Taiga's colour, and nothing but a colour") {
+        val source = TaigaSource(config("https://taiga.example"), JsonHttp(mapper), env::get)
+        fun item(color: String) = source.item(TaigaSource.Kind.TASK, mapper.readTree(story(1, "x", "Bereit", color)), "shop")
+        item("#E44057").color shouldBe "#E44057"
+        item("#abc").color shouldBe "#abc"
+        item("red;background:url(x)").color shouldBe null
+        item("#abcde").color shouldBe null
     }
 
     test("one login serves many fetches; an expired token leads to one new login") {

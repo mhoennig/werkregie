@@ -2,6 +2,7 @@ package de.hoennig.werkregie.dashboard.sources
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
+import de.hoennig.werkregie.dashboard.Flag
 import de.hoennig.werkregie.dashboard.HttpStatusException
 import de.hoennig.werkregie.dashboard.Item
 import de.hoennig.werkregie.dashboard.JsonHttp
@@ -26,6 +27,12 @@ class TaigaSource(
 
     private var api: String? = config.apiUrl?.trimEnd('/')
     private var session: Session? = null
+
+    // each place of the order holds one or more equal names, compared regardless of case
+    private val order: List<Set<String>> = config.statuses.map { entry ->
+        (if (entry is List<*>) entry.map { it.toString() } else listOf(entry.toString())).map { it.lowercase() }.toSet()
+    }
+    private val hidden = config.hiddenStatuses.map { it.lowercase() }.toSet()
 
     private data class Session(val token: String, val userId: Long)
 
@@ -93,6 +100,7 @@ class TaigaSource(
     internal fun item(kind: Kind, node: JsonNode, slug: String): Item {
         val ref = node["ref"]?.asLong()
         val status = node["status_extra_info"]?.text("name") ?: "offen"
+        val key = status.lowercase()
         val project = node["project_extra_info"]?.text("slug") ?: slug
         return Item(
             source = "taiga",
@@ -106,10 +114,27 @@ class TaigaSource(
             detail = listOfNotNull(kind.label, ref?.let { "#$it" }).joinToString(" "),
             url = ref?.let { "$url/project/$project/${kind.page}/$it" },
             rank = rank(status),
+            color = node["status_extra_info"]?.text("color")?.takeIf { COLOR.matches(it) },
+            flags = when {
+                key in hidden -> listOf(Flag("hidden"))
+                order.none { key in it } -> listOf(Flag("unknown"))
+                else -> emptyList()
+            },
         )
     }
 
-    /** The place of a status in the configured order; any other open status comes after them all. */
-    internal fun rank(status: String): Int =
-        config.statuses.indexOfFirst { it.equals(status, ignoreCase = true) }.takeIf { it >= 0 } ?: config.statuses.size
+    /**
+     * The place of a status in the configured order. A status named nowhere comes first, so that the user adds it;
+     * a hidden one comes last, for when the page shows it.
+     */
+    internal fun rank(status: String): Int {
+        val key = status.lowercase()
+        if (key in hidden) return order.size
+        return order.indexOfFirst { key in it }
+    }
+
+    private companion object {
+        // the page puts it into a style attribute, so nothing but a colour gets through
+        val COLOR = Regex("^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+    }
 }

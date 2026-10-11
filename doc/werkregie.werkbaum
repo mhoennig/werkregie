@@ -32,7 +32,12 @@
         - [^] Open stories, tasks and issues assigned to the user (S)
           " Werkregie PR#21: panel Aufgaben; login by user and password from the environment.
           " Werkregie PR#23: the API address from Taiga's conf.json, as on a host of its own.
-        - [^] Configured statuses first, in their order (XS)
+        - [^] Statuses in their configured order, unknown ones first (XS)
+          " Werkregie PR#25: equal names in one place; unknown ones first and marked.
+        - [^] Hidden statuses, shown on demand (XS)
+          " Werkregie PR#25: e.g. Erledigt and Verworfen, which Taiga counts as open.
+        - [^] Taiga's status colours (XS)
+          " Werkregie PR#25: a dot before the status.
         - [ ] A story links to its pull requests and its Werkbaum node (S)
         - [?] Other task boards than Taiga
       - [~] #dash.matrix: Matrix messages with the user's own account

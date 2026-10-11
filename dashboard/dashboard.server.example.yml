@@ -33,4 +33,8 @@ giteas:
 #     usernameEnv: WERKREGIE_TAIGA_USER     # or username: <name>
 #     passwordEnv: WERKREGIE_TAIGA_PASSWORD # never the password itself
 #     projects: [shop, docs]                # project slugs, as in the address of a project
-#     statuses: [In Arbeit, Bereit]         # most important first; other open statuses follow
+#     statuses:                             # most important first; a list holds equal names
+#       - [In Arbeit, In Progress]
+#       - Bereit
+#       - [Neu, New]
+#     hiddenStatuses: [Erledigt, Verworfen] # open in Taiga, hidden until the page shows them

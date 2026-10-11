@@ -154,6 +154,9 @@ const FLAGS = {
     stuck: ["⚠", "Festgefahren"], approve: ["✋", "Dein Approval"], merge: ["➜", "Mergen"],
     rework: ["🔧", "Nacharbeit"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
 };
+// a task whose status the configuration does not name yet, or one of a hidden status the user shows
+const TASK_FLAGS = { unknown: ["?", "Status unbekannt"], hidden: ["–", "ausgeblendet"] };
+const COLOR = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 // why a Matrix message shows
 const MESSAGE_FLAGS = { unread: ["●", "Neu"], direct: ["✉", "Direkt"], mention: ["@", "Erwähnung"], room: ["#", "Raum"] };
 const FLAG_ORDER = Object.keys(FLAGS);
@@ -175,12 +178,12 @@ const saved = (() => { try { return JSON.parse(storage?.getItem(SETTINGS_KEY) ||
 const projectKey = (name) => (name ? name.split("/").pop().toLowerCase() : "");
 const keyOf = (item) => projectKey(item.repository || item.project);
 
-const state = { data: null, hidden: new Set(saved.hidden || []), expanded: new Set(saved.expanded || []), project: projectKey(saved.project), windowHours: saved.windowHours || 24, search: "" };
+const state = { data: null, hidden: new Set(saved.hidden || []), expanded: new Set(saved.expanded || []), project: projectKey(saved.project), windowHours: saved.windowHours || 24, showHiddenTasks: Boolean(saved.showHiddenTasks), search: "" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function persist() {
-    try { storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], expanded: [...state.expanded], project: state.project, windowHours: state.windowHours })); } catch (e) {}
+    try { storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], expanded: [...state.expanded], project: state.project, windowHours: state.windowHours, showHiddenTasks: state.showHiddenTasks })); } catch (e) {}
 }
 
 function ago(iso) {
@@ -201,6 +204,11 @@ function dayLabel(iso) {
 
 function statusHtml(item) {
     if (item.kind === "activity" || item.kind === "message") return "";
+    // a task board's status keeps its own colour, e.g. Taiga's
+    if (TASK_KINDS.has(item.kind)) {
+        const dot = item.color && COLOR.test(item.color) ? ` style="--dot: ${item.color}"` : "";
+        return `<span class="status status-task"${dot}>${esc(item.state)}</span>`;
+    }
     const [cls, word] = STATUS[item.state] || ["unknown", item.state.replaceAll("_", " ")];
     return `<span class="status status-${cls}">${esc(word)}</span>`;
 }
@@ -241,7 +249,7 @@ function row(item, timeMode) {
         : "";
     const whenHtml = `<div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>`;
     const flagHtml = flags.map((flag) => {
-        const [symbol, name] = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || ["•", flag.kind];
+        const [symbol, name] = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || TASK_FLAGS[flag.kind] || ["•", flag.kind];
         const reason = flag.reason ? ` <span class="flag-reason">${esc(flag.reason)}</span>` : "";
         return `<span class="flag flag-${esc(flag.kind)}" title="${esc(name)}${flag.reason ? `: ${esc(flag.reason)}` : ""}">${symbol} ${esc(name)}${reason}</span>`;
     }).join("");
@@ -414,10 +422,18 @@ function render() {
     fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
     fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind === "session"), "Keine offenen Sessions.", "bereit");
     $("tasks-panel").hidden = !toolLabel("taiga", data.sources) && !data.items.some((i) => TASK_KINDS.has(i.kind));
-    // the configured statuses first, in their order; within one, the latest change first
-    fill("tasks", visible.filter((i) => TASK_KINDS.has(i.kind))
+    // unknown statuses first, then the configured ones in their order; within one, the latest change first
+    const tasks = visible.filter((i) => TASK_KINDS.has(i.kind));
+    const isHidden = (i) => (i.flags || []).some((f) => f.kind === "hidden");
+    const hiddenTasks = tasks.filter(isHidden).length;
+    fill("tasks", tasks.filter((i) => state.showHiddenTasks || !isHidden(i))
         .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0)),
         "Nichts zugewiesen.", "offen");
+    if (hiddenTasks) {
+        const shown = tasks.length - (state.showHiddenTasks ? 0 : hiddenTasks);
+        $("tasks-count").innerHTML = `${shown} offen · <button class="link-button" type="button" data-toggle-hidden-tasks>${
+            state.showHiddenTasks ? `${hiddenTasks} ausblenden` : `${hiddenTasks} ausgeblendet`}</button>`;
+    }
     $("messages-panel").hidden = !toolLabel("matrix", data.sources) && !data.items.some((i) => i.source === "matrix");
     renderMessages(visible.filter((i) => i.kind === "message"), since);
     // the user's next step first, then what waits for others, drafts last; the longest waiting first in each group
@@ -711,6 +727,12 @@ $("window").addEventListener("change", (e) => setWindow(Number(e.target.value)))
 $("messages").addEventListener("click", (e) => {
     const offer = e.target.closest("[data-window-hours]");
     if (offer) setWindow(Number(offer.dataset.windowHours));
+});
+$("tasks-count").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-toggle-hidden-tasks]")) return;
+    state.showHiddenTasks = !state.showHiddenTasks;
+    persist();
+    render();
 });
 $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });
 document.addEventListener("click", async (e) => {

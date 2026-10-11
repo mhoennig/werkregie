@@ -105,8 +105,11 @@ data class TaskboardConfig(
     val passwordEnv: String? = null,
     // project slugs, as in the address of a project
     val projects: List<String> = emptyList(),
-    // status names, most important first; other open items follow them, closed ones never show
-    val statuses: List<String> = emptyList(),
+    // status names, most important first; a list in one place holds equal names, e.g. [In Arbeit, In Progress];
+    // an open status named nowhere comes first, marked unknown; closed ones never show
+    val statuses: List<Any> = emptyList(),
+    // open statuses the page hides until the user shows them, e.g. [Erledigt, Verworfen]
+    val hiddenStatuses: List<String> = emptyList(),
 )
 
 /** Matrix with the user's own account, read in the modes `local` and `relay`; `matrix login` signs in. */

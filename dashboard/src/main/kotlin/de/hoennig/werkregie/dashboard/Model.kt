@@ -33,6 +33,8 @@ data class Item(
     val flags: List<Flag> = emptyList(),
     // the order within its panel where the source knows it, lower first, e.g. a task by its configured status
     val rank: Int? = null,
+    // the source's own colour of the state, a CSS hex colour such as #rgb or #rrggbb, e.g. a Taiga status
+    val color: String? = null,
 )
 
 /**
