@@ -136,6 +136,10 @@ Each direct chat and configured room keeps its last message in the panel, howeve
 A message the user has not read yet is marked "Neu"; read ones are subdued.
 Read means up to the later of the user's read receipts and Element's read marker `m.fully_read`,
 since an Element without read receipts only moves its marker.
+A click opens the message by `matrix.link`: `matrix.to` (default) in the browser,
+`io.element.desktop` in Element Desktop, `element` in its nightly build; kept messages take the setting, too.
+On a phone the page links to matrix.to, which the Element app takes over:
+unlike Android, a Linux desktop has no app that takes `https://matrix.to` from the browser.
 
 ## Configuration
 

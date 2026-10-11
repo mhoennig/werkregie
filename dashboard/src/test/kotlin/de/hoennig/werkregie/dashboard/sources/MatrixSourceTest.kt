@@ -54,8 +54,9 @@ class MatrixSourceTest : FunSpec({
         mapper().writeValue(dir.resolve("messages.json").toFile(), listOf(message))
         val held = MatrixSource.tryLock(dir)!!
         try {
-            val source = MatrixSource(MatrixConfig(homeserver = "example.org"), other, mapper())
-            source.fetch(Instant.now(), Instant.EPOCH).map { it.title } shouldBe listOf("Hallo")
+            val source = MatrixSource(MatrixConfig(homeserver = "example.org", link = "io.element.desktop"), other, mapper())
+            source.fetch(Instant.now(), Instant.EPOCH).map { it.title to it.url } shouldBe
+                listOf("Hallo" to "io.element.desktop://vector/webapp/#/room/!r:example.org/\$e")
             source.syncing shouldBe false
             // reading along is the normal case on a machine with a relay: no note, which the page would show as a warning
             source.note() shouldBe null

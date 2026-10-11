@@ -1,5 +1,7 @@
 package de.hoennig.werkregie.dashboard.sources
 
+import de.hoennig.werkregie.dashboard.Item
+import de.hoennig.werkregie.dashboard.Section
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
@@ -75,6 +77,13 @@ class MatrixMessagesTest : FunSpec({
     }
 
     // Scenario#12.04
+    test("a kept row takes the configured form of the link; a row without IDs keeps its link") {
+        val kept = Item("matrix", "example.org", "message", Section.OPEN, "Hallo", "message", null, url = "https://matrix.to/#/!r:x/\$e")
+
+        MatrixMessages.relinked(kept, "io.element.desktop").url shouldBe "io.element.desktop://vector/webapp/#/room/!r:x/\$e"
+        MatrixMessages.relinked(kept.copy(url = "https://example.org/"), "io.element.desktop").url shouldBe "https://example.org/"
+    }
+
     test("a row's link gives back room ID and event ID, in each form") {
         for (style in listOf("matrix.to", "element", "io.element.desktop")) {
             MatrixMessages.ids(MatrixMessages.link(style, "!room:example.org", "\$event")) shouldBe ("!room:example.org" to "\$event")

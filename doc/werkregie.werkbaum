@@ -67,6 +67,8 @@
         - [^] An empty panel counts the older messages and offers 7 days (XS)
         - [ ] #dash.matrix.accounts: Several Matrix accounts and servers (M)
         - [^] #dash.matrix.link: Link into Element (XS)
+        - [^] Element Desktop on the desktop, the Element app on a phone (XS)
+          " Werkregie PR#29: a phone gets matrix.to; kept messages take matrix.link.
         + [ ] Older messages than the first sync brings (S)
     - [^] #dash.page: Page
       - [^] Panels: Läuft jetzt, Offene Sessions, Offene Pull Requests, Verlauf (S)
@@ -218,6 +220,11 @@
   stable app when a nightly build holds element://); on a phone matrix.to
   opens Element. PR#8 makes it configurable as matrix.link, matrix.to by
   default.
+
+  PR#29: the setting is the desktop's; on a phone the page links to
+  matrix.to, since io.element.desktop:// leads nowhere there. A Linux
+  desktop cannot hand https://matrix.to from the browser to Element Desktop,
+  as Android's app links do.
 
 #dash.store
   The Matrix client needs a store; Trixnity's Exposed repositories need

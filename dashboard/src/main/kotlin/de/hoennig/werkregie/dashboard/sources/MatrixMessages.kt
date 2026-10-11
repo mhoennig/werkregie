@@ -55,6 +55,10 @@ object MatrixMessages {
         else -> "https://matrix.to/#/$roomId/$eventId"
     }
 
+    /** A kept row with the link of [style], whichever form it was kept with. */
+    fun relinked(item: Item, style: String): Item =
+        item.url?.let(::ids)?.let { (room, event) -> item.copy(url = link(style, room, event)) } ?: item
+
     /** Room ID and event ID of a row, from its link in any of the forms of [link]. */
     fun ids(url: String): Pair<String, String>? {
         val parts = url.substringAfter("#/", "").split('/')

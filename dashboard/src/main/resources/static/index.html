@@ -364,6 +364,23 @@ function logo(tool, label = "") {
     return `<svg class="app-logo app-logo-line" viewBox="0 0 64 64"${alt}>${LINE_LOGOS[tool] || LINE_LOGOS.other}</svg>`;
 }
 
+// ---- links: a phone opens a Matrix message by matrix.to, which the Element app takes over;
+//      Element Desktop's own schemes, which the relay may write, lead nowhere there ----
+const PHONE = Boolean(navigator.userAgentData?.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+
+function href(item) {
+    if (!PHONE || item.source !== "matrix" || !item.url || item.url.startsWith("https://")) return item.url;
+    const [room, event] = (item.url.split("#/")[1] || "").split("/").slice(-2);
+    return room?.startsWith("!") && event?.startsWith("$") ? `https://matrix.to/#/${room}/${event}` : item.url;
+}
+
+// a web address opens in a new tab; an app's scheme, e.g. io.element.desktop, hands over without leaving a blank one
+function linkAttrs(item) {
+    const url = href(item);
+    return ` href="${esc(url)}"${/^https?:/.test(url) ? ` target="_blank" rel="noopener"` : ""}`;
+}
+
 // ---- time and numbers ----
 function span(iso) {
     const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
@@ -460,7 +477,7 @@ function row(item, timeMode) {
     const message = item.kind === "message";
     const titleClass = message ? "title msg-text" : "title";
     const title = (message ? messageHead(item) : "") + (item.url
-        ? `<a class="${titleClass}" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
+        ? `<a class="${titleClass}"${linkAttrs(item)}>${esc(item.title)}</a>`
         : `<span class="${titleClass}">${esc(item.title)}</span>`);
     const stacked = item.kind === "pr";
     const flags = item.flags || [];
@@ -617,8 +634,7 @@ function todoRow(group, { item, flag }) {
     const title = message ? `${sender}${room ? ` · ${room}` : ""}` : item.title;
     const detail = message ? item.title : [reason(flag?.reason), item.project].filter(Boolean).join(" · ");
     const tag = item.url ? "a" : "div";
-    const href = item.url ? ` href="${esc(item.url)}" target="_blank" rel="noopener"` : "";
-    return `<${tag} class="todo-row"${href}>
+    return `<${tag} class="todo-row"${item.url ? linkAttrs(item) : ""}>
         ${logo(item.source)}
         <span class="todo-what"><span class="todo-title">${esc(title)}</span><span class="todo-detail">${esc(detail)}</span></span>
         <span class="todo-age" title="${esc(item.time ? new Date(item.time).toLocaleString(locale()) : "")}">${esc(item.time ? span(item.time) : "")}</span>

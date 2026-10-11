@@ -38,7 +38,7 @@ giteas:
 #   homeserver: example.org       # server name or base URL; no default
 #   rooms:                        # every message of these rooms; direct messages and mentions show anyway
 #     - "!roomid:example.org"
-#   link: matrix.to               # or element / io.element.desktop for Element Desktop
+#   link: matrix.to               # on the desktop; io.element.desktop or element opens Element Desktop, a phone gets matrix.to
 
 # task boards with what is assigned to you (modes local and server); only type taiga so far
 # taskboards:

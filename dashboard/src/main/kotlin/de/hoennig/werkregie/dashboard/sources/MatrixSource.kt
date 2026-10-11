@@ -108,8 +108,10 @@ class MatrixSource(
         return synchronized(items) { MatrixMessages.visible(items.values.toList(), since) }
     }
 
+    // a row keeps the link it came in with; the configured form may have changed since
     private fun readSaved(): List<Item> =
         if (Files.exists(saved)) runCatching { mapper.readValue<List<Item>>(saved.toFile()) }.getOrDefault(emptyList())
+            .map { MatrixMessages.relinked(it, config.link) }
         else emptyList()
 
     private fun start() {
