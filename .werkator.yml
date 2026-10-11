@@ -18,7 +18,7 @@ watcher:
 
 builds:
   # The gradle wrapper is committed, so the build environment needs a JDK
-  # and nothing else; werkdock's rootfs has JDK 21, as the dashboard needs.
+  # and nothing else; Foojay loads the Temurin 25 of the toolchain (ADR 0001).
   default:
     trigger:
       onPush: true

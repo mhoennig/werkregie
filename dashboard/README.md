@@ -69,7 +69,7 @@ or `./gradlew run`. To start it with the session, see `packaging/werkregie-dashb
 The same shape as Werkator's: a runtime bundle with its own JRE, a systemd user service on the
 port of the booked "eigener Serverdienst", and the platform's Apache as TLS-terminating proxy via `.htaccess`.
 
-1. Build the bundle on a Linux x86_64 machine (the JRE is Temurin 21, built against an old glibc):
+1. Build the bundle on a Linux x86_64 machine (the JRE is Temurin 25, built against an old glibc; werkregie ADR 0001):
    ```bash
    ./gradlew runtimeBundle   # → build/distributions/werkregie-dashboard-runtime-linux-x64.tar.gz
    ```

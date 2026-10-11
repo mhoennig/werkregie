@@ -6,11 +6,11 @@ plugins {
 }
 
 group = "de.hoennig"
-version = "0.9.2"
+version = "0.9.3"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
         // jlink cuts the bundle's runtime out of this JDK, native libraries included: Temurin is
         // built against an old glibc and starts on Hostsharing's hosts (Werkator, PR#62)
         vendor = JvmVendorSpec.ADOPTIUM
@@ -19,7 +19,7 @@ java {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_21
+        jvmTarget = JvmTarget.JVM_25
     }
 }
 
