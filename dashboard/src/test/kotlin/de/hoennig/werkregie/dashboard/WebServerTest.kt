@@ -100,7 +100,7 @@ class WebServerTest : FunSpec({
     test("the service worker keeps only files the server has") {
         val shell = Regex("""const SHELL = \[(.*?)];""", RegexOption.DOT_MATCHES_ALL).find(get("/sw.js").body())!!.groupValues[1]
         val paths = Regex(""""(/[^"]*)"""").findAll(shell).map { it.groupValues[1] }.toList()
-        paths.size shouldBe 10
+        paths.size shouldBe 15
         paths.forEach { path -> withClue(path) { get(path).statusCode() shouldBe 200 } }
     }
 })

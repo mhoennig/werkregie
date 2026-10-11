@@ -39,4 +39,16 @@ class DashboardTest : FunSpec({
 
         source.calls shouldBe 1
     }
+
+    test("carries the load and the costs the sources report") {
+        val load = HostLoad("w", "W", null, "healthy", emptyList(), 0.1, 0.2, 0.3, "SSD", at = now)
+        val costs = Costs("r", "R", null, 1.0, 7.0, 3, 2)
+        val werkator = object : Source by FakeSource("w", { emptyList() }) { override fun load() = load }
+        val werkrevisor = object : Source by FakeSource("r", { emptyList() }) { override fun costs() = costs }
+
+        val snapshot = Dashboard(listOf(werkator, werkrevisor), windowHours = 24).snapshot(now)
+
+        snapshot.loads shouldContainExactly listOf(load)
+        snapshot.costs shouldContainExactly listOf(costs)
+    }
 })

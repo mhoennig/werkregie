@@ -90,6 +90,8 @@ class RelayRegistry(
                 count = received.report.items.size,
                 fetchedAt = received.receivedAt,
                 tools = received.report.sources.filter { it.ok }.map { it.id.substringBefore(':') }.distinct(),
+                failingTools = failing.map { it.id.substringBefore(':') }.distinct(),
+                silent = silent > stale,
             )
         }
 

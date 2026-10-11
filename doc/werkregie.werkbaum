@@ -28,6 +28,10 @@
           " Werkregie PR#17; ORANGE before YELLOW.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
+      - [^] #dash.load: Werkator's host load: verdict, CPU, RAM, disk, CPU of 24 hours (XS)
+        " Werkregie PR#27: /api/system, and /api/system/history every 5 min.
+      - [^] #dash.costs: werkrevisor's review costs of 24 hours and 7 days (XS)
+        " Werkregie PR#27: /api/stats of the statistics service.
       - [^] #dash.taiga: Taiga, any number of instances and projects
         - [^] Open stories, tasks and issues assigned to the user (S)
           " Werkregie PR#21: panel Aufgaben; login by user and password from the environment.
@@ -66,7 +70,20 @@
         + [ ] Older messages than the first sync brings (S)
     - [^] #dash.page: Page
       - [^] Panels: Läuft jetzt, Offene Sessions, Offene Pull Requests, Verlauf (S)
-        " Three and a half rows until opened; headings name the tools the rows come from.
+        " Werkregie PR#27: each in a tab, complete; headings name the tools the rows come from.
+      - [-] Three and a half rows per panel until opened (XS)
+        " Werkregie PR#27: dropped; the overview shows what matters, the tabs the complete lists.
+      - [^] #dash.overview: Overview: connected, and where to act
+        " Werkregie PR#27, design A3 of the design canvas.
+        - [^] Connection bar with the tools' logos; a silent relay counts as not connected (S)
+        - [^] Du bist dran, grouped by action, with the tool's logo and a link (S)
+        - [^] Werkator's load and builds, werkrevisor's costs beside it (S)
+        - [^] Running work and waiting sessions as cards (XS)
+        - [^] The history of 24 hours as a lane per tool (S)
+        - [^] Tabs for the lists, a bar at the bottom on phones (S)
+        - [^] #dash.lang: German and English, switched in the header (S)
+          " Texts the sources compose stay as the server writes them.
+        + [ ] Server texts in both languages, e.g. Gitea activity (S) :#dash.lang
       - [^] Filters: source chips, project combobox, time window, search (S)
       - [^] Two-line pull request rows with coloured marker chips (XS)
       - [^] Werkator's design, light and dark with a toggle (S)

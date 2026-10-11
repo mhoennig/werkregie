@@ -17,6 +17,11 @@ werkators:
     url: http://localhost:18090
     hint: "tunnel: tools/remote --env-file .env.other port-forward start"
 
+# werkrevisor's statistics service: the overview shows its review costs
+werkrevisors:
+  - name: javagil
+    url: https://werkrevisor.example.org
+
 # any number of Gitea instances; the token needs read access only
 giteas:
   - name: javagil

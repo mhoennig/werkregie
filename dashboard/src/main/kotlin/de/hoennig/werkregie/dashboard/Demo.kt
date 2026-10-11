@@ -57,8 +57,15 @@ object Demo {
             status("werkator:acme", "Werkator acme", 4),
             status("gitea:acme", "Gitea acme", 5),
             status("taiga:acme", "Taiga acme", 5),
+            status("werkrevisor:acme", "werkrevisor acme", 0),
         )
-        return Snapshot(version, now, 24, items, sources, Access.DEMO)
+        // a busy afternoon: the CPU rises after noon, RAM is tight
+        val cpu = (0 until 48).map { step -> 0.15 + 0.6 * (if (step in 28..44) 1.0 else 0.2) * (0.6 + 0.4 * ((step * 7) % 5) / 4.0) }
+        val loads = listOf(HostLoad("werkator:acme", "Werkator acme", null, "pressure", listOf("RAM 88 % in use"),
+            cpu = 0.62, ram = 0.88, disk = 0.54, diskLabel = "SSD", cpuHistory = cpu, at = now))
+        val costs = listOf(Costs("werkrevisor:acme", "werkrevisor acme", null, day = 1.84, week = 11.20, reviews = 31, pullRequests = 14,
+            perDay = listOf(1.12, 2.40, 0.65, 1.95, 1.70, 1.54, 1.84)))
+        return Snapshot(version, now, 24, items, sources, Access.DEMO, loads, costs)
     }
 
     private fun session(source: String, origin: String, section: Section, title: String, state: String, time: Instant, project: String, detail: String) =

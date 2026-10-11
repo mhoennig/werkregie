@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Übersicht — Werkregie</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <!-- installable as an app (PWA): manifest, icons, and the bar colour that follows the header -->
@@ -18,106 +18,156 @@
 
 <header class="site-header">
     <div class="site-header-inner">
-        <a class="brand" href="/" aria-label="Übersicht neu laden">
+        <a class="brand" href="#overview" data-i18n-label="tab.overview">
             <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 16h48M8 32h30M8 48h16"/><circle cx="47" cy="48" r="7"/></svg>
             <span>Werkregie</span>
         </a>
-        <nav class="site-nav" aria-label="Dashboard">
-            <span class="current nav-item"><span class="icon icon-home"></span><span class="nav-label">Übersicht</span></span>
-            <span id="live-indicator" class="status-unknown" title="Verbindung zum Backend">…</span>
+        <!-- the views; on a phone a bar at the bottom of the screen -->
+        <nav class="tabs" aria-label="Bereiche" data-i18n-label="nav.views">
+            <a class="tab" href="#overview" data-tab="overview" data-i18n-label="tab.overview"><span class="icon icon-home"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.overview">Übersicht</span><span class="tab-short" aria-hidden="true" data-i18n="short.overview">Übersicht</span><span class="tab-badge" id="badge-overview"></span></a>
+            <a class="tab" href="#prs" data-tab="prs" data-i18n-label="tab.prs"><span class="icon icon-pr"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.prs">Pull Requests</span><span class="tab-short" aria-hidden="true" data-i18n="short.prs">PRs</span><span class="tab-badge" id="badge-prs"></span></a>
+            <a class="tab" href="#sessions" data-tab="sessions" data-i18n-label="tab.sessions"><span class="icon icon-terminal"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.sessions">Sessions</span><span class="tab-short" aria-hidden="true" data-i18n="short.sessions">Sessions</span><span class="tab-badge" id="badge-sessions"></span></a>
+            <a class="tab" href="#tasks" data-tab="tasks" data-i18n-label="tab.tasks" hidden><span class="icon icon-board"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.tasks">Aufgaben</span><span class="tab-short" aria-hidden="true" data-i18n="short.tasks">Aufgaben</span><span class="tab-badge" id="badge-tasks"></span></a>
+            <a class="tab" href="#messages" data-tab="messages" data-i18n-label="tab.messages" hidden><span class="icon icon-chat"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.messages">Nachrichten</span><span class="tab-short" aria-hidden="true" data-i18n="short.messages">Chats</span><span class="tab-badge" id="badge-messages"></span></a>
+            <a class="tab" href="#history" data-tab="history" data-i18n-label="tab.history"><span class="icon icon-history"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.history">Verlauf</span><span class="tab-short" aria-hidden="true" data-i18n="short.history">Verlauf</span><span class="tab-badge" id="badge-history"></span></a>
+            <a class="tab" href="#sources" data-tab="sources" data-i18n-label="tab.sources"><span class="icon icon-pulse"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.sources">Quellen</span><span class="tab-short" aria-hidden="true" data-i18n="short.sources">Quellen</span><span class="tab-badge" id="badge-sources"></span></a>
+        </nav>
+        <div class="header-tools">
+            <span id="live-indicator" class="status-unknown">…</span>
+            <span class="lang-switch" role="group" aria-label="Sprache" data-i18n-label="lang.group">
+                <button type="button" data-lang="de" aria-pressed="true">DE</button><button type="button" data-lang="en" aria-pressed="false">EN</button>
+            </span>
             <!-- on a server: the way in to real data, as Werkator's control-token button -->
             <button id="token-button" class="icon-button" type="button" hidden><span class="icon icon-key"></span></button>
             <button id="theme-button" class="icon-button" type="button"><span class="icon icon-theme"></span></button>
-            <button id="reload-button" class="icon-button reload-button" type="button" title="Neu laden" aria-label="Neu laden"><span class="icon icon-restart"></span></button>
-        </nav>
+            <button id="reload-button" class="icon-button reload-button" type="button" data-i18n-label="reload"><span class="icon icon-restart"></span></button>
+        </div>
     </div>
 </header>
 
 <main>
-    <!-- one chip per data source, like Werkator's repository line -->
-    <div id="source-line" class="repo-line"></div>
-    <div class="view-head">
-        <h1>Übersicht</h1>
-        <span class="view-explanation">was gerade läuft und was zuletzt geschah</span>
-        <span id="view-meta" class="view-meta"></span>
-    </div>
     <div id="demo-banner" class="demo-banner" role="status" hidden>
         <strong>Demo</strong>
-        <span>Erfundene Beispieldaten – mit dem Zugriffstoken siehst du die echten.</span>
-        <button class="chip is-active" type="button" data-open-token>Token eingeben</button>
+        <span data-i18n="demo.text">Erfundene Beispieldaten – mit dem Zugriffstoken siehst du die echten.</span>
+        <button class="chip is-active" type="button" data-open-token data-i18n="demo.button">Token eingeben</button>
     </div>
     <div id="stale-banner" class="demo-banner stale-banner" role="status" hidden>
         <strong>Offline</strong>
         <span id="stale-text"></span>
     </div>
-    <div id="source-banner" class="watcher-banner" role="status" hidden></div>
 
-    <div class="filters">
-        <div id="source-chips" class="chips" aria-label="Quellen"></div>
+    <!-- ===== the overview: is everything connected, and where must I act ===== -->
+    <section class="view" data-view="overview">
+        <section id="connection" class="connection" aria-live="polite"></section>
+
+        <!-- on a desktop the cards and the lanes stand below "Du bist dran", the load beside them all -->
+        <div class="overview-grid">
+            <section class="panel todo-panel">
+                <h2><span class="panel-title" data-i18n="todo.title">Du bist dran</span><em id="todo-count"></em></h2>
+                <div id="todo"></div>
+            </section>
+            <div class="side">
+                <div id="loads" class="side-stack"></div>
+                <section id="builds-panel" class="panel" hidden>
+                    <h2><span class="panel-title" data-i18n="builds.title">Werkator · Builds 24 h</span><em id="builds-count"></em></h2>
+                    <div id="builds"></div>
+                </section>
+                <div id="costs" class="side-stack"></div>
+            </div>
+            <section class="cards-section">
+                <h2 class="section-title"><span data-i18n="cards.title">Läuft jetzt</span><em id="cards-count"></em></h2>
+                <div id="cards" class="cards"></div>
+            </section>
+            <section class="panel lanes-panel">
+                <h2><span class="panel-title" data-i18n="lanes.title">Verlauf 24 h</span><em id="lanes-count"></em></h2>
+                <div id="lanes" class="lanes"></div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ===== the lists, with the filters ===== -->
+    <div id="filters" class="filters" hidden>
+        <div id="source-chips" class="chips" aria-label="Quellen" data-i18n-label="filters.sources"></div>
         <!-- the project filter: a combobox whose list narrows to the projects containing the typed text -->
         <div class="combo">
             <input id="project" class="control combo-input" type="text" placeholder="alle Projekte" autocomplete="off" spellcheck="false"
-                   role="combobox" aria-label="Projekt" aria-autocomplete="list" aria-expanded="false" aria-controls="project-list">
-            <button id="project-clear" class="combo-clear" type="button" title="Projektfilter löschen" aria-label="Projektfilter löschen" hidden><span class="icon icon-close"></span></button>
+                   role="combobox" aria-label="Projekt" aria-autocomplete="list" aria-expanded="false" aria-controls="project-list"
+                   data-i18n-placeholder="filters.allProjects" data-i18n-label="filters.project">
+            <button id="project-clear" class="combo-clear" type="button" data-i18n-label="filters.clearProject" hidden><span class="icon icon-close"></span></button>
             <ul id="project-list" class="combo-list" role="listbox" aria-label="Projekte" hidden></ul>
         </div>
-        <select id="window" class="control" aria-label="Zeitraum">
-            <option value="8">8 Stunden</option>
-            <option value="24">24 Stunden</option>
-            <option value="72">3 Tage</option>
-            <option value="168">7 Tage</option>
+        <select id="window" class="control" aria-label="Zeitraum" data-i18n-label="filters.window">
+            <option value="8" data-i18n="filters.h8">8 Stunden</option>
+            <option value="24" data-i18n="filters.h24">24 Stunden</option>
+            <option value="72" data-i18n="filters.d3">3 Tage</option>
+            <option value="168" data-i18n="filters.d7">7 Tage</option>
         </select>
-        <input id="search" class="control control-search" type="search" placeholder="Suchen …" aria-label="Suchen">
+        <input id="search" class="control control-search" type="search" placeholder="Suchen …" aria-label="Suchen"
+               data-i18n-placeholder="filters.search" data-i18n-label="filters.search">
     </div>
 
-    <div class="board">
+    <section class="view" data-view="prs" hidden>
         <section class="panel">
-            <h2><span class="panel-title">Läuft jetzt <span id="running-sources" class="panel-sources"></span></span><em id="running-count"></em></h2>
-            <div id="running" class="panel-body"></div>
-            <button class="panel-more" type="button" data-panel="running" hidden></button>
+            <h2><span class="panel-title"><span data-i18n="panel.prs">Offene Pull Requests</span> <span id="prs-sources" class="panel-sources"></span></span><em id="prs-count"></em></h2>
+            <div id="prs" class="panel-body"></div>
         </section>
-        <div class="board-pair">
+    </section>
+
+    <section class="view" data-view="sessions" hidden>
+        <div class="board">
             <section class="panel">
-                <h2><span class="panel-title">Offene Sessions <span id="sessions-sources" class="panel-sources"></span></span><em id="sessions-count"></em></h2>
-                <div id="sessions" class="panel-body"></div>
-            <button class="panel-more" type="button" data-panel="sessions" hidden></button>
+                <h2><span class="panel-title"><span data-i18n="panel.running">Läuft jetzt</span> <span id="running-sources" class="panel-sources"></span></span><em id="running-count"></em></h2>
+                <div id="running" class="panel-body"></div>
             </section>
             <section class="panel">
-                <h2><span class="panel-title">Offene Pull Requests <span id="prs-sources" class="panel-sources"></span></span><em id="prs-count"></em></h2>
-                <div id="prs" class="panel-body"></div>
-            <button class="panel-more" type="button" data-panel="prs" hidden></button>
+                <h2><span class="panel-title"><span data-i18n="panel.sessions">Offene Sessions</span> <span id="sessions-sources" class="panel-sources"></span></span><em id="sessions-count"></em></h2>
+                <div id="sessions" class="panel-body"></div>
             </section>
         </div>
-        <!-- only where a task board is configured -->
-        <section id="tasks-panel" class="panel" hidden>
-            <h2><span class="panel-title">Aufgaben <span id="tasks-sources" class="panel-sources"></span></span><em id="tasks-count"></em></h2>
-            <div id="tasks" class="panel-body"></div>
-            <button class="panel-more" type="button" data-panel="tasks" hidden></button>
-        </section>
-        <!-- only where a Matrix source is configured -->
-        <section id="messages-panel" class="panel" hidden>
-            <h2><span class="panel-title">Nachrichten <span id="messages-sources" class="panel-sources"></span></span><em id="messages-count"></em></h2>
-            <div id="messages" class="panel-body"></div>
-            <button class="panel-more" type="button" data-panel="messages" hidden></button>
-        </section>
+    </section>
+
+    <section class="view" data-view="tasks" hidden>
         <section class="panel">
-            <h2><span class="panel-title">Verlauf <span id="recent-sources" class="panel-sources"></span></span><em id="recent-count"></em></h2>
-            <div id="recent" class="panel-body"></div>
-            <button class="panel-more" type="button" data-panel="recent" hidden></button>
+            <h2><span class="panel-title"><span data-i18n="panel.tasks">Aufgaben</span> <span id="tasks-sources" class="panel-sources"></span></span><em id="tasks-count"></em></h2>
+            <div id="tasks" class="panel-body"></div>
         </section>
-    </div>
+    </section>
+
+    <section class="view" data-view="messages" hidden>
+        <section class="panel">
+            <h2><span class="panel-title"><span data-i18n="panel.messages">Nachrichten</span> <span id="messages-sources" class="panel-sources"></span></span><em id="messages-count"></em></h2>
+            <div id="messages" class="panel-body"></div>
+        </section>
+    </section>
+
+    <section class="view" data-view="history" hidden>
+        <section class="panel">
+            <h2><span class="panel-title"><span data-i18n="panel.history">Verlauf</span> <span id="recent-sources" class="panel-sources"></span></span><em id="recent-count"></em></h2>
+            <div id="recent" class="panel-body"></div>
+        </section>
+    </section>
+
+    <section class="view" data-view="sources" hidden>
+        <div class="board">
+            <section class="panel">
+                <h2><span class="panel-title" data-i18n="sources.title">Quellen</span><em id="sources-count"></em></h2>
+                <div id="source-list"></div>
+            </section>
+            <div id="source-loads" class="board-pair"></div>
+        </div>
+    </section>
 </main>
 
 <dialog id="token-dialog" class="token-dialog" aria-labelledby="token-title">
     <form method="dialog">
-        <h2 id="token-title">Zugriffstoken</h2>
-        <p>Auf dem Server gibt <code>werkregie-dashboard token</code> es aus. Der Browser behält es als Cookie.</p>
-        <input id="token-input" class="control" type="password" autocomplete="off" spellcheck="false" aria-label="Zugriffstoken">
+        <h2 id="token-title" data-i18n="token.title">Zugriffstoken</h2>
+        <p data-i18n-html="token.text">Auf dem Server gibt <code>werkregie-dashboard token</code> es aus. Der Browser behält es als Cookie.</p>
+        <input id="token-input" class="control" type="password" autocomplete="off" spellcheck="false" aria-label="Zugriffstoken" data-i18n-label="token.title">
         <p id="token-error" class="token-error" hidden></p>
         <div class="dialog-actions">
             <!-- a plain button, so Enter in the input saves instead of cancelling -->
-            <button id="token-cancel" class="chip" type="button">Abbrechen</button>
-            <button id="token-save" class="chip is-active" type="submit" value="save">Speichern</button>
+            <button id="token-cancel" class="chip" type="button" data-i18n="token.cancel">Abbrechen</button>
+            <button id="token-save" class="chip is-active" type="submit" value="save" data-i18n="token.save">Speichern</button>
         </div>
     </form>
 </dialog>
@@ -129,36 +179,226 @@
         · © 2026 <a href="https://michael.hoennig.de" target="_blank" rel="noopener noreferrer">Michael Hönnig</a>
     </span>
     <span class="site-footer-links">
-        <span>nur lokal, nur lesend</span>
+        <span id="generated-at"></span>
+        <span data-i18n="footer.readOnly">nur lesend</span>
     </span>
 </footer>
 
 <script>
+// ---- the page's texts in German and English; {name} takes a value ----
+const TEXT = {
+    de: {
+        "nav.views": "Bereiche", "lang.group": "Sprache", reload: "Neu laden",
+        "tab.overview": "Übersicht", "tab.prs": "Pull Requests", "tab.sessions": "Sessions", "tab.tasks": "Aufgaben",
+        "tab.messages": "Nachrichten", "tab.history": "Verlauf", "tab.sources": "Quellen",
+        "short.overview": "Übersicht", "short.prs": "PRs", "short.sessions": "Sessions", "short.tasks": "Aufgaben",
+        "short.messages": "Chats", "short.history": "Verlauf", "short.sources": "Quellen",
+        live: "live", offline: "offline", "live.title": "Verbindung zum Backend",
+        "theme.light": "Hell anzeigen", "theme.dark": "Dunkel anzeigen",
+        "token.enter": "Zugriffstoken eingeben", "token.forget": "Zugriffstoken vergessen", "token.confirm": "Zugriffstoken in diesem Browser vergessen?",
+        "token.title": "Zugriffstoken", "token.text": "Auf dem Server gibt <code>werkregie-dashboard token</code> es aus. Der Browser behält es als Cookie.",
+        "token.cancel": "Abbrechen", "token.save": "Speichern", "token.badChars": "Das Token besteht nur aus Buchstaben und Ziffern.",
+        "token.unknown": "Der Server kennt dieses Token nicht.", "token.unreachable": "Server nicht erreichbar.",
+        "demo.text": "Erfundene Beispieldaten – mit dem Zugriffstoken siehst du die echten.", "demo.button": "Token eingeben",
+        "stale.text": "Server nicht erreichbar – letzter Stand von {time}, {age}.", "stale.justNow": "gerade eben", ago: "vor {span}",
+        now: "jetzt", today: "Heute", yesterday: "Gestern", generatedAt: "Stand {time}", "footer.readOnly": "nur lesend",
+        "conn.all": "Alle {n} Quellen verbunden", "conn.some": "{ok} von {n} verbunden", "conn.none": "Keine Quelle konfiguriert",
+        "conn.entries": "{n} Einträge", "conn.via": "über {relay}", "conn.error": "Fehler", "conn.silent": "still",
+        "todo.title": "Du bist dran", "todo.count": "{n} · dringendste zuerst", "todo.empty": "Nichts zu tun – alles läuft.",
+        "group.stuck": "Festgefahren", "group.rework": "Nacharbeiten", "group.approve": "Freigeben", "group.merge": "Mergen", "group.answer": "Antworten",
+        "hint.stuck": "Agent und werkrevisor kommen nicht weiter", "hint.rework": "dein eigener PR", "hint.approve": "wartet auf dein Approval",
+        "hint.merge": "approved, nur noch mergen", "hint.answer": "an dich gerichtet",
+        "act.stuck": "Eingreifen", "act.rework": "Ansehen", "act.approve": "Prüfen", "act.merge": "Mergen", "act.answer": "Öffnen",
+        "load.healthy": "läuft rund", "load.pressure": "unter Druck", "load.overloaded": "überlastet", "load.unknown": "unbekannt",
+        "load.cpu24": "CPU · 24 h", "load.ram": "RAM", "load.cpu": "CPU", "load.disk": "Platte",
+        "builds.title": "Werkator · Builds 24 h", "builds.running": "{n} läuft", "builds.failed": "{n} rot", "builds.ok": "{n} grün",
+        "builds.empty": "Keine Builds in 24 h.", "builds.chart": "Builds je Stunde der letzten 24 Stunden",
+        "costs.title": "Review-Kosten", "costs.week": "{n} Reviews · 7 Tage ≈ {sum}", "costs.chart": "Review-Kosten der letzten 7 Tage",
+        "cards.title": "Läuft jetzt", "cards.count": "{n} aktiv · {w} warten auf dich", "cards.waits": "wartet auf dich",
+        "cards.more": "+{n} weitere", "cards.empty": "Nichts in Arbeit.",
+        "lanes.title": "Verlauf 24 h", "lanes.count": "{n} Ereignisse", "lanes.done": "erledigt", "lanes.failed": "fehlgeschlagen",
+        "lanes.running": "läuft", "lanes.empty": "Nichts in den letzten 24 Stunden.", "lanes.cell": "{from}–{to} · {n}",
+        "filters.sources": "Quellen", "filters.allProjects": "alle Projekte", "filters.project": "Projekt",
+        "filters.clearProject": "Projektfilter löschen", "filters.noProject": "kein Projekt enthält „{q}“", "filters.window": "Zeitraum",
+        "filters.h8": "8 Stunden", "filters.h24": "24 Stunden", "filters.d3": "3 Tage", "filters.d7": "7 Tage", "filters.search": "Suchen …",
+        "panel.prs": "Offene Pull Requests", "panel.running": "Läuft jetzt", "panel.sessions": "Offene Sessions",
+        "panel.tasks": "Aufgaben", "panel.messages": "Nachrichten", "panel.history": "Verlauf",
+        "panel.from": "aus {list}", "panel.noSource": "keine Quelle ausgewählt", "panel.prsExtra": " — mit Commit-Status, z. B. Werkator, werkrevisor",
+        "count.active": "{n} aktiv", "count.ready": "{n} bereit", "count.open": "{n} offen", "count.forYou": "{n} für dich",
+        "count.messages": "{n} Nachrichten", "count.new": "{n} neu", "count.entries": "{n} Einträge",
+        "count.hiddenTasks": "{n} ausgeblendet", "count.showHidden": "{n} ausblenden",
+        "empty.running": "Nichts in Arbeit.", "empty.sessions": "Keine offenen Sessions.", "empty.prs": "Keine offenen Pull Requests.",
+        "empty.tasks": "Nichts zugewiesen.", "empty.messages": "Keine Nachrichten im gewählten Zeitraum.", "empty.history": "Nichts im gewählten Zeitraum.",
+        "messages.older": "{n} ältere Nachrichten", "messages.older1": "1 ältere Nachricht", "messages.show7": "7 Tage zeigen",
+        "copy.title": "Resume-Befehl kopieren", "copy.failed": "Kopieren fehlgeschlagen", repository: "Repository {name}",
+        "sources.title": "Quellen", "sources.connected": "verbunden", "sources.count": "{ok} von {n} verbunden",
+    },
+    en: {
+        "nav.views": "Views", "lang.group": "Language", reload: "Reload",
+        "tab.overview": "Overview", "tab.prs": "Pull requests", "tab.sessions": "Sessions", "tab.tasks": "Tasks",
+        "tab.messages": "Messages", "tab.history": "History", "tab.sources": "Sources",
+        "short.overview": "Overview", "short.prs": "PRs", "short.sessions": "Sessions", "short.tasks": "Tasks",
+        "short.messages": "Chats", "short.history": "History", "short.sources": "Sources",
+        live: "live", offline: "offline", "live.title": "Connection to the backend",
+        "theme.light": "Show light", "theme.dark": "Show dark",
+        "token.enter": "Enter access token", "token.forget": "Forget access token", "token.confirm": "Forget the access token in this browser?",
+        "token.title": "Access token", "token.text": "On the server, <code>werkregie-dashboard token</code> prints it. The browser keeps it as a cookie.",
+        "token.cancel": "Cancel", "token.save": "Save", "token.badChars": "The token consists of letters and digits only.",
+        "token.unknown": "The server does not know this token.", "token.unreachable": "Server unreachable.",
+        "demo.text": "Invented sample data – the access token shows the real ones.", "demo.button": "Enter token",
+        "stale.text": "Server unreachable – last state of {time}, {age}.", "stale.justNow": "just now", ago: "{span} ago",
+        now: "now", today: "Today", yesterday: "Yesterday", generatedAt: "as of {time}", "footer.readOnly": "read-only",
+        "conn.all": "All {n} sources connected", "conn.some": "{ok} of {n} connected", "conn.none": "No source configured",
+        "conn.entries": "{n} entries", "conn.via": "via {relay}", "conn.error": "error", "conn.silent": "silent",
+        "todo.title": "Your turn", "todo.count": "{n} · most urgent first", "todo.empty": "Nothing to do – all is running.",
+        "group.stuck": "Stuck", "group.rework": "Rework", "group.approve": "Approve", "group.merge": "Merge", "group.answer": "Reply",
+        "hint.stuck": "agent and werkrevisor do not get on", "hint.rework": "your own PR", "hint.approve": "waits for your approval",
+        "hint.merge": "approved, just merge it", "hint.answer": "addressed to you",
+        "act.stuck": "Step in", "act.rework": "Look", "act.approve": "Review", "act.merge": "Merge", "act.answer": "Open",
+        "load.healthy": "healthy", "load.pressure": "under pressure", "load.overloaded": "overloaded", "load.unknown": "unknown",
+        "load.cpu24": "CPU · 24 h", "load.ram": "RAM", "load.cpu": "CPU", "load.disk": "Disk",
+        "builds.title": "Werkator · builds 24 h", "builds.running": "{n} running", "builds.failed": "{n} red", "builds.ok": "{n} green",
+        "builds.empty": "No builds in 24 h.", "builds.chart": "Builds per hour of the last 24 hours",
+        "costs.title": "Review costs", "costs.week": "{n} reviews · 7 days ≈ {sum}", "costs.chart": "Review costs of the last 7 days",
+        "cards.title": "Running now", "cards.count": "{n} active · {w} waiting for you", "cards.waits": "waits for you",
+        "cards.more": "+{n} more", "cards.empty": "Nothing in progress.",
+        "lanes.title": "History 24 h", "lanes.count": "{n} events", "lanes.done": "done", "lanes.failed": "failed",
+        "lanes.running": "running", "lanes.empty": "Nothing in the last 24 hours.", "lanes.cell": "{from}–{to} · {n}",
+        "filters.sources": "Sources", "filters.allProjects": "all projects", "filters.project": "Project",
+        "filters.clearProject": "Clear project filter", "filters.noProject": "no project contains “{q}”", "filters.window": "Period",
+        "filters.h8": "8 hours", "filters.h24": "24 hours", "filters.d3": "3 days", "filters.d7": "7 days", "filters.search": "Search …",
+        "panel.prs": "Open pull requests", "panel.running": "Running now", "panel.sessions": "Open sessions",
+        "panel.tasks": "Tasks", "panel.messages": "Messages", "panel.history": "History",
+        "panel.from": "from {list}", "panel.noSource": "no source selected", "panel.prsExtra": " — with commit statuses, e.g. Werkator, werkrevisor",
+        "count.active": "{n} active", "count.ready": "{n} ready", "count.open": "{n} open", "count.forYou": "{n} for you",
+        "count.messages": "{n} messages", "count.new": "{n} new", "count.entries": "{n} entries",
+        "count.hiddenTasks": "{n} hidden", "count.showHidden": "hide {n}",
+        "empty.running": "Nothing in progress.", "empty.sessions": "No open sessions.", "empty.prs": "No open pull requests.",
+        "empty.tasks": "Nothing assigned.", "empty.messages": "No messages in the chosen period.", "empty.history": "Nothing in the chosen period.",
+        "messages.older": "{n} older messages", "messages.older1": "1 older message", "messages.show7": "show 7 days",
+        "copy.title": "Copy resume command", "copy.failed": "Copy failed", repository: "Repository {name}",
+        "sources.title": "Sources", "sources.connected": "connected", "sources.count": "{ok} of {n} connected",
+    },
+};
+// the words of statuses and markers, German and English
+const WORDS = {
+    de: {
+        busy: "arbeitet", running: "läuft", pending: "wartet", queued: "wartet", idle: "bereit", open: "offen", success: "erfolgreich",
+        done: "fertig", failure: "fehler", failed: "fehler", error: "fehler", timed_out: "timeout", interrupted: "abgebrochen",
+        closed: "beendet", archived: "archiviert", stale: "veraltet", draft: "entwurf",
+        "flag.stuck": "Festgefahren", "flag.approve": "Dein Approval", "flag.merge": "Mergen", "flag.rework": "Nacharbeit",
+        "flag.review": "Wartet auf Review", "flag.approved": "Von dir approved", "flag.unknown": "Status unbekannt", "flag.hidden": "ausgeblendet",
+        "flag.unread": "Neu", "flag.direct": "Direkt", "flag.mention": "Erwähnung", "flag.room": "Raum",
+    },
+    en: {
+        busy: "working", running: "running", pending: "waiting", queued: "waiting", idle: "ready", open: "open", success: "success",
+        done: "done", failure: "failed", failed: "failed", error: "failed", timed_out: "timeout", interrupted: "interrupted",
+        closed: "closed", archived: "archived", stale: "stale", draft: "draft",
+        "flag.stuck": "Stuck", "flag.approve": "Your approval", "flag.merge": "Merge", "flag.rework": "Rework",
+        "flag.review": "Waits for review", "flag.approved": "Approved by you", "flag.unknown": "Unknown status", "flag.hidden": "hidden",
+        "flag.unread": "New", "flag.direct": "Direct", "flag.mention": "Mention", "flag.room": "Room",
+    },
+};
+// the reasons the server writes in German, in English
+const REASONS_EN = [
+    [/^Konflikt$/, "conflict"], [/^Build rot: /, "build red: "], [/^approved von /, "approved by "],
+    [/^niemand angefragt$/, "nobody requested"], [/^angefragt: /, "requested: "], [/^kein werkrevisor$/, "no werkrevisor"],
+    [/^werkrevisor ohne Urteil$/, "werkrevisor without verdict"], [/^RED, an Menschen eskaliert$/, "RED, escalated to a human"],
+    [/^RED seit (.+) ohne neuen Commit$/, "RED for $1 without a new commit"], [/^zuletzt vor (.+)$/, "last seen $1 ago"],
+    [/^(\d+) privates? Repos? verborgen – controlToken konfigurieren$/, "$1 private repos hidden – configure controlToken"],
+];
+
+const SETTINGS_KEY = "werkregie-settings";
+const THEME_KEY = "werkregie-theme";
+const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+const saved = (() => { try { return JSON.parse(storage?.getItem(SETTINGS_KEY) || "{}"); } catch (e) { return {}; } })();
+const browserLang = (navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";
+
+// one project under every source: the repository name without its owner, in lower case — Gitea says
+// "mi/werkcrappit", Werkator "werkcrappit", a session the folder it runs in or the repository checked out there
+const projectKey = (name) => (name ? name.split("/").pop().toLowerCase() : "");
+const keyOf = (item) => projectKey(item.repository || item.project);
+
+const state = {
+    data: null, hidden: new Set(saved.hidden || []), project: projectKey(saved.project), windowHours: saved.windowHours || 24,
+    showHiddenTasks: Boolean(saved.showHiddenTasks), search: "", lang: saved.lang === "de" || saved.lang === "en" ? saved.lang : browserLang,
+};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const locale = () => (state.lang === "de" ? "de-DE" : "en-GB");
+
+function t(key, values = {}) {
+    const text = TEXT[state.lang][key] ?? TEXT.de[key] ?? key;
+    return text.replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "");
+}
+const word = (key) => WORDS[state.lang][key] ?? WORDS.de[key];
+const reason = (text) => (state.lang === "de" || !text ? text : REASONS_EN.reduce((s, [from, to]) => s.replace(from, to), text));
+
+function persist() {
+    try {
+        storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], project: state.project, windowHours: state.windowHours,
+            showHiddenTasks: state.showHiddenTasks, lang: state.lang }));
+    } catch (e) {}
+}
+
+// ---- the tools, their names and their logos ----
 const SOURCES = { claude: "Claude", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", taiga: "Taiga", matrix: "Matrix" };
+const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", taiga: "Taiga", matrix: "Matrix" };
+const LOGO_FILES = { claude: "/logos/claude.png", codex: "/logos/codex.png", matrix: "/logos/matrix.svg", taiga: "/logos/taiga.png", gitea: "/logos/gitea.svg" };
+// black marks, turned white in dark mode
+const MONO_LOGOS = new Set(["codex", "matrix"]);
+// Werkator's and werkrevisor's own marks, and a plain one for anything else
+const LINE_LOGOS = {
+    werkator: `<path d="M6 34 18 47 35 16M30 34 42 47 59 16"/>`,
+    werkrevisor: `<circle cx="27" cy="27" r="16"/><path d="M39 39 54 54M19 27l6 6 10-11"/>`,
+    other: `<rect x="8" y="12" width="48" height="32" rx="4"/><path d="M24 54h16M32 44v10"/>`,
+};
+
+/** The logo of a tool; [label] names it where the logo stands alone, else it is decoration. */
+function logo(tool, label = "") {
+    if (LOGO_FILES[tool]) {
+        const cls = `app-logo${MONO_LOGOS.has(tool) ? " is-mono" : ""}`;
+        return label ? `<img class="${cls}" src="${LOGO_FILES[tool]}" alt="${esc(label)}">` : `<img class="${cls}" src="${LOGO_FILES[tool]}" alt="" aria-hidden="true">`;
+    }
+    const alt = label ? ` role="img" aria-label="${esc(label)}"` : ` aria-hidden="true"`;
+    return `<svg class="app-logo app-logo-line" viewBox="0 0 64 64"${alt}>${LINE_LOGOS[tool] || LINE_LOGOS.other}</svg>`;
+}
+
+// ---- time and numbers ----
+function span(iso) {
+    const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+    if (s < 60) return t("now");
+    if (s < 3600) return `${Math.floor(s / 60)} min`;
+    if (s < 86400) return `${Math.floor(s / 3600)} h`;
+    return `${Math.floor(s / 86400)} d`;
+}
+const clock = (iso, seconds) => new Date(iso).toLocaleTimeString(locale(), seconds ? {} : { hour: "2-digit", minute: "2-digit" });
+function dayLabel(iso) {
+    const d = new Date(iso), today = new Date();
+    const diff = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
+    if (diff === 0) return t("today");
+    if (diff === 1) return t("yesterday");
+    return d.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+}
+const percent = (share) => new Intl.NumberFormat(locale(), { style: "percent", maximumFractionDigits: 0 }).format(share);
+const dollars = (sum) => new Intl.NumberFormat(locale(), { style: "currency", currency: "USD" }).format(sum);
+const HOUR = 3600 * 1000;
+
+// ---- rows of the lists: Werkator's status classes and markers ----
 // the items of a task board
 const TASK_KINDS = new Set(["story", "task", "issue"]);
-
-// Werkator's status classes: accent for good and running, clay for failed, amber for timeouts,
-// an outlined dot for waiting, ghost for everything that is over without a verdict
+// accent for good and running, clay for failed, amber for timeouts, an outlined dot for waiting,
+// ghost for everything that is over without a verdict
 const STATUS = {
-    busy: ["running", "arbeitet"], running: ["running", "läuft"],
-    pending: ["pending", "wartet"], queued: ["pending", "wartet"], idle: ["pending", "bereit"], open: ["pending", "offen"],
-    success: ["success", "erfolgreich"], done: ["success", "fertig"],
-    failure: ["failed", "fehler"], failed: ["failed", "fehler"], error: ["failed", "fehler"],
-    timed_out: ["timed_out", "timeout"],
-    interrupted: ["unknown", "abgebrochen"], closed: ["unknown", "beendet"], archived: ["unknown", "archiviert"],
-    stale: ["unknown", "veraltet"], draft: ["unknown", "entwurf"],
+    busy: "running", running: "running", pending: "pending", queued: "pending", idle: "pending", open: "pending",
+    success: "success", done: "success", failure: "failed", failed: "failed", error: "failed", timed_out: "timed_out",
+    interrupted: "unknown", closed: "unknown", archived: "unknown", stale: "unknown", draft: "unknown",
 };
-// pull request markers, most urgent first: symbol and name
-const FLAGS = {
-    stuck: ["⚠", "Festgefahren"], approve: ["✋", "Dein Approval"], merge: ["➜", "Mergen"],
-    rework: ["🔧", "Nacharbeit"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
-};
-// a task whose status the configuration does not name yet, or one of a hidden status the user shows
-const TASK_FLAGS = { unknown: ["?", "Status unbekannt"], hidden: ["–", "ausgeblendet"] };
+// pull request markers, most urgent first, with their symbols
+const FLAGS = { stuck: "⚠", approve: "✋", merge: "➜", rework: "🔧", review: "⏳", approved: "✓" };
+const TASK_FLAGS = { unknown: "?", hidden: "–" };
+const MESSAGE_FLAGS = { unread: "●", direct: "✉", mention: "@", room: "#" };
 const COLOR = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-// why a Matrix message shows
-const MESSAGE_FLAGS = { unread: ["●", "Neu"], direct: ["✉", "Direkt"], mention: ["@", "Erwähnung"], room: ["#", "Raum"] };
 const FLAG_ORDER = Object.keys(FLAGS);
 // among the approvals the graver verdict first, the pull request without werkrevisor last
 const APPROVE_ORDER = ["werkrevisor ORANGE", "werkrevisor YELLOW"];
@@ -168,39 +408,8 @@ const TAG = {
     pending: "tag-run", running: "tag-run", success: "tag-ok", green: "tag-ok",
     yellow: "tag-warn", warning: "tag-warn", orange: "tag-bad", red: "tag-bad", failure: "tag-bad", error: "tag-bad",
 };
-
-const THEME_KEY = "werkregie-theme";
-const SETTINGS_KEY = "werkregie-settings";
-const storage = (() => { try { return window.localStorage; } catch (e) { return null; } })();
-const saved = (() => { try { return JSON.parse(storage?.getItem(SETTINGS_KEY) || "{}"); } catch (e) { return {}; } })();
-// one project under every source: the repository name without its owner, in lower case — Gitea says
-// "mi/werkcrappit", Werkator "werkcrappit", a session the folder it runs in or the repository checked out there
-const projectKey = (name) => (name ? name.split("/").pop().toLowerCase() : "");
-const keyOf = (item) => projectKey(item.repository || item.project);
-
-const state = { data: null, hidden: new Set(saved.hidden || []), expanded: new Set(saved.expanded || []), project: projectKey(saved.project), windowHours: saved.windowHours || 24, showHiddenTasks: Boolean(saved.showHiddenTasks), search: "" };
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-function persist() {
-    try { storage?.setItem(SETTINGS_KEY, JSON.stringify({ hidden: [...state.hidden], expanded: [...state.expanded], project: state.project, windowHours: state.windowHours, showHiddenTasks: state.showHiddenTasks })); } catch (e) {}
-}
-
-function ago(iso) {
-    const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
-    if (s < 60) return "jetzt";
-    if (s < 3600) return `${Math.floor(s / 60)} min`;
-    if (s < 86400) return `${Math.floor(s / 3600)} h`;
-    return `${Math.floor(s / 86400)} d`;
-}
-const clock = (iso, seconds) => new Date(iso).toLocaleTimeString("de-DE", seconds ? {} : { hour: "2-digit", minute: "2-digit" });
-function dayLabel(iso) {
-    const d = new Date(iso), today = new Date();
-    const diff = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
-    if (diff === 0) return "Heute";
-    if (diff === 1) return "Gestern";
-    return d.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
-}
+const isFailed = (item) => STATUS[item.state] === "failed";
+const isUnread = (item) => (item.flags || []).some((f) => f.kind === "unread");
 
 function statusHtml(item) {
     if (item.kind === "activity" || item.kind === "message") return "";
@@ -209,8 +418,8 @@ function statusHtml(item) {
         const dot = item.color && COLOR.test(item.color) ? ` style="--dot: ${item.color}"` : "";
         return `<span class="status status-task"${dot}>${esc(item.state)}</span>`;
     }
-    const [cls, word] = STATUS[item.state] || ["unknown", item.state.replaceAll("_", " ")];
-    return `<span class="status status-${cls}">${esc(word)}</span>`;
+    const cls = STATUS[item.state] || "unknown";
+    return `<span class="status status-${cls}">${esc(word(item.state) || item.state.replaceAll("_", " "))}</span>`;
 }
 
 function tagHtml(badge) {
@@ -221,14 +430,30 @@ function tagHtml(badge) {
         : `<span ${attrs}>${esc(badge.label)}</span>`;
 }
 
-// a Matrix row leads with who wrote where; the detail is "room · sender", for a direct chat the sender alone
-function messageHead(item) {
+// a Matrix message comes from a sender in a room; the detail is "room · sender", for a direct chat the sender alone
+function senderOf(item) {
     const detail = item.detail || "";
     const direct = (item.flags || []).some((f) => f.kind === "direct");
     const cut = detail.lastIndexOf(" · ");
-    const room = direct || cut < 0 ? "" : detail.slice(0, cut);
-    const sender = direct || cut < 0 ? detail : detail.slice(cut + 3);
+    return { room: direct || cut < 0 ? "" : detail.slice(0, cut), sender: direct || cut < 0 ? detail : detail.slice(cut + 3) };
+}
+
+function messageHead(item) {
+    const { room, sender } = senderOf(item);
     return `<div class="msg-head">${room ? `<span class="msg-room">${esc(room)}</span>` : ""}<span class="msg-sender">${esc(sender)}</span></div>`;
+}
+
+function flagHtml(flag) {
+    const symbol = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || TASK_FLAGS[flag.kind] || "•";
+    const name = word(`flag.${flag.kind}`) || flag.kind;
+    const why = reason(flag.reason);
+    return `<span class="flag flag-${esc(flag.kind)}" title="${esc(name)}${why ? `: ${esc(why)}` : ""}">${symbol} ${esc(name)}${why ? ` <span class="flag-reason">${esc(why)}</span>` : ""}</span>`;
+}
+
+function copyButton(item) {
+    return item.command
+        ? `<button class="copy-button" type="button" data-cmd="${esc(item.command)}" title="${esc(t("copy.title"))}: ${esc(item.command)}" aria-label="${esc(t("copy.title"))}"><span class="icon icon-copy"></span></button>`
+        : "";
 }
 
 function row(item, timeMode) {
@@ -237,44 +462,34 @@ function row(item, timeMode) {
     const title = (message ? messageHead(item) : "") + (item.url
         ? `<a class="${titleClass}" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
         : `<span class="${titleClass}">${esc(item.title)}</span>`);
-    const failed = (STATUS[item.state] || [])[0] === "failed" && item.kind !== "pr";
     const stacked = item.kind === "pr";
     const flags = item.flags || [];
-    const classes = ["row", stacked ? "row-stacked" : "", item.section === "RUNNING" ? "is-running" : "", failed ? "is-failed" : "",
-        item.state === "draft" ? "is-draft" : "",
-        item.kind === "message" && !flags.some((f) => f.kind === "unread") ? "is-read" : ""].join(" ");
-    const when = item.time ? (timeMode === "clock" ? clock(item.time) : ago(item.time)) : "";
-    const copy = item.command
-        ? `<button class="copy-button" type="button" data-cmd="${esc(item.command)}" title="Resume-Befehl kopieren: ${esc(item.command)}" aria-label="Resume-Befehl kopieren"><span class="icon icon-copy"></span></button>`
-        : "";
-    const whenHtml = `<div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString("de-DE") : "")}">${esc(when)}</div>`;
-    const flagHtml = flags.map((flag) => {
-        const [symbol, name] = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || TASK_FLAGS[flag.kind] || ["•", flag.kind];
-        const reason = flag.reason ? ` <span class="flag-reason">${esc(flag.reason)}</span>` : "";
-        return `<span class="flag flag-${esc(flag.kind)}" title="${esc(name)}${flag.reason ? `: ${esc(flag.reason)}` : ""}">${symbol} ${esc(name)}${reason}</span>`;
-    }).join("");
+    const classes = ["row", stacked ? "row-stacked" : "", item.section === "RUNNING" ? "is-running" : "", isFailed(item) && !stacked ? "is-failed" : "",
+        item.state === "draft" ? "is-draft" : "", message && !isUnread(item) ? "is-read" : ""].join(" ");
+    const when = item.time ? (timeMode === "clock" ? clock(item.time) : span(item.time)) : "";
+    const whenHtml = `<div class="when" title="${esc(item.time ? new Date(item.time).toLocaleString(locale()) : "")}">${esc(when)}</div>`;
+    const flagsHtml = flags.map(flagHtml).join("");
+    const repositoryTitle = item.repository && projectKey(item.repository) !== projectKey(item.project) ? ` title="${esc(t("repository", { name: item.repository }))}"` : "";
     const meta = `<div class="meta">
-                <span class="origin">${esc(SOURCES[item.source] || item.source)} · ${esc(item.origin)}</span>
-                ${item.project ? `<span class="project"${item.repository && projectKey(item.repository) !== projectKey(item.project) ? ` title="Repository ${esc(item.repository)}"` : ""}>${esc(item.project)}</span>` : ""}
+                <span class="origin">${logo(item.source)}${esc(SOURCES[item.source] || item.source)} · ${esc(item.origin)}</span>
+                ${item.project ? `<span class="project"${repositoryTitle}>${esc(item.project)}</span>` : ""}
                 ${item.detail && !message ? `<span class="detail">${esc(item.detail)}</span>` : ""}
             </div>`;
     // a one-line row, e.g. a Matrix message, carries its markers at the end
-    const aside = `<div class="aside">${stacked ? "" : flagHtml}${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>`;
+    const aside = `<div class="aside">${stacked ? "" : flagsHtml}${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copyButton(item)}</div>`;
     // a pull request carries many status chips: they get a line of their own above the title
     if (stacked) {
         return `<div class="${classes}">
-        <div class="row-head">${whenHtml}${flagHtml}${aside}</div>
+        <div class="row-head">${whenHtml}${flagsHtml}${aside}</div>
         <div class="what">${title}${meta}</div>
     </div>`;
     }
-    return `<div class="${classes}">
-        ${whenHtml}
-        <div class="what">
-            ${title}
-            ${meta}
-        </div>
-        ${aside}
-    </div>`;
+    return `<div class="${classes}">${whenHtml}<div class="what">${title}${meta}</div>${aside}</div>`;
+}
+
+function fill(id, items, emptyKey, countKey) {
+    $(id).innerHTML = items.length ? items.map((i) => row(i)).join("") : `<div class="empty">${esc(t(emptyKey))}</div>`;
+    $(`${id}-count`).textContent = items.length ? t(countKey, { n: items.length }) : "";
 }
 
 // a direct chat or a configured room keeps its last message, however old; its link without the event names it
@@ -293,6 +508,299 @@ function prRank(item) {
     return (FLAG_ORDER.length + (item.state === "draft" ? 1 : 0)) * 3;
 }
 
+// ---- which tools feed which list; the heading names those configured and not filtered out ----
+const PANEL_SOURCES = {
+    running: ["claude", "codex", "werkator", "werkrevisor"],
+    sessions: ["claude", "codex"],
+    prs: ["gitea"],
+    tasks: ["taiga"],
+    messages: ["matrix"],
+    recent: ["claude", "codex", "werkator", "werkrevisor", "gitea"],
+};
+
+/** "Werkator javagil, vm4006": a tool with its configured instances, or null when none is configured. */
+function toolLabel(tool, sources) {
+    // werkrevisor runs are the @ai-review builds of the Werkator instances
+    const kind = tool === "werkrevisor" ? "werkator" : tool;
+    const own = sources.filter((s) => s.id.split(":")[0] === kind);
+    // on a server, Claude Code, Codex and Matrix come from the relays that report them
+    const relays = sources.filter((s) => s.id.startsWith("relay:") && (s.tools || []).includes(tool));
+    if (own.length === 0 && relays.length === 0) return null;
+    const instances = [...own.map((s) => s.id.split(":")[1]), ...relays.map((s) => s.id.slice("relay:".length))].filter(Boolean);
+    return tool === "werkrevisor" || instances.length === 0 ? TOOL_NAMES[tool] : `${TOOL_NAMES[tool]} ${instances.join(", ")}`;
+}
+
+function renderPanelSources() {
+    for (const [panel, tools] of Object.entries(PANEL_SOURCES)) {
+        const labels = tools.filter((tool) => !state.hidden.has(tool)).map((tool) => toolLabel(tool, state.data.sources)).filter(Boolean);
+        let text = labels.join(" · ");
+        if (panel === "prs" && labels.length) text += t("panel.prsExtra");
+        $(`${panel}-sources`).textContent = text ? t("panel.from", { list: text }) : t("panel.noSource");
+    }
+}
+
+// ================= the overview =================
+
+/** One connection per tool the dashboard reads: a relay stands for the tools it reports. */
+function connections(sources) {
+    return sources.flatMap((s) => {
+        const message = reason(s.message);
+        if (s.id.startsWith("relay:")) {
+            const relay = s.id.slice("relay:".length);
+            const label = (tool) => `${TOOL_NAMES[tool] || tool} ${t("conn.via", { relay })}`;
+            return [
+                ...(s.tools || []).map((tool) => ({ tool, label: label(tool), ok: !s.silent, warn: false, silent: s.silent,
+                    message: s.silent ? message : null, url: null, count: null, short: relay })),
+                ...(s.failingTools || []).map((tool) => ({ tool, label: label(tool), ok: false, warn: false, silent: s.silent,
+                    message, url: null, count: null, short: relay })),
+            ];
+        }
+        return [{ tool: s.id.split(":")[0], label: s.label, ok: s.ok, warn: s.ok && Boolean(s.message), silent: false, message,
+            url: s.url, count: s.count, short: s.id.split(":")[1] || s.label }];
+    });
+}
+
+function renderConnection() {
+    const all = connections(state.data.sources);
+    const down = all.filter((c) => !c.ok);
+    const warn = all.filter((c) => c.warn);
+    const level = all.length === 0 ? "warn" : down.length ? "bad" : warn.length ? "warn" : "ok";
+    const headline = all.length === 0 ? t("conn.none")
+        : down.length ? t("conn.some", { ok: all.length - down.length, n: all.length }) : t("conn.all", { n: all.length });
+    const notes = [...down, ...warn].map((c) => `${c.label}: ${c.message || t("conn.error")}`);
+    const tiles = all.map((c) => {
+        const tag = c.url ? "a" : "span";
+        const href = c.url ? ` href="${esc(c.url)}" target="_blank" rel="noopener"` : "";
+        const cls = c.ok ? (c.warn ? "warn" : "ok") : "bad";
+        const title = [c.label, c.message || (c.count != null ? t("conn.entries", { n: c.count }) : "")].filter(Boolean).join(" — ");
+        const text = c.ok && !c.warn ? "" : `<span class="tile-text">${esc(c.short)}</span>`;
+        return `<${tag} class="tile tile-${cls}"${href} title="${esc(title)}" aria-label="${esc(title)}">${logo(c.tool)}<span class="tile-dot"></span>${text}</${tag}>`;
+    }).join("");
+    $("connection").className = `connection connection-${level}`;
+    $("connection").innerHTML = `
+        <div class="connection-head">
+            <span class="connection-dot"></span>
+            <strong>${esc(headline)}</strong>
+            ${notes.length ? `<span class="connection-note">${esc(notes.join(" · "))}</span>` : ""}
+        </div>
+        <div class="tiles">${tiles}</div>`;
+    return down.length;
+}
+
+// ---- "Du bist dran": what asks something of the user, grouped by what to do ----
+const GROUPS = ["stuck", "rework", "approve", "merge", "answer"];
+
+function todos(items) {
+    const groups = Object.fromEntries(GROUPS.map((g) => [g, []]));
+    for (const item of items) {
+        if (item.kind === "pr") {
+            const mine = (item.flags || []).filter((f) => FOR_YOU.has(f.kind)).sort((a, b) => GROUPS.indexOf(a.kind) - GROUPS.indexOf(b.kind));
+            if (mine.length) groups[mine[0].kind].push({ item, flag: mine[0] });
+        } else if (item.kind === "message" && isUnread(item) && (item.flags || []).some((f) => f.kind === "direct" || f.kind === "mention")) {
+            groups.answer.push({ item, flag: null });
+        }
+    }
+    // the longest waiting first, the graver verdict before; a message, the newest first
+    for (const group of GROUPS) {
+        groups[group].sort((a, b) => (group === "answer"
+            ? (Date.parse(b.item.time) || 0) - (Date.parse(a.item.time) || 0)
+            : flagRank(a.flag) - flagRank(b.flag) || (Date.parse(a.item.time) || 0) - (Date.parse(b.item.time) || 0)));
+    }
+    return groups;
+}
+
+const ARROW = `<svg class="act-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>`;
+
+function todoRow(group, { item, flag }) {
+    const message = item.kind === "message";
+    const { room, sender } = message ? senderOf(item) : {};
+    const title = message ? `${sender}${room ? ` · ${room}` : ""}` : item.title;
+    const detail = message ? item.title : [reason(flag?.reason), item.project].filter(Boolean).join(" · ");
+    const tag = item.url ? "a" : "div";
+    const href = item.url ? ` href="${esc(item.url)}" target="_blank" rel="noopener"` : "";
+    return `<${tag} class="todo-row"${href}>
+        ${logo(item.source)}
+        <span class="todo-what"><span class="todo-title">${esc(title)}</span><span class="todo-detail">${esc(detail)}</span></span>
+        <span class="todo-age" title="${esc(item.time ? new Date(item.time).toLocaleString(locale()) : "")}">${esc(item.time ? span(item.time) : "")}</span>
+        ${item.url ? `<span class="act">${esc(t(`act.${group}`))}${ARROW}</span>` : ""}
+    </${tag}>`;
+}
+
+function renderTodo(items) {
+    const groups = todos(items);
+    const total = GROUPS.reduce((sum, g) => sum + groups[g].length, 0);
+    $("todo-count").textContent = total ? t("todo.count", { n: total }) : "";
+    $("todo").innerHTML = total === 0
+        ? `<div class="empty empty-good"><span class="icon icon-check"></span> ${esc(t("todo.empty"))}</div>`
+        : GROUPS.filter((g) => groups[g].length).map((g) => `
+            <div class="group group-${g}"><span class="group-name">${esc(t(`group.${g}`))}</span><span class="group-count">${groups[g].length}</span><span class="group-hint">${esc(t(`hint.${g}`))}</span></div>
+            ${groups[g].map((entry) => todoRow(g, entry)).join("")}`).join("");
+    return total;
+}
+
+// ---- Werkator's load: the verdict, the CPU line of 24 hours, CPU, RAM and disk as meters ----
+function sparkline(values, level) {
+    const at = (i, v) => `${((i / Math.max(1, values.length - 1)) * 100).toFixed(2)},${(30 - v * 28).toFixed(2)}`;
+    // a step without samples breaks the line
+    const runs = [];
+    let run = [];
+    values.forEach((v, i) => { if (v == null) { if (run.length) runs.push(run); run = []; } else run.push([i, v]); });
+    if (run.length) runs.push(run);
+    const line = runs.map((r) => `M${r.map(([i, v]) => at(i, v)).join(" L")}`).join(" ");
+    const area = runs.map((r) => `M${at(r[0][0], 0)} L${r.map(([i, v]) => at(i, v)).join(" L")} L${at(r[r.length - 1][0], 0)} Z`).join(" ");
+    return `<svg class="spark spark-${esc(level)}" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="${esc(t("load.cpu24"))}">
+        <path class="spark-area" d="${area}"/><path class="spark-line" d="${line}" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+const shareLevel = (share) => (share == null ? "none" : share >= 0.95 ? "bad" : share >= 0.8 ? "warn" : "ok");
+
+function meter(label, share) {
+    const width = share == null ? 0 : Math.round(share * 100);
+    return `<div class="meter meter-${shareLevel(share)}"><span class="meter-label">${esc(label)}</span>
+        <span class="meter-track"><span class="meter-fill" style="width: ${width}%"></span></span>
+        <span class="meter-value">${share == null ? "–" : esc(percent(share))}</span></div>`;
+}
+
+function loadPanel(load) {
+    const level = ["healthy", "pressure", "overloaded"].includes(load.level) ? load.level : "unknown";
+    const title = load.url ? `<a href="${esc(load.url)}/system" target="_blank" rel="noopener">${esc(load.label)}</a>` : esc(load.label);
+    return `<section class="panel load-panel load-${level}">
+        <h2><span class="panel-title">${logo("werkator")}${title}</span><em class="load-level">${esc(t(`load.${level}`))}</em></h2>
+        ${load.reasons?.length ? `<div class="load-reasons">${esc(load.reasons.join(" · "))}</div>` : ""}
+        ${load.cpuHistory?.length ? `<div class="load-spark">${sparkline(load.cpuHistory, level)}<span class="axis"><span>${esc(t("load.cpu24"))}</span><span>${esc(t("now"))}</span></span></div>` : ""}
+        <div class="meters">${meter(t("load.cpu"), load.cpu)}${meter(t("load.ram"), load.ram)}${meter(load.diskLabel || t("load.disk"), load.disk)}</div>
+    </section>`;
+}
+
+// ---- Werkator's builds of 24 hours: what runs, what failed, a bar per hour ----
+function renderBuilds(items, now) {
+    const configured = state.data.sources.some((s) => s.id.startsWith("werkator:"));
+    $("builds-panel").hidden = !configured;
+    if (!configured) return;
+    const builds = items.filter((i) => i.source === "werkator" && i.kind === "build" && i.time && now - Date.parse(i.time) < 24 * HOUR);
+    const running = builds.filter((i) => i.section === "RUNNING");
+    const failed = builds.filter((i) => i.section !== "RUNNING" && isFailed(i));
+    const ok = builds.filter((i) => i.section !== "RUNNING" && !isFailed(i));
+    $("builds-count").innerHTML = [
+        running.length ? `<span class="c-ok">${esc(t("builds.running", { n: running.length }))}</span>` : "",
+        failed.length ? `<span class="c-bad">${esc(t("builds.failed", { n: failed.length }))}</span>` : "",
+        ok.length ? esc(t("builds.ok", { n: ok.length })) : "",
+    ].filter(Boolean).join(" · ");
+    const hours = Array.from({ length: 24 }, () => ({ ok: 0, failed: 0, running: 0 }));
+    for (const build of builds) {
+        const slot = 23 - Math.min(23, Math.floor((now - Date.parse(build.time)) / HOUR));
+        hours[slot][build.section === "RUNNING" ? "running" : isFailed(build) ? "failed" : "ok"]++;
+    }
+    const max = Math.max(1, ...hours.map((h) => h.ok + h.failed + h.running));
+    const bars = hours.map((h, i) => {
+        let y = 40;
+        return ["ok", "failed", "running"].map((kind) => {
+            if (!h[kind]) return "";
+            const height = (h[kind] / max) * 38;
+            y -= height;
+            return `<rect class="bar-${kind}" x="${i * 10 + 1}" y="${y.toFixed(2)}" width="8" height="${height.toFixed(2)}" rx="1"/>`;
+        }).join("");
+    }).join("");
+    const rows = [...running, ...failed].slice(0, 4).map((b) => {
+        const tag = b.url ? "a" : "div";
+        const href = b.url ? ` href="${esc(b.url)}" target="_blank" rel="noopener"` : "";
+        const runs = b.section === "RUNNING";
+        return `<${tag} class="build-row ${runs ? "is-running" : "is-failed"}"${href}>
+            <span class="status status-${runs ? "running" : "failed"}"></span>
+            <span class="build-what"><span class="build-project">${esc(b.project || "")}</span> <span class="build-branch">${esc(b.title)}</span></span>
+            <span class="build-when">${esc(runs ? word("running") : clock(b.time))}</span>
+        </${tag}>`;
+    }).join("");
+    $("builds").innerHTML = (builds.length ? "" : `<div class="empty empty-small">${esc(t("builds.empty"))}</div>`) + rows + `
+        <div class="hour-chart"><svg viewBox="0 0 240 40" preserveAspectRatio="none" role="img" aria-label="${esc(t("builds.chart"))}">${bars}</svg>
+        <div class="axis"><span>−24 h</span><span>−12 h</span><span>${esc(t("now"))}</span></div></div>`;
+}
+
+// ---- werkrevisor's review costs: a small tile ----
+function costsTile(costs) {
+    const days = costs.perDay || [];
+    const max = Math.max(0.01, ...days);
+    const bars = days.map((d, i) => {
+        const height = Math.max(1, (d / max) * 30);
+        return `<rect class="${i === days.length - 1 ? "bar-today" : "bar-day"}" x="${i * 14}" y="${(30 - height).toFixed(2)}" width="11" height="${height.toFixed(2)}" rx="1"/>`;
+    }).join("");
+    const tag = costs.url ? "a" : "div";
+    return `<${tag} class="panel costs-tile"${costs.url ? ` href="${esc(costs.url)}" target="_blank" rel="noopener"` : ""}>
+        <span class="costs-text">
+            <span class="costs-label">${logo("werkrevisor")}${esc(t("costs.title"))}</span>
+            <span class="costs-sum">≈ ${costs.day == null ? "–" : esc(dollars(costs.day))} <small>24 h</small></span>
+            <span class="costs-week">${esc(t("costs.week", { sum: costs.week == null ? "–" : dollars(costs.week), n: costs.reviews ?? "–" }))}</span>
+        </span>
+        ${days.length ? `<svg class="costs-chart" viewBox="0 0 96 30" role="img" aria-label="${esc(t("costs.chart"))}">${bars}</svg>` : ""}
+    </${tag}>`;
+}
+
+// ---- what runs and which sessions wait, as cards ----
+const MAX_CARDS = 8;
+
+function renderCards(items) {
+    const running = items.filter((i) => i.section === "RUNNING");
+    const waiting = items.filter((i) => i.section === "OPEN" && i.kind === "session");
+    $("cards-count").textContent = running.length + waiting.length ? t("cards.count", { n: running.length, w: waiting.length }) : "";
+    const all = [...running.map((i) => [i, false]), ...waiting.map((i) => [i, true])];
+    const shown = all.length > MAX_CARDS ? all.slice(0, MAX_CARDS - 1) : all;
+    const cards = shown.map(([item, waits]) => {
+        const tag = item.url ? "a" : "div";
+        const what = [item.project, item.kind === "session" ? item.origin : item.detail].filter(Boolean).join(" · ");
+        return `<${tag} class="card${waits ? " is-waiting" : ""}"${item.url ? ` href="${esc(item.url)}" target="_blank" rel="noopener"` : ""}>
+            <span class="card-head">${logo(item.source)}${statusHtml(item)}<span class="card-age">${esc(item.time ? span(item.time) : "")}</span>${copyButton(item)}</span>
+            <span class="card-title">${esc(item.title)}</span>
+            <span class="card-meta">${esc(waits ? `${t("cards.waits")} · ${what}` : what)}</span>
+        </${tag}>`;
+    });
+    if (all.length > shown.length) cards.push(`<a class="card card-more" href="#sessions">${esc(t("cards.more", { n: all.length - shown.length }))}</a>`);
+    $("cards").innerHTML = cards.length ? cards.join("") : `<div class="empty">${esc(t("cards.empty"))}</div>`;
+}
+
+// ---- the history of 24 hours as a lane per tool, a cell per hour ----
+const LANE_TOOLS = ["claude", "codex", "werkator", "werkrevisor", "gitea", "taiga", "matrix"];
+
+function renderLanes(items, now) {
+    const recent = items.filter((i) => i.time && now - Date.parse(i.time) < 24 * HOUR);
+    $("lanes-count").textContent = recent.length ? t("lanes.count", { n: recent.length }) : "";
+    if (!recent.length) { $("lanes").innerHTML = `<div class="empty">${esc(t("lanes.empty"))}</div>`; return; }
+    const tools = LANE_TOOLS.filter((tool) => toolLabel(tool, state.data.sources) || recent.some((i) => i.source === tool));
+    const lanes = tools.map((tool) => {
+        const hours = Array.from({ length: 24 }, () => ({ n: 0, failed: 0, running: 0 }));
+        for (const item of recent.filter((i) => i.source === tool)) {
+            const hour = hours[23 - Math.min(23, Math.floor((now - Date.parse(item.time)) / HOUR))];
+            hour.n++;
+            if (isFailed(item)) hour.failed++;
+            if (item.section === "RUNNING") hour.running++;
+        }
+        const cells = hours.map((h, i) => {
+            const kind = h.failed ? "failed" : h.running ? "running" : h.n ? "done" : "none";
+            const strength = Math.min(1, 0.35 + h.n * 0.2).toFixed(2);
+            const title = h.n ? t("lanes.cell", { from: clock(new Date(now - (24 - i) * HOUR).toISOString()), to: clock(new Date(now - (23 - i) * HOUR).toISOString()), n: h.n }) : "";
+            return `<span class="cell cell-${kind}" style="--n: ${strength}"${title ? ` title="${esc(title)}"` : ""}></span>`;
+        }).join("");
+        return `<a class="lane" href="#history">${logo(tool)}<span class="lane-name">${esc(SOURCES[tool])}</span><span class="cells">${cells}</span></a>`;
+    }).join("");
+    $("lanes").innerHTML = `${lanes}
+        <div class="lane lane-axis"><span></span><span></span><span class="axis"><span>−24 h</span><span>−12 h</span><span>${esc(t("now"))}</span></span></div>
+        <div class="legend"><span><span class="cell cell-done"></span>${esc(t("lanes.done"))}</span><span><span class="cell cell-failed"></span>${esc(t("lanes.failed"))}</span><span><span class="cell cell-running"></span>${esc(t("lanes.running"))}</span></div>`;
+}
+
+function renderOverview() {
+    const data = state.data;
+    const now = Date.parse(data.generatedAt) || Date.now();
+    const down = renderConnection();
+    const todo = renderTodo(data.items);
+    $("loads").innerHTML = (data.loads || []).map(loadPanel).join("");
+    renderBuilds(data.items, now);
+    $("costs").innerHTML = (data.costs || []).map(costsTile).join("");
+    renderCards(data.items);
+    renderLanes(data.items, now);
+    return { todo, down };
+}
+
+// ================= the lists =================
+
 function renderMessages(messages, since) {
     const last = new Set();
     const seen = new Set();
@@ -301,14 +809,14 @@ function renderMessages(messages, since) {
         if (conversation && !seen.has(conversation)) { seen.add(conversation); last.add(item); }
     }
     const shown = messages.filter((i) => (i.time && Date.parse(i.time) >= since) || last.has(i));
-    fill("messages", shown, "Keine Nachrichten im gewählten Zeitraum.", "Nachrichten");
+    fill("messages", shown, "empty.messages", "count.messages");
     const older = messages.length - shown.length;
     if (shown.length === 0 && older > 0 && state.windowHours < 168) {
-        $("messages").innerHTML = `<div class="empty">${older} ältere ${older === 1 ? "Nachricht" : "Nachrichten"} ·
-            <button class="link-button" type="button" data-window-hours="168">7 Tage zeigen</button></div>`;
+        $("messages").innerHTML = `<div class="empty">${esc(older === 1 ? t("messages.older1") : t("messages.older", { n: older }))} ·
+            <button class="link-button" type="button" data-window-hours="168">${esc(t("messages.show7"))}</button></div>`;
     }
-    const unread = shown.filter((i) => (i.flags || []).some((f) => f.kind === "unread")).length;
-    if (unread) $("messages-count").innerHTML = `<strong class="flag-count">${unread} neu</strong> · ${shown.length} Nachrichten`;
+    const unread = shown.filter(isUnread).length;
+    if (unread) $("messages-count").innerHTML = `<strong class="flag-count">${esc(t("count.new", { n: unread }))}</strong> · ${esc(t("count.messages", { n: shown.length }))}`;
 }
 
 function setWindow(hours) {
@@ -318,129 +826,36 @@ function setWindow(hours) {
     render();
 }
 
-function fill(id, items, empty, countWord) {
-    $(id).innerHTML = items.length ? items.map((i) => row(i)).join("") : `<div class="empty">${empty}</div>`;
-    $(`${id}-count`).textContent = items.length ? `${items.length} ${countWord}` : "";
-    clamp(id);
-}
-
-// ---- each panel shows three and a half rows, the half one fading out, until it is opened ----
-const VISIBLE_ROWS = 3;
-
-/** The height of the closed panel: down to the middle of the first hidden row. */
-function clampHeight(body) {
-    const rows = body.querySelectorAll(".row");
-    if (rows.length <= VISIBLE_ROWS) return null;
-    const half = rows[VISIBLE_ROWS];
-    return { height: half.offsetTop + half.offsetHeight / 2, fade: half.offsetHeight / 2, total: rows.length };
-}
-
-function clamp(id) {
-    const body = $(id);
-    const button = document.querySelector(`.panel-more[data-panel="${id}"]`);
-    const closed = clampHeight(body);
-    button.hidden = closed === null;
-    if (closed === null) {
-        body.classList.remove("is-clamped");
-        body.style.maxHeight = "";
-        return;
-    }
-    const open = state.expanded.has(id);
-    button.innerHTML = open
-        ? `Weniger anzeigen <span class="icon icon-chevron is-open"></span>`
-        : `Alle ${closed.total} anzeigen <span class="icon icon-chevron"></span>`;
-    button.setAttribute("aria-expanded", String(open));
-    body.classList.toggle("is-clamped", !open);
-    body.style.setProperty("--fade", `${closed.fade}px`);
-    // while sliding open the height is set by toggle(); afterwards an open panel has no limit
-    if (!body.classList.contains("is-sliding")) body.style.maxHeight = open ? "" : `${closed.height}px`;
-}
-
-function toggle(id) {
-    const body = $(id);
-    const closed = clampHeight(body);
-    if (!closed) return;
-    const opening = !state.expanded.has(id);
-    opening ? state.expanded.add(id) : state.expanded.delete(id);
-    persist();
-    // slide between the two heights; max-height cannot animate to or from "none"
-    body.classList.add("is-sliding");
-    body.style.maxHeight = `${opening ? closed.height : body.scrollHeight}px`;
-    void body.offsetHeight;
-    body.style.maxHeight = `${opening ? body.scrollHeight : closed.height}px`;
-    const done = () => { body.classList.remove("is-sliding"); clamp(id); };
-    body.addEventListener("transitionend", done, { once: true });
-    setTimeout(() => body.classList.contains("is-sliding") && done(), 600);
-    clamp(id);
-}
-
-// ---- which tools feed which panel; the heading names those configured and not filtered out ----
-const PANEL_SOURCES = {
-    running: ["claude", "codex", "werkator", "werkrevisor"],
-    sessions: ["claude"],
-    prs: ["gitea"],
-    tasks: ["taiga"],
-    messages: ["matrix"],
-    recent: ["claude", "codex", "werkator", "werkrevisor", "gitea"],
-};
-const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", taiga: "Taiga", matrix: "Matrix" };
-
-/** "Werkator javagil, vm4006": a tool with its configured instances, or null when none is configured. */
-function toolLabel(tool, sources) {
-    // werkrevisor runs are the @ai-review builds of the Werkator instances
-    const kind = tool === "werkrevisor" ? "werkator" : tool;
-    const own = sources.filter((s) => s.id.split(":")[0] === kind);
-    // on a server, Claude Code and Codex come from the relays that report them
-    const relays = sources.filter((s) => s.id.startsWith("relay:") && (s.tools || []).includes(tool));
-    if (own.length === 0 && relays.length === 0) return null;
-    const instances = [...own.map((s) => s.id.split(":")[1]), ...relays.map((s) => s.id.slice("relay:".length))].filter(Boolean);
-    return tool === "werkrevisor" || instances.length === 0
-        ? TOOL_NAMES[tool]
-        : `${TOOL_NAMES[tool]} ${instances.join(", ")}`;
-}
-
-function renderPanelSources() {
-    for (const [panel, tools] of Object.entries(PANEL_SOURCES)) {
-        const labels = tools.filter((tool) => !state.hidden.has(tool)).map((tool) => toolLabel(tool, state.data.sources)).filter(Boolean);
-        let text = labels.join(" · ");
-        if (panel === "prs" && labels.length) text += " — mit Commit-Status, z. B. Werkator, werkrevisor";
-        $(`${panel}-sources`).textContent = text ? `aus ${text}` : "keine Quelle ausgewählt";
-    }
-}
-
-function render() {
+function renderLists() {
     const data = state.data;
-    if (!data) return;
     renderPanelSources();
     const needle = state.search.toLowerCase();
-    const since = Date.now() - state.windowHours * 3600 * 1000;
+    const since = Date.now() - state.windowHours * HOUR;
     const visible = data.items.filter((i) =>
         !state.hidden.has(i.source) &&
         (!state.project || keyOf(i) === state.project) &&
         (!needle || `${i.title} ${i.project} ${i.repository || ""} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
 
-    fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
-    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind === "session"), "Keine offenen Sessions.", "bereit");
-    $("tasks-panel").hidden = !toolLabel("taiga", data.sources) && !data.items.some((i) => TASK_KINDS.has(i.kind));
+    fill("running", visible.filter((i) => i.section === "RUNNING"), "empty.running", "count.active");
+    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind === "session"), "empty.sessions", "count.ready");
     // unknown statuses first, then the configured ones in their order; within one, the latest change first
     const tasks = visible.filter((i) => TASK_KINDS.has(i.kind));
     const isHidden = (i) => (i.flags || []).some((f) => f.kind === "hidden");
     const hiddenTasks = tasks.filter(isHidden).length;
     fill("tasks", tasks.filter((i) => state.showHiddenTasks || !isHidden(i))
         .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0)),
-        "Nichts zugewiesen.", "offen");
+        "empty.tasks", "count.open");
     if (hiddenTasks) {
         const shown = tasks.length - (state.showHiddenTasks ? 0 : hiddenTasks);
-        $("tasks-count").innerHTML = `${shown} offen · <button class="link-button" type="button" data-toggle-hidden-tasks>${
-            state.showHiddenTasks ? `${hiddenTasks} ausblenden` : `${hiddenTasks} ausgeblendet`}</button>`;
+        $("tasks-count").innerHTML = `${esc(t("count.open", { n: shown }))} · <button class="link-button" type="button" data-toggle-hidden-tasks>${
+            esc(state.showHiddenTasks ? t("count.showHidden", { n: hiddenTasks }) : t("count.hiddenTasks", { n: hiddenTasks }))}</button>`;
     }
-    $("messages-panel").hidden = !toolLabel("matrix", data.sources) && !data.items.some((i) => i.source === "matrix");
     renderMessages(visible.filter((i) => i.kind === "message"), since);
     // the user's next step first, then what waits for others, drafts last; the longest waiting first in each group
     const prs = visible.filter((i) => i.kind === "pr").sort((a, b) => prRank(a) - prRank(b) || (Date.parse(a.time) || 0) - (Date.parse(b.time) || 0));
-    fill("prs", prs, "Keine offenen Pull Requests.", "offen");
+    fill("prs", prs, "empty.prs", "count.open");
     const forYou = prs.filter((i) => (i.flags || []).some((f) => FOR_YOU.has(f.kind))).length;
-    if (forYou) $("prs-count").innerHTML = `<strong class="flag-count">${forYou} für dich</strong> · ${prs.length} offen`;
+    if (forYou) $("prs-count").innerHTML = `<strong class="flag-count">${esc(t("count.forYou", { n: forYou }))}</strong> · ${esc(t("count.open", { n: prs.length }))}`;
 
     const recent = visible.filter((i) => i.section === "RECENT" && i.kind !== "message" && i.time && Date.parse(i.time) >= since);
     let html = "", day = null;
@@ -449,32 +864,77 @@ function render() {
         if (label !== day) { html += `<div class="day">${esc(label)}</div>`; day = label; }
         html += row(item, "clock");
     }
-    $("recent").innerHTML = html || `<div class="empty">Nichts im gewählten Zeitraum.</div>`;
-    $("recent-count").textContent = `${recent.length} Einträge`;
-    clamp("recent");
+    $("recent").innerHTML = html || `<div class="empty">${esc(t("empty.history"))}</div>`;
+    $("recent-count").textContent = t("count.entries", { n: recent.length });
+}
+
+// ---- the sources: each with its state, and the loads and costs in full ----
+function renderSources() {
+    const all = connections(state.data.sources);
+    $("sources-count").textContent = t("sources.count", { ok: all.filter((c) => c.ok).length, n: all.length });
+    $("source-list").innerHTML = all.map((c) => {
+        const status = c.ok ? (c.warn ? "timed_out" : "success") : "failed";
+        const name = c.url ? `<a class="title" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.label)}</a>` : `<span class="title">${esc(c.label)}</span>`;
+        const condition = c.ok ? t("sources.connected") : c.silent ? t("conn.silent") : t("conn.error");
+        return `<div class="source-row">${logo(c.tool)}<div class="what">${name}${c.message ? `<div class="meta"><span class="detail">${esc(c.message)}</span></div>` : ""}</div>
+            <span class="source-count">${c.count != null ? esc(t("conn.entries", { n: c.count })) : ""}</span>
+            <span class="status status-${status}">${esc(condition)}</span></div>`;
+    }).join("") || `<div class="empty">${esc(t("conn.none"))}</div>`;
+    $("source-loads").innerHTML = [...(state.data.loads || []).map(loadPanel), ...(state.data.costs || []).map(costsTile)].join("");
+}
+
+// ---- the tabs: a view per kind of item, the address keeps it ----
+const VIEWS = ["overview", "prs", "sessions", "tasks", "messages", "history", "sources"];
+const LIST_VIEWS = new Set(["prs", "sessions", "tasks", "messages", "history"]);
+const currentView = () => (VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview");
+
+function showView() {
+    const view = currentView();
+    document.querySelectorAll(".view").forEach((el) => { el.hidden = el.dataset.view !== view; });
+    document.querySelectorAll("[data-tab]").forEach((tab) => {
+        const active = tab.dataset.tab === view;
+        tab.classList.toggle("is-active", active);
+        if (active) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
+    });
+    $("filters").hidden = !LIST_VIEWS.has(view);
+    document.title = `${t(`tab.${view}`)} — Werkregie`;
+}
+
+function badge(id, count, level = "") {
+    const el = $(`badge-${id}`);
+    el.textContent = count ? String(count) : "";
+    el.className = `tab-badge${level ? ` tab-badge-${level}` : ""}`;
+}
+
+function renderTabs({ todo, down }) {
+    const data = state.data;
+    const items = data.items;
+    document.querySelector('[data-tab="tasks"]').hidden = !toolLabel("taiga", data.sources) && !items.some((i) => TASK_KINDS.has(i.kind));
+    document.querySelector('[data-tab="messages"]').hidden = !toolLabel("matrix", data.sources) && !items.some((i) => i.source === "matrix");
+    badge("overview", todo, "bad");
+    badge("prs", items.filter((i) => i.kind === "pr" && (i.flags || []).some((f) => FOR_YOU.has(f.kind))).length, "bad");
+    badge("sessions", items.filter((i) => i.section === "OPEN" && i.kind === "session").length, "accent");
+    badge("tasks", items.filter((i) => TASK_KINDS.has(i.kind) && !(i.flags || []).some((f) => f.kind === "hidden")).length);
+    badge("messages", items.filter((i) => i.kind === "message" && isUnread(i)).length, "bad");
+    badge("history", 0);
+    badge("sources", down, "warn");
+}
+
+function render() {
+    if (!state.data) return;
+    const counts = renderOverview();
+    renderLists();
+    renderSources();
+    renderTabs(counts);
+    showView();
 }
 
 function renderChrome() {
     const data = state.data;
-    $("view-meta").textContent = `Stand ${clock(data.generatedAt, true)}`;
+    $("generated-at").textContent = t("generatedAt", { time: clock(data.generatedAt, true) });
     $("version").textContent = data.version ? `v${data.version}` : "";
-    $("source-line").innerHTML = data.sources.map((s) => {
-        const tag = s.url ? "a" : "span";
-        const href = s.url ? ` href="${esc(s.url)}" target="_blank" rel="noopener"` : "";
-        const level = s.ok ? (s.message ? " repo-chip-warn" : "") : " repo-chip-bad";
-        const dot = s.ok ? (s.message ? "timed_out" : "success") : "failed";
-        const title = s.message || `${s.count} Einträge`;
-        return `<${tag} class="repo-chip${level}"${href} title="${esc(title)}"><span class="status status-${dot}"></span><span>${esc(s.label)}</span><small>${s.ok ? s.count : "Fehler"}</small></${tag}>`;
-    }).join("");
-
-    const problems = data.sources.filter((s) => !s.ok || s.message);
-    const banner = $("source-banner");
-    banner.hidden = problems.length === 0;
-    banner.innerHTML = `<strong>Quellen</strong> ` + problems.map((s) => `${esc(s.label)}: ${esc(s.message)}`).join(" · ");
-
     $("demo-banner").hidden = data.access !== "DEMO";
     describeTokenButton();
-
     const counts = new Map();
     data.items.map(keyOf).filter(Boolean).forEach((key) => counts.set(key, (counts.get(key) || 0) + 1));
     projectCombo.setProjects([...counts].sort(([a], [b]) => a.localeCompare(b)));
@@ -485,10 +945,13 @@ function renderSourceChips() {
         `<button class="chip${state.hidden.has(key) ? "" : " is-active"}" type="button" data-source="${key}" aria-pressed="${!state.hidden.has(key)}">${esc(label)}</button>`).join("");
 }
 
+let live = null;
 function setLive(ok) {
+    live = ok;
     const indicator = $("live-indicator");
-    indicator.className = ok ? "status-success" : "status-error";
-    indicator.textContent = ok ? "live" : "offline";
+    indicator.className = ok ? "status-success" : ok === false ? "status-error" : "status-unknown";
+    indicator.textContent = ok ? t("live") : ok === false ? t("offline") : "…";
+    indicator.title = t("live.title");
 }
 
 async function load() {
@@ -530,12 +993,14 @@ function forgetLast() {
     try { storage?.removeItem(LAST_KEY); } catch (e) {}
 }
 
-function showStale(stale) {
-    $("stale-banner").hidden = !stale;
-    if (!stale) return;
+let stale = false;
+function showStale(isStale) {
+    stale = isStale;
+    $("stale-banner").hidden = !isStale;
+    if (!isStale) return;
     const at = state.data.generatedAt;
-    const age = ago(at) === "jetzt" ? "gerade eben" : `vor ${ago(at)}`;
-    $("stale-text").textContent = `Server nicht erreichbar – letzter Stand von ${clock(at)}, ${age}.`;
+    const age = span(at) === t("now") ? t("stale.justNow") : t("ago", { span: span(at) });
+    $("stale-text").textContent = t("stale.text", { time: clock(at), age });
 }
 
 // ---- the project filter: typing narrows the list to projects containing the text ----
@@ -559,7 +1024,7 @@ const projectCombo = (() => {
             ? matches.map(([name, count], index) =>
                 `<li role="option" id="project-option-${index}" data-index="${index}" class="${index === active ? "is-active" : ""}${name === state.project ? " is-selected" : ""}"` +
                 ` aria-selected="${name === state.project}"><span>${highlight(name, filter)}</span><small>${count}</small></li>`).join("")
-            : `<li class="combo-empty">kein Projekt enthält „${esc(input.value.trim())}“</li>`;
+            : `<li class="combo-empty">${esc(t("filters.noProject", { q: input.value.trim() }))}</li>`;
         list.hidden = false;
         input.setAttribute("aria-expanded", "true");
         markActive();
@@ -575,7 +1040,7 @@ const projectCombo = (() => {
         list.querySelectorAll("[data-index]").forEach((li) => li.classList.toggle("is-active", Number(li.dataset.index) === active));
         const current = list.querySelector(`[data-index="${active}"]`);
         current?.scrollIntoView({ block: "nearest" });
-        current ? input.setAttribute("aria-activedescendant", current.id) : input.removeAttribute("aria-activedescendant");
+        if (current) input.setAttribute("aria-activedescendant", current.id); else input.removeAttribute("aria-activedescendant");
     }
 
     function choose(project) {
@@ -641,7 +1106,7 @@ function describeTokenButton() {
     // local mode needs no token
     button.hidden = state.data?.access === "OPEN";
     button.classList.toggle("has-token", hasToken());
-    button.title = hasToken() ? "Zugriffstoken vergessen" : "Zugriffstoken eingeben";
+    button.title = hasToken() ? t("token.forget") : t("token.enter");
     button.setAttribute("aria-label", button.title);
 }
 
@@ -653,7 +1118,7 @@ function openTokenDialog() {
 
 $("token-button").addEventListener("click", () => {
     if (!hasToken()) return openTokenDialog();
-    if (confirm("Zugriffstoken in diesem Browser vergessen?")) {
+    if (confirm(t("token.confirm"))) {
         storeToken(null);
         forgetLast();
         describeTokenButton();
@@ -668,13 +1133,13 @@ $("token-save").addEventListener("click", async (e) => {
     const token = $("token-input").value.trim();
     const error = $("token-error");
     if (!/^[A-Za-z0-9._-]+$/.test(token)) {
-        error.textContent = "Das Token besteht nur aus Buchstaben und Ziffern.";
+        error.textContent = t("token.badChars");
         error.hidden = false;
         return;
     }
     const response = await fetch("/api/token/verify", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
     if (!response || response.status !== 204) {
-        error.textContent = response ? "Der Server kennt dieses Token nicht." : "Server nicht erreichbar.";
+        error.textContent = response ? t("token.unknown") : t("token.unreachable");
         error.hidden = false;
         return;
     }
@@ -691,7 +1156,7 @@ function currentTheme() {
 }
 function describeTheme() {
     const button = $("theme-button");
-    button.title = currentTheme() === "dark" ? "Hell anzeigen" : "Dunkel anzeigen";
+    button.title = currentTheme() === "dark" ? t("theme.light") : t("theme.dark");
     button.setAttribute("aria-label", button.title);
     // the installed app's title bar takes the header's colour
     $("theme-color").content = getComputedStyle(document.body).backgroundColor;
@@ -703,7 +1168,29 @@ $("theme-button").addEventListener("click", () => {
     describeTheme();
 });
 window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", describeTheme);
-describeTheme();
+
+// ---- German or English: the static texts carry their keys, the rest is rendered with t() ----
+function applyLanguage() {
+    document.documentElement.lang = state.lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.querySelectorAll("[data-i18n-label]").forEach((el) => {
+        el.setAttribute("aria-label", t(el.dataset.i18nLabel));
+        // icon-only buttons and the tabs, when they show their icon alone, name themselves on hover
+        if (el.tagName === "BUTTON" || el.classList.contains("tab")) el.title = t(el.dataset.i18nLabel);
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+    document.querySelectorAll("[data-lang]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.lang === state.lang)));
+    describeTheme();
+    describeTokenButton();
+    setLive(live);
+    if (state.data) { renderChrome(); render(); showStale(stale); } else showView();
+}
+document.querySelectorAll("[data-lang]").forEach((button) => button.addEventListener("click", () => {
+    state.lang = button.dataset.lang;
+    persist();
+    applyLanguage();
+}));
 
 $("reload-button").addEventListener("click", (e) => {
     const button = e.currentTarget;
@@ -716,12 +1203,9 @@ $("source-chips").addEventListener("click", (e) => {
     const chip = e.target.closest("[data-source]");
     if (!chip) return;
     const key = chip.dataset.source;
-    state.hidden.has(key) ? state.hidden.delete(key) : state.hidden.add(key);
+    if (state.hidden.has(key)) state.hidden.delete(key); else state.hidden.add(key);
     persist(); renderSourceChips(); render();
 });
-document.querySelectorAll(".panel-more").forEach((button) =>
-    button.addEventListener("click", () => toggle(button.dataset.panel)));
-window.addEventListener("resize", () => ["running", "sessions", "prs", "tasks", "messages", "recent"].forEach(clamp));
 $("window").value = String(state.windowHours);
 $("window").addEventListener("change", (e) => setWindow(Number(e.target.value)));
 $("messages").addEventListener("click", (e) => {
@@ -738,16 +1222,20 @@ $("search").addEventListener("input", (e) => { state.search = e.target.value; re
 document.addEventListener("click", async (e) => {
     const button = e.target.closest(".copy-button");
     if (!button) return;
+    // a copy button on a card must not follow the card's link
+    e.preventDefault();
     try {
         await navigator.clipboard.writeText(button.dataset.cmd);
         button.classList.add("is-copied");
         setTimeout(() => button.classList.remove("is-copied"), 1500);
     } catch (error) {
-        button.title = "Kopieren fehlgeschlagen";
+        button.title = t("copy.failed");
     }
 });
+window.addEventListener("hashchange", () => { showView(); window.scrollTo(0, 0); });
 
 renderSourceChips();
+applyLanguage();
 load();
 setInterval(() => { if (!document.hidden) load(); }, 5000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });

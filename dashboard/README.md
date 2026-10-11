@@ -7,11 +7,25 @@ and what happened recently — read-only, links back to the tools.
 |---|---|---|
 | Claude Code (Desktop and terminal) | `~/.config/Claude/claude-code-sessions/**.json`, `~/.claude/sessions/<pid>.json` | busy / waiting / closed sessions, resume command |
 | Codex (ChatGPT Desktop, IDE, CLI) | `~/.codex/state_5.sqlite` (read-only), rollout files | threads, running turns, resume command |
-| Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history` | running and finished builds; `@ai-review` builds as werkrevisor |
+| Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history`, `/api/system` | running and finished builds; `@ai-review` builds as werkrevisor; the host's load |
+| werkrevisor's statistics service | `/api/stats` | review costs of 24 hours and 7 days |
 | Gitea, any number of instances | `/api/v1` | open PRs with commit statuses (Werkator, werkrevisor run and verdict), own activity |
 | Matrix, with the user's own account | client-server API through Trixnity (`de.connect2x.trixnity`) | direct messages, mentions in every room, every message of configured rooms |
 
 The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM Plex, petrol accent, light/dark with a toggle).
+It opens on the overview, which answers two questions first: is every source connected, and where must the user act?
+
+- The connection bar shows each tool as its logo with a status dot, and names a source that fails or is silent.
+- *Du bist dran* groups what asks something of the user: Festgefahren, Nacharbeiten, Freigeben, Mergen, Antworten.
+- Beside it: the load of each Werkator host with its CPU of 24 hours, Werkator's builds of 24 hours, werkrevisor's costs.
+- Below it: what runs and which sessions wait, as cards; the history of 24 hours as a lane per tool.
+
+The tabs *Pull Requests*, *Sessions*, *Aufgaben*, *Nachrichten*, *Verlauf* and *Quellen* hold the full lists, with the filters;
+the address keeps the tab, e.g. `#prs`.
+On a phone the tabs are a bar at the bottom.
+The page speaks German or English (DE/EN in the header); the browser keeps the choice.
+Texts that the sources compose, e.g. Gitea activity titles, stay as the server writes them.
+The logos in `static/logos/` are the tools' own; the black ones turn white in the dark mode.
 
 The page installs as an app (PWA): `manifest.webmanifest`, icons and the service worker `sw.js` in `static/`.
 The service worker keeps the page, styles and fonts for a start without network, fetching them anew first whenever it can;
@@ -131,6 +145,7 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
 - **Werkator:** private repositories are redacted for anonymous readers.
   `controlToken` (or `controlTokenEnv`) is sent as the `werkator_token` cookie, the way Werkator's own pages do;
   `tools/remote --env-file .env.<instance> werkator control-token` prints it.
+- **werkrevisor:** `werkrevisors` with `name` and `url` of the statistics service; its costs are read anonymously.
 - **Gitea:** a token with read scopes, as `token`, `tokenEnv` or `teaLogin` (a login of `~/.config/tea/config.yml`, by name or user).
   `pullRequests: mine` lists PRs created by, assigned to or awaiting review from the user, `all` every open PR the user can see.
   Each PR is marked by what it asks of whom; the panel sorts by these markers, in this order:
@@ -156,5 +171,6 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   `hiddenStatuses`, e.g. `[Erledigt, Verworfen]`, are hidden until the panel's count shows them.
   Each status carries its colour from Taiga.
 
-Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time), Gitea every 30 s, Taiga every 60 s;
+Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time, its CPU line every 5 min),
+Gitea every 30 s, Taiga every 60 s, werkrevisor every 2 min;
 cached data is served at once while a due source refreshes in the background.

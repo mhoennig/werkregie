@@ -22,6 +22,12 @@ interface Source {
 
     // something worth knowing about the last successful fetch, e.g. hidden private repositories
     fun note(): String? = null
+
+    // the load of the host behind the source, e.g. a Werkator instance's, as of the last fetch
+    fun load(): HostLoad? = null
+
+    // the costs the source reports, e.g. werkrevisor's, as of the last fetch
+    fun costs(): Costs? = null
 }
 
 /** A source standing for several things, e.g. the relays: it reports one status per relay. */
@@ -72,7 +78,8 @@ class Dashboard(
         }
         val items = sources.flatMap { source -> entries.getValue(source.id).let { synchronized(it) { it.items } } }
             .sortedByDescending { it.time ?: Instant.EPOCH }
-        return Snapshot(version, now, windowHours, items, statuses, access)
+        return Snapshot(version, now, windowHours, items, statuses, access,
+            loads = sources.mapNotNull { it.load() }, costs = sources.mapNotNull { it.costs() })
     }
 
     /** Starts a background refresh when the ttl is over; returns it only if nothing was fetched yet. */

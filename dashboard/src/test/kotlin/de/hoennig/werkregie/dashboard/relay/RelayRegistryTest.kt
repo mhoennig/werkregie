@@ -44,6 +44,8 @@ class RelayRegistryTest : FunSpec({
 
         status.id shouldBe "relay:laptop"
         status.tools shouldBe listOf("claude")
+        status.failingTools shouldBe listOf("codex")
+        status.silent shouldBe false
         status.message shouldBe "Codex: state_5.sqlite nicht gefunden"
     }
 
@@ -51,6 +53,7 @@ class RelayRegistryTest : FunSpec({
         val relays = registry().apply { accept(report(), now) }
 
         relays.statuses(now.plusSeconds(45)).single().message shouldBe "zuletzt vor 45 s"
+        relays.statuses(now.plusSeconds(45)).single().silent shouldBe true
         relays.fetch(now.plusSeconds(45), since).first().section shouldBe Section.RUNNING
         relays.fetch(now.plusSeconds(180), since).first().let { it.section to it.state } shouldBe (Section.RECENT to "closed")
     }

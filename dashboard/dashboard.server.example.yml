@@ -18,6 +18,11 @@ werkators:
     url: https://werkator.example.org
     controlTokenEnv: WERKREGIE_WERKATOR_JAVAGIL   # private repositories; or controlToken: <token>
 
+# werkrevisor's statistics service: the overview shows its review costs
+werkrevisors:
+  - name: javagil
+    url: https://werkrevisor.example.org
+
 giteas:
   - name: javagil
     url: https://git.example.org

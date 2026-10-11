@@ -2,6 +2,7 @@ package de.hoennig.werkregie.dashboard.sources
 
 import com.fasterxml.jackson.databind.JsonNode
 import de.hoennig.werkregie.dashboard.Badge
+import de.hoennig.werkregie.dashboard.HostLoad
 import de.hoennig.werkregie.dashboard.Item
 import de.hoennig.werkregie.dashboard.JsonHttp
 import de.hoennig.werkregie.dashboard.Section
@@ -36,7 +37,20 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
     override fun note() = hiddenRepos.takeIf { it > 0 }
         ?.let { (if (it == 1) "1 privates Repo" else "$it private Repos") + " verborgen – controlToken konfigurieren" }
 
+    @Volatile
+    private var load: HostLoad? = null
+
+    @Volatile
+    private var cpuHistory: List<Double?> = emptyList()
+
+    @Volatile
+    private var historyAt: Instant? = null
+
+    override fun load() = load
+
     override fun fetch(now: Instant, since: Instant): List<Item> {
+        // an older Werkator without the system API still shows its builds
+        load = runCatching { readLoad(now) }.getOrNull()
         val all = http.get("$url/api/repos", headers).toList()
         // a private repository shows to a visitor without name and url
         val repos = all.mapNotNull { repo -> repo.text("name")?.takeIf { repo.text("url") != null } }
@@ -51,6 +65,51 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
                 }
             }.flatMap { it.get() }
         }
+    }
+
+    private fun readLoad(now: Instant): HostLoad {
+        val system = http.get("$url/api/system", headers)
+        // the history is long; its line changes slowly, so it is read less often than the snapshot
+        if (historyAt?.isAfter(now.minus(HISTORY_TTL)) != true) {
+            cpuHistory = runCatching { cpuHistory(http.get("$url/api/system/history?range=24h", headers), system) }
+                .getOrDefault(cpuHistory)
+            historyAt = now
+        }
+        return load(system, cpuHistory)
+    }
+
+    internal fun load(system: JsonNode, cpuHistory: List<Double?>): HostLoad {
+        val disk = system["disks"]?.firstOrNull()
+        return HostLoad(
+            source = id,
+            label = label,
+            url = url,
+            level = system["health"]?.text("level") ?: "unknown",
+            reasons = system["health"]?.get("reasons")?.mapNotNull { it.asText(null) }.orEmpty(),
+            cpu = share(system["cpuUsed"]?.get("current"), system["cpuCount"]),
+            ram = share(system["ramUsedGib"]?.get("current"), system["ramTotalGib"]),
+            disk = share(disk?.get("usedGib")?.get("current"), disk?.get("totalGib")),
+            diskLabel = disk?.text("label"),
+            cpuHistory = cpuHistory,
+            at = system.text("timestamp")?.let(Instant::parse),
+        )
+    }
+
+    /** The CPU share of the 24 hours in [HISTORY_STEPS] equal steps, each the mean of its samples; a step without any is null. */
+    internal fun cpuHistory(history: JsonNode, system: JsonNode): List<Double?> {
+        val cpus = system["cpuCount"]?.takeIf { it.isNumber }?.asDouble()?.takeIf { it > 0 } ?: return emptyList()
+        val values = history["values"]?.get("cpuUsed")?.map { if (it.isNumber) it.asDouble() / cpus else null }.orEmpty()
+        if (values.isEmpty()) return emptyList()
+        val size = values.size.toDouble() / HISTORY_STEPS
+        return (0 until HISTORY_STEPS).map { step ->
+            values.subList((step * size).toInt(), ((step + 1) * size).toInt().coerceAtMost(values.size))
+                .filterNotNull().takeIf { it.isNotEmpty() }?.average()?.coerceIn(0.0, 1.0)
+        }
+    }
+
+    private fun share(used: JsonNode?, total: JsonNode?): Double? {
+        val all = total?.takeIf { it.isNumber }?.asDouble()?.takeIf { it > 0 } ?: return null
+        return used?.takeIf { it.isNumber }?.asDouble()?.let { (it / all).coerceIn(0.0, 1.0) }
     }
 
     private fun builds(repo: String, now: Instant, since: Instant): List<Item> {
@@ -103,5 +162,7 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         private val STALE_AFTER = Duration.ofHours(12)
         private const val PARALLEL_REQUESTS = 3
         private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(30)
+        private val HISTORY_TTL: Duration = Duration.ofMinutes(5)
+        private const val HISTORY_STEPS = 48
     }
 }

@@ -13,6 +13,7 @@ import de.hoennig.werkregie.dashboard.sources.GiteaSource
 import de.hoennig.werkregie.dashboard.sources.MatrixSource
 import de.hoennig.werkregie.dashboard.sources.TaigaSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
+import de.hoennig.werkregie.dashboard.sources.WerkrevisorSource
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -168,6 +169,7 @@ private fun matrixLogin(config: DashboardConfig): String {
 
 private fun remoteSources(config: DashboardConfig, http: JsonHttp, mapper: ObjectMapper): List<Source> = buildList {
     config.werkators.forEach { add(WerkatorSource(it, http)) }
+    config.werkrevisors.forEach { add(WerkrevisorSource(it, http)) }
     config.giteas.forEach { add(GiteaSource(it, http, mapper)) }
     config.taskboards.forEach {
         when (it.type) {

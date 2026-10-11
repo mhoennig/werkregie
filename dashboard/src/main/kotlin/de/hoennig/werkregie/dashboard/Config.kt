@@ -15,6 +15,7 @@ data class DashboardConfig(
     val claude: ClaudeConfig = ClaudeConfig(),
     val codex: CodexConfig = CodexConfig(),
     val werkators: List<WerkatorConfig> = emptyList(),
+    val werkrevisors: List<WerkrevisorConfig> = emptyList(),
     val giteas: List<GiteaConfig> = emptyList(),
     val matrix: MatrixConfig? = null,
     val taskboards: List<TaskboardConfig> = emptyList(),
@@ -72,6 +73,13 @@ data class WerkatorConfig(
     // private repositories are redacted without it; `werkator control-token` prints it
     val controlToken: String? = null,
     val controlTokenEnv: String? = null,
+)
+
+/** werkrevisor's statistics service, whose review costs the overview shows. */
+data class WerkrevisorConfig(
+    val name: String,
+    // the address of the statistics page, e.g. https://werkrevisor.example.org
+    val url: String,
 )
 
 data class GiteaConfig(

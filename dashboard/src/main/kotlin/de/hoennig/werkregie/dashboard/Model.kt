@@ -55,10 +55,45 @@ data class SourceStatus(
     val fetchedAt: Instant?,
     // the tools a relay reports, e.g. ["claude", "codex"]; empty for a source that is one tool
     val tools: List<String> = emptyList(),
+    // the tools a relay reads but fails to, e.g. ["codex"]
+    val failingTools: List<String> = emptyList(),
+    // a relay that has not reported for a while; its tools may no longer be current
+    val silent: Boolean = false,
 )
 
 /** Who sees what: `open` in local mode, `granted` with the access token, `demo` without it. */
 enum class Access { OPEN, GRANTED, DEMO }
+
+/**
+ * The load of a build host, e.g. a Werkator instance: its own verdict, and the share in use of CPU, RAM and its first disk.
+ * The shares run from 0 to 1; [cpuHistory] holds the CPU share of the last 24 hours in equal steps, oldest first.
+ */
+data class HostLoad(
+    val source: String,
+    val label: String,
+    val url: String?,
+    // healthy, pressure or overloaded, as Werkator judges it
+    val level: String,
+    val reasons: List<String>,
+    val cpu: Double?,
+    val ram: Double?,
+    val disk: Double?,
+    val diskLabel: String?,
+    val cpuHistory: List<Double?> = emptyList(),
+    val at: Instant?,
+)
+
+/** What the reviews cost in US dollars, e.g. werkrevisor's; [perDay] holds the last 7 days, oldest first. */
+data class Costs(
+    val source: String,
+    val label: String,
+    val url: String?,
+    val day: Double?,
+    val week: Double?,
+    val reviews: Int?,
+    val pullRequests: Int?,
+    val perDay: List<Double> = emptyList(),
+)
 
 data class Snapshot(
     val version: String,
@@ -67,6 +102,8 @@ data class Snapshot(
     val items: List<Item>,
     val sources: List<SourceStatus>,
     val access: Access = Access.OPEN,
+    val loads: List<HostLoad> = emptyList(),
+    val costs: List<Costs> = emptyList(),
 )
 
 /** What a relay sends to the server: the full current state of its local sources, every few seconds. */

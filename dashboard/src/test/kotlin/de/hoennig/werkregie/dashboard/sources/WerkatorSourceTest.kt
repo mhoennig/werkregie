@@ -38,4 +38,44 @@ class WerkatorSourceTest : FunSpec({
     test("builds before the window are left out") {
         source.item("r", "r", build("b", "success", now.minus(Duration.ofDays(8))), now, since) shouldBe null
     }
+
+    test("the load: Werkator's verdict and the shares of CPU, RAM and the first disk") {
+        val system = mapper.readTree(
+            """{"timestamp":"2026-10-11T15:42:26Z","cpuCount":4,"ramTotalGib":8.0,
+               "cpuUsed":{"current":3.0},"ramUsedGib":{"current":6.0},
+               "disks":[{"key":"ssd","label":"SSD","totalGib":16.0,"usedGib":{"current":12.0}},{"key":"hdd","label":"HDD","totalGib":20.0}],
+               "health":{"level":"pressure","reasons":["swap 2.54 of 4.00 GiB in use"]}}""",
+        )
+
+        val load = source.load(system, listOf(0.5))
+
+        load.level shouldBe "pressure"
+        load.reasons shouldBe listOf("swap 2.54 of 4.00 GiB in use")
+        load.cpu shouldBe 0.75
+        load.ram shouldBe 0.75
+        load.disk shouldBe 0.75
+        load.diskLabel shouldBe "SSD"
+        load.at shouldBe Instant.parse("2026-10-11T15:42:26Z")
+    }
+
+    test("a load without numbers says nothing rather than zero") {
+        val load = source.load(mapper.readTree("""{"cpuCount":0,"disks":[]}"""), emptyList())
+
+        load.level shouldBe "unknown"
+        load.cpu shouldBe null
+        load.ram shouldBe null
+        load.disk shouldBe null
+    }
+
+    test("the CPU history: 48 means of equal steps, as a share of the CPUs; a step without samples is null") {
+        val samples = (0 until 96).map { if (it in 2..3) "null" else (it % 2 * 2).toString() }
+        val history = mapper.readTree("""{"values":{"cpuUsed":[${samples.joinToString(",")}]}}""")
+
+        val shares = source.cpuHistory(history, mapper.readTree("""{"cpuCount":2}"""))
+
+        shares.size shouldBe 48
+        shares[0] shouldBe 0.5
+        shares[1] shouldBe null
+        shares[47] shouldBe 0.5
+    }
 })
