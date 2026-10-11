@@ -146,6 +146,8 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
 - **Taiga:** `taskboards` with `type: taiga` list the open user stories, tasks and issues assigned to the user
   in the configured `projects`, in the panel *Aufgaben*.
   There is no default instance or project.
+  The API address comes from the field `api` of `<url>/conf.json`, as for Taiga's own web app, else `<url>/api/v1`;
+  `apiUrl` overrides it.
   Werkregie logs in with the user and the password of the variable `passwordEnv` and logs in again when the token expires;
   on a server the variable stands in `dashboard.env`, in the local mode it has to be in the environment.
   `statuses` names the most important statuses first; other open statuses follow them, within one the latest change first.

@@ -17,17 +17,23 @@ import java.time.Instant
 class TaigaSourceTest : FunSpec({
     val mapper = ObjectMapper()
 
-    /** A Taiga that knows the user 7 with the password "secret" and answers with whatever [answers] hold. */
-    class FakeTaiga {
+    /**
+     * A Taiga that knows the user 7 with the password "secret" and answers with whatever [answers] hold;
+     * its API lies below [base], and [conf] is its `conf.json`, none by default.
+     */
+    class FakeTaiga(val base: String = "/api/v1") {
         val requests = mutableListOf<String>()
         val logins = mutableListOf<String>()
         var token = "t1"
+        var conf: String? = null
         val answers = mutableMapOf<String, String>()
         val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
             createContext("/") { exchange ->
                 val path = exchange.requestURI.toString()
                 val (status, body) = when {
-                    path == "/api/v1/auth" -> {
+                    path == "/conf.json" -> conf?.let { 200 to it } ?: (404 to "")
+                    !path.startsWith(base) -> 404 to ""
+                    path == "$base/auth" -> {
                         val login = exchange.requestBody.readAllBytes().decodeToString()
                         logins += login
                         if ("\"password\":\"secret\"" in login) 200 to """{"id":7,"auth_token":"$token","refresh":"r"}"""
@@ -122,6 +128,43 @@ class TaigaSourceTest : FunSpec({
             }
             error.message shouldContain "anna"
             error.message shouldNotContain "wrong"
+        } finally {
+            taiga.server.stop(0)
+        }
+    }
+
+    test("the API lies where Taiga's conf.json says, e.g. on a host of its own") {
+        val taiga = FakeTaiga(base = "/backend/api/v1")
+        taiga.conf = """{"api":"${taiga.url}/backend/api/v1/"}"""
+        taiga.answers["/backend/api/v1/projects/by_slug?slug=shop"] = """{"id":42}"""
+        try {
+            TaigaSource(config(taiga.url), JsonHttp(mapper), env::get).fetch(now, now)
+            taiga.logins.size shouldBe 1
+            taiga.requests.first() shouldBe "/backend/api/v1/projects/by_slug?slug=shop"
+        } finally {
+            taiga.server.stop(0)
+        }
+    }
+
+    test("a configured apiUrl wins over conf.json") {
+        val taiga = FakeTaiga(base = "/backend/api/v1")
+        taiga.conf = """{"api":"${taiga.url}/elsewhere/api/v1/"}"""
+        taiga.answers["/backend/api/v1/projects/by_slug?slug=shop"] = """{"id":42}"""
+        try {
+            TaigaSource(config(taiga.url).copy(apiUrl = "${taiga.url}/backend/api/v1"), JsonHttp(mapper), env::get).fetch(now, now)
+            taiga.requests.first() shouldBe "/backend/api/v1/projects/by_slug?slug=shop"
+        } finally {
+            taiga.server.stop(0)
+        }
+    }
+
+    test("a conf.json that is a web page leaves the API below the pages") {
+        val taiga = FakeTaiga()
+        taiga.conf = "<!DOCTYPE html><html></html>"
+        taiga.answers["/api/v1/projects/by_slug?slug=shop"] = """{"id":42}"""
+        try {
+            TaigaSource(config(taiga.url), JsonHttp(mapper), env::get).fetch(now, now)
+            taiga.requests.first() shouldBe "/api/v1/projects/by_slug?slug=shop"
         } finally {
             taiga.server.stop(0)
         }

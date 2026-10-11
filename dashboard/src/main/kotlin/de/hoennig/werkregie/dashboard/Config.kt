@@ -96,8 +96,10 @@ data class GiteaConfig(
 data class TaskboardConfig(
     val name: String,
     val type: String,
-    // the address of the board's web pages, e.g. https://taiga.example.org; its API lies below /api/v1
+    // the address of the board's web pages, e.g. https://taiga.example.org
     val url: String,
+    // Taiga's API, e.g. https://taiga-api.example.org/api/v1; by default the field api of <url>/conf.json, else <url>/api/v1
+    val apiUrl: String? = null,
     val username: String? = null,
     val usernameEnv: String? = null,
     val passwordEnv: String? = null,

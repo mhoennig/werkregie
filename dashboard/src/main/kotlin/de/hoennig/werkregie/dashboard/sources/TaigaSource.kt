@@ -1,5 +1,6 @@
 package de.hoennig.werkregie.dashboard.sources
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import de.hoennig.werkregie.dashboard.HttpStatusException
 import de.hoennig.werkregie.dashboard.Item
@@ -23,7 +24,7 @@ class TaigaSource(
     override val url = config.url.trimEnd('/')
     override val ttl: Duration = Duration.ofSeconds(60)
 
-    private val api = "$url/api/v1"
+    private var api: String? = config.apiUrl?.trimEnd('/')
     private var session: Session? = null
 
     private data class Session(val token: String, val userId: Long)
@@ -38,21 +39,37 @@ class TaigaSource(
     @Synchronized
     override fun fetch(now: Instant, since: Instant): List<Item> {
         if (config.projects.isEmpty()) throw IllegalStateException("keine Projekte konfiguriert (projects)")
-        return try {
-            read(session ?: login())
-        } catch (e: HttpStatusException) {
-            // an expired token: log in once more
-            if (e.status != 401 || session == null) throw e
-            session = null
-            read(login())
-        }
-    }
-
-    private fun login(): Session {
         val user = config.username ?: config.usernameEnv?.let(env)
             ?: throw IllegalStateException("kein Benutzer konfiguriert (username oder usernameEnv)")
         val password = config.passwordEnv?.let(env)
             ?: throw IllegalStateException("kein Passwort konfiguriert (passwordEnv)")
+        val api = api ?: discoverApi().also { api = it }
+        return try {
+            read(api, session ?: login(api, user, password))
+        } catch (e: HttpStatusException) {
+            // an expired token: log in once more
+            if (e.status != 401 || session == null) throw e
+            session = null
+            read(api, login(api, user, password))
+        }
+    }
+
+    /**
+     * Where Taiga's own web app finds the API: the field `api` of its `conf.json`, possibly on a host of its own;
+     * a Taiga without that file serves its API below its pages.
+     * A network error is not cached, so the next fetch asks again.
+     */
+    private fun discoverApi(): String =
+        try {
+            http.get("$url/conf.json").text("api")?.trimEnd('/') ?: "$url/api/v1"
+        } catch (e: HttpStatusException) {
+            "$url/api/v1"
+        } catch (e: JsonProcessingException) {
+            // a web server that answers every path with the web app's page
+            "$url/api/v1"
+        }
+
+    private fun login(api: String, user: String, password: String): Session {
         val answer = runCatching { http.post("$api/auth", mapOf("type" to "normal", "username" to user, "password" to password)) }
             .getOrElse { throw IllegalStateException("Anmeldung als $user fehlgeschlagen: ${it.message}") }
         return Session(
@@ -61,7 +78,7 @@ class TaigaSource(
         ).also { session = it }
     }
 
-    private fun read(session: Session): List<Item> {
+    private fun read(api: String, session: Session): List<Item> {
         val headers = mapOf("Authorization" to "Bearer ${session.token}", "x-disable-pagination" to "True")
         return config.projects.flatMap { slug ->
             val project = http.get("$api/projects/by_slug?slug=${URLEncoder.encode(slug, Charsets.UTF_8)}", headers)

@@ -39,7 +39,8 @@ giteas:
 # taskboards:
 #   - name: team
 #     type: taiga
-#     url: https://taiga.example.org        # the web pages; the API lies below /api/v1
+#     url: https://taiga.example.org        # the web pages; the API is found in their conf.json
+#     # apiUrl: https://taiga-api.example.org/api/v1   # only where conf.json does not tell it
 #     usernameEnv: WERKREGIE_TAIGA_USER     # or username: <name>
 #     passwordEnv: WERKREGIE_TAIGA_PASSWORD # never the password itself
 #     projects: [shop, docs]                # project slugs, as in the address of a project

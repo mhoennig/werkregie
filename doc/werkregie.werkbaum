@@ -31,6 +31,7 @@
       - [^] #dash.taiga: Taiga, any number of instances and projects
         - [^] Open stories, tasks and issues assigned to the user (S)
           " Werkregie PR#21: panel Aufgaben; login by user and password from the environment.
+          " Werkregie PR#23: the API address from Taiga's conf.json, as on a host of its own.
         - [^] Configured statuses first, in their order (XS)
         - [ ] A story links to its pull requests and its Werkbaum node (S)
         - [?] Other task boards than Taiga
