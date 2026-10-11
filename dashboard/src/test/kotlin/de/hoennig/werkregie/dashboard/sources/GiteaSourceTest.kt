@@ -39,8 +39,11 @@ class GiteaSourceTest : FunSpec({
         """{"context":"$context","status":"$state","description":"$description","updated_at":"${now.minusSeconds(minutesAgo * 60)}"}""",
     )
     val gateDone = status("ai-review/gate", "success", "build succeeded")
-    fun foreign(vararg statuses: JsonNode, approvers: List<String> = emptyList()) =
-        GiteaSource.PullRequest(own = false, draft = false, conflict = false, statuses = statuses.toList(), approvers = approvers)
+    fun foreign(vararg statuses: JsonNode, approvers: List<String> = emptyList(), conflict: Boolean = false, automerge: Boolean = false) =
+        GiteaSource.PullRequest(
+            own = false, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers,
+            author = "claude-code", automerge = automerge,
+        )
     fun own(vararg statuses: JsonNode, conflict: Boolean = false, approvers: List<String> = emptyList(), requested: List<String> = emptyList()) =
         GiteaSource.PullRequest(own = true, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers, requested = requested)
     fun flags(pr: GiteaSource.PullRequest) = source.flags(pr, "mi", now)
@@ -102,6 +105,39 @@ class GiteaSourceTest : FunSpec({
             Flag("rework", "Build rot: werkator"),
             Flag("review", "niemand angefragt"),
         )
+    }
+
+    val green = status("ai-review/assessment", "success", "AI review passed")
+    val built = status("werkator", "success", "build succeeded")
+
+    test("an agent's pull request that passed build and review waits for the user's merge") {
+        flags(foreign(built, gateDone, green, approvers = listOf("ai-reviewer"))) shouldBe
+            listOf(Flag("merge", "approved von ai-reviewer"))
+    }
+
+    test("an agent's pull request the user approved and that passed everything is the user's to merge") {
+        flags(foreign(built, gateDone, status("ai-review/assessment", "pending", "human review required"), approvers = listOf("mi"))) shouldBe
+            listOf(Flag("approved"))
+        flags(foreign(built, gateDone, green, approvers = listOf("mi"))) shouldBe listOf(Flag("merge", "approved von mi"))
+    }
+
+    test("no merge for the user while Gitea merges it, a check runs or fails, or a conflict blocks it") {
+        flags(foreign(built, gateDone, green, approvers = listOf("ai-reviewer"), automerge = true)) shouldBe emptyList()
+        flags(foreign(status("werkator", "pending", "build running"), gateDone, green, approvers = listOf("ai-reviewer"))) shouldBe emptyList()
+        flags(foreign(status("werkator", "failure", "build failed"), gateDone, green, approvers = listOf("ai-reviewer"))) shouldBe emptyList()
+        flags(foreign(built, gateDone, green, approvers = listOf("ai-reviewer"), conflict = true)) shouldBe emptyList()
+    }
+
+    test("the author's own approval does not make a pull request mergeable") {
+        flags(foreign(built, gateDone, green, approvers = listOf("claude-code"))) shouldBe emptyList()
+    }
+
+    fun event(type: String) = mapper.readTree("""{"type":"$type"}""")
+
+    test("the last scheduled or cancelled merge in the timeline decides") {
+        source.automergeScheduled(listOf(event("review"), event("pull_scheduled_merge"), event("comment"))) shouldBe true
+        source.automergeScheduled(listOf(event("pull_scheduled_merge"), event("pull_cancel_scheduled_merge"))) shouldBe false
+        source.automergeScheduled(listOf(event("review"))) shouldBe false
     }
 
     test("a foreign conflict is the agent's, a draft asks nothing") {

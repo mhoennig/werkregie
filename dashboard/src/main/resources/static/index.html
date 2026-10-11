@@ -139,12 +139,14 @@ const STATUS = {
 };
 // pull request markers, most urgent first: symbol and name
 const FLAGS = {
-    stuck: ["⚠", "Festgefahren"], rework: ["🔧", "Nacharbeit"], approve: ["✋", "Dein Approval"],
-    merge: ["➜", "Mergen"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
+    stuck: ["⚠", "Festgefahren"], approve: ["✋", "Dein Approval"], merge: ["➜", "Mergen"],
+    rework: ["🔧", "Nacharbeit"], review: ["⏳", "Wartet auf Review"], approved: ["✓", "Von dir approved"],
 };
 // why a Matrix message shows
 const MESSAGE_FLAGS = { unread: ["●", "Neu"], direct: ["✉", "Direkt"], mention: ["@", "Erwähnung"], room: ["#", "Raum"] };
 const FLAG_ORDER = Object.keys(FLAGS);
+// among the approvals the graver verdict first, the pull request without werkrevisor last
+const APPROVE_ORDER = ["werkrevisor ORANGE", "werkrevisor YELLOW"];
 // the ones that ask something of the user, not of others
 const FOR_YOU = new Set(["stuck", "rework", "approve", "merge"]);
 const TAG = {
@@ -259,6 +261,16 @@ function row(item, timeMode) {
 function conversationOf(item) {
     if (!item.url || !(item.flags || []).some((f) => f.kind === "direct" || f.kind === "room")) return null;
     return item.url.slice(0, item.url.lastIndexOf("/"));
+}
+
+function flagRank(flag) {
+    const severity = flag.kind === "approve" ? APPROVE_ORDER.indexOf(flag.reason) : 0;
+    return FLAG_ORDER.indexOf(flag.kind) * 3 + (severity < 0 ? APPROVE_ORDER.length : severity);
+}
+
+function prRank(item) {
+    if (item.flags?.length) return Math.min(...item.flags.map(flagRank));
+    return (FLAG_ORDER.length + (item.state === "draft" ? 1 : 0)) * 3;
 }
 
 function renderMessages(messages, since) {
@@ -390,11 +402,9 @@ function render() {
     fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr" && i.kind !== "message"), "Keine offenen Sessions.", "bereit");
     $("messages-panel").hidden = !toolLabel("matrix", data.sources) && !data.items.some((i) => i.source === "matrix");
     renderMessages(visible.filter((i) => i.kind === "message"), since);
-    // the most urgent marker first, then the unmarked ones as Gitea orders them, drafts last
-    const prs = visible.filter((i) => i.kind === "pr");
-    const rank = (i) => i.flags?.length ? FLAG_ORDER.indexOf(i.flags[0].kind) : i.state === "draft" ? FLAG_ORDER.length + 1 : FLAG_ORDER.length;
-    fill("prs", prs.map((item, index) => ({ item, index })).sort((a, b) => rank(a.item) - rank(b.item) || a.index - b.index).map((x) => x.item),
-        "Keine offenen Pull Requests.", "offen");
+    // the user's next step first, then what waits for others, drafts last; the longest waiting first in each group
+    const prs = visible.filter((i) => i.kind === "pr").sort((a, b) => prRank(a) - prRank(b) || (Date.parse(a.time) || 0) - (Date.parse(b.time) || 0));
+    fill("prs", prs, "Keine offenen Pull Requests.", "offen");
     const forYou = prs.filter((i) => (i.flags || []).some((f) => FOR_YOU.has(f.kind))).length;
     if (forYou) $("prs-count").innerHTML = `<strong class="flag-count">${forYou} für dich</strong> · ${prs.length} offen`;
 

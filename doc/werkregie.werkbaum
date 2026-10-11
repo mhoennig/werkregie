@@ -20,8 +20,12 @@
           " The token comes from a tea login, by name or user.
         - [^] Commit statuses: Werkator, werkrevisor run and verdict (S)
         - [^] #dash.flags: Markers by what a pull request asks of whom (S)
-          " Festgefahren, Nacharbeit, Dein Approval, Mergen, Wartet auf Review, Von dir approved;
+          " Festgefahren, Dein Approval, Mergen, Nacharbeit, Wartet auf Review, Von dir approved;
           " drafts carry none, are dimmed and sorted last.
+        - [^] #dash.merge: Mergen also for an agent's pull request that passed everything (XS)
+          " Werkregie PR#17; not while Gitea's automerge is scheduled.
+        - [^] #dash.order: Pull requests sorted by the user's next step, the longest waiting first (XS)
+          " Werkregie PR#17; ORANGE before YELLOW.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
       - [ ] #dash.taiga: Taiga
@@ -96,12 +100,13 @@
 
 #dash.flags
   Most urgent first: Festgefahren (werkrevisor escalated, RED for an hour
-  without a new commit, ERROR, or a run without verdict), Nacharbeit (conflict
-  or red build on the user's own pull request), Dein Approval (a foreign pull
-  request without werkrevisor or with a final YELLOW or ORANGE), Mergen (the
-  user's own pull request approved by another human), Wartet auf Review (the
-  user's own pull request waits for another human), Von dir approved.
-  Only the chips are coloured, not the row.
+  without a new commit, ERROR, or a run without verdict), Dein Approval (a
+  foreign pull request with a final ORANGE or YELLOW, or without werkrevisor),
+  Mergen (the user's own pull request approved by another human, or a foreign
+  one approved by anyone but its author, all checks green, no automerge),
+  Nacharbeit (conflict or red build on the user's own pull request), Wartet auf
+  Review (the user's own pull request waits for another human), Von dir
+  approved. Only the chips are coloured, not the row.
 
 #dash.pwa
   User request of 2026-10-10: the Werkregie frontend becomes a progressive

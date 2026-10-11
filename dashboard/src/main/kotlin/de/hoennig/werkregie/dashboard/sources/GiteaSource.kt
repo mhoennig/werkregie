@@ -77,13 +77,20 @@ class GiteaSource(
         val conflict = pull?.get("mergeable")?.asBoolean()?.not() == true
         val reviews = if (draft || sha == null) emptyList() else
             runCatching { http.get("$api/repos/$repo/pulls/$number/reviews", headers).toList() }.getOrDefault(emptyList())
+        val approvers = reviews.filter { it.isApprovalOf(sha) }.mapNotNull { it["user"]?.text("login") }
+        // the timeline costs a request per pull request; only one that could be merged needs it
+        val automerge = approvers.isNotEmpty() && combined == "success" && !conflict &&
+            runCatching { automergeScheduled(http.get("$api/repos/$repo/issues/$number/timeline?limit=100", headers).toList()) }
+                .getOrDefault(false)
         val pullRequest = PullRequest(
             own = author == login,
             draft = draft,
             conflict = conflict,
             statuses = statuses,
-            approvers = reviews.filter { it.isApprovalOf(sha) }.mapNotNull { it["user"]?.text("login") },
+            approvers = approvers,
             requested = pull?.get("requested_reviewers")?.mapNotNull { it.text("login") }.orEmpty(),
+            author = author,
+            automerge = automerge,
         )
         return Item(
             source = "gitea",
@@ -105,7 +112,10 @@ class GiteaSource(
         )
     }
 
-    /** What [flags] needs to know of a pull request; [approvers] approved its head commit. */
+    /**
+     * What [flags] needs to know of a pull request; [approvers] approved its head commit,
+     * and [automerge] tells that Gitea merges it once its checks pass.
+     */
     internal data class PullRequest(
         val own: Boolean,
         val draft: Boolean,
@@ -113,7 +123,13 @@ class GiteaSource(
         val statuses: List<JsonNode>,
         val approvers: List<String> = emptyList(),
         val requested: List<String> = emptyList(),
+        val author: String? = null,
+        val automerge: Boolean = false,
     )
+
+    /** The last word on a scheduled merge in the timeline of a pull request, oldest event first. */
+    internal fun automergeScheduled(timeline: List<JsonNode>): Boolean =
+        timeline.lastOrNull { it.text("type") in AUTOMERGE_EVENTS }?.text("type") == "pull_scheduled_merge"
 
     /** What the pull request asks of whom, most urgent first; nothing for a draft. */
     internal fun flags(pr: PullRequest, login: String, now: Instant): List<Flag> {
@@ -130,18 +146,23 @@ class GiteaSource(
         val failedBuilds = pr.statuses
             .filter { it.text("context")?.startsWith(REVIEW_PREFIX) == false && it.text("status") in setOf("failure", "error") }
             .mapNotNull { it.text("context") }
+        // an agent's pull request that passed everything waits for the user alone, unless Gitea merges it
+        val approvedBy = pr.approvers.filter { it != pr.author }
+        val mergeable = !pr.own && approvedBy.isNotEmpty() && !pr.conflict && !pr.automerge &&
+            pr.statuses.isNotEmpty() && pr.statuses.all { it.text("status") == "success" }
         return buildList {
             if (reviewed && !running) stuckReason(verdict, assessment, now)?.let { add(Flag("stuck", it)) }
             if (pr.own && pr.conflict) add(Flag("rework", "Konflikt"))
             if (pr.own && failedBuilds.isNotEmpty()) add(Flag("rework", "Build rot: ${failedBuilds.joinToString(", ")}"))
             if (!pr.own && login !in pr.approvers && humanNeeded) add(Flag("approve", werkrevisor))
+            if (mergeable && isEmpty()) add(Flag("merge", "approved von ${approvedBy.joinToString(", ")}"))
             val others = humans.filter { it != login }
             if (pr.own && others.isNotEmpty()) add(Flag("merge", "approved von ${others.joinToString(", ")}"))
             if (pr.own && others.isEmpty() && humanNeeded) {
                 val asked = pr.requested.filter { it != login }
                 add(Flag("review", if (asked.isEmpty()) "niemand angefragt" else "angefragt: ${asked.joinToString(", ")}"))
             }
-            if (!pr.own && login in pr.approvers) add(Flag("approved"))
+            if (!pr.own && login in pr.approvers && none { it.kind == "merge" }) add(Flag("approved"))
         }
     }
 
@@ -305,6 +326,7 @@ class GiteaSource(
         private val REVIEW_ASPECTS = mapOf("gate" to "Lauf", "assessment" to "Urteil")
         private val VERDICT = Regex("\\b(GREEN|YELLOW|ORANGE|RED|ERROR)\\b")
         private val DRAFT_PREFIX = Regex("^\\s*(WIP|\\[WIP]|Draft)\\b", RegexOption.IGNORE_CASE)
+        private val AUTOMERGE_EVENTS = setOf("pull_scheduled_merge", "pull_cancel_scheduled_merge")
         private val MINE = listOf("&created=true", "&assigned=true", "&review_requested=true")
         private val OPERATIONS = mapOf(
             "create_pull_request" to "eröffnet",

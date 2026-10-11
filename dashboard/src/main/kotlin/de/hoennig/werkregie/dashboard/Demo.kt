@@ -23,7 +23,7 @@ object Demo {
             pullRequest("#88 Merkliste ohne Netz", "success", ago(35), "acme/mobile-app", listOf(
                 Badge("werkator", "success", title = "build succeeded after 04:12"),
                 Badge("werkrevisor Urteil GREEN", "green", title = "AI review passed"),
-            )),
+            ), flags = listOf(Flag("merge", "approved von ai-reviewer"))),
             pullRequest("#41 Suche im Handbuch", "failure", ago(140), "acme/docs-site", listOf(
                 Badge("werkator", "failure", title = "build failed after 00:52"),
                 Badge("werkrevisor Urteil ORANGE", "orange", title = "AI findings; a developer approval after checking them unlocks the merge"),
