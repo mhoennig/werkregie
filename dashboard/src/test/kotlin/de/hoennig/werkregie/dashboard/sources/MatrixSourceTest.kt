@@ -57,7 +57,8 @@ class MatrixSourceTest : FunSpec({
             val source = MatrixSource(MatrixConfig(homeserver = "example.org"), other, mapper())
             source.fetch(Instant.now(), Instant.EPOCH).map { it.title } shouldBe listOf("Hallo")
             source.syncing shouldBe false
-            source.note() shouldContain "liest mit"
+            // reading along is the normal case on a machine with a relay: no note, which the page would show as a warning
+            source.note() shouldBe null
         } finally {
             held.channel().close()
         }

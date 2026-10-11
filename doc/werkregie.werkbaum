@@ -24,6 +24,7 @@
           " drafts carry none, are dimmed and sorted last.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
+      - [ ] #dash.taiga: Taiga
       - [~] #dash.matrix: Matrix messages with the user's own account
         " Werkregie PR#8: walking skeleton; PR#12: verification and key backup.
         - [^] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
@@ -39,6 +40,7 @@
         - [^] Direct messages, mentions in every room, configured rooms (S)
         - [^] The server gets room, sender, time and the start of the text (S)
         - [^] Panel for the messages (S)
+          " Werkregie PR#15: rows lead with room and sender.
         - [^] #dash.matrix.last: Each direct chat and configured room keeps its last message (S)
           " Werkregie PR#13; mentions stay within the period.
         - [^] #dash.matrix.read: Unread messages stand out, read ones are subdued (S)
@@ -143,6 +145,12 @@
   java.management, java.instrument and jdk.unsupported besides the
   modules it has. The client's store comes next:
   trixnity-client-repository-exposed on the sqlite-jdbc the dashboard has.
+
+#dash.taiga
+  User request of 2026-10-11: plan a Taiga integration. Its scope is open:
+  which user stories and tasks show, the user's own or a project's; whether
+  a story links to its pull requests and its Werkbaum node, which marks a
+  subtree with &taiga.<project-slug>; and which Taiga instances and tokens.
 
 #dash.matrix.accounts
   matrix becomes a list of named accounts, as giteas; a single block is still

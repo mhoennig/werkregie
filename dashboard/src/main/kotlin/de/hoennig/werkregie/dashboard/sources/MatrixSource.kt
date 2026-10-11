@@ -108,8 +108,6 @@ class MatrixSource(
         return synchronized(items) { MatrixMessages.visible(items.values.toList(), since) }
     }
 
-    override fun note(): String? = if (lock == null) "liest mit; ein anderer Prozess synchronisiert" else null
-
     private fun readSaved(): List<Item> =
         if (Files.exists(saved)) runCatching { mapper.readValue<List<Item>>(saved.toFile()) }.getOrDefault(emptyList())
         else emptyList()

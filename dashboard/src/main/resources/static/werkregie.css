@@ -235,6 +235,11 @@ input.control::placeholder { color: var(--ghost); }
 .when { padding-top: 2px; font: 400 12.5px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .what { min-width: 0; }
 .title { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+/* a Matrix row: who wrote where first, the text after it */
+.msg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.msg-room { font-weight: 700; color: var(--accent); overflow-wrap: anywhere; }
+.msg-sender { font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.title.msg-text { display: block; font-weight: 400; color: var(--text); }
 a.title:hover { color: var(--accent); }
 .meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 2px; font-size: 13px; color: var(--text-2); }
 .meta .origin { font: 500 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }

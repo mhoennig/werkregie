@@ -199,10 +199,22 @@ function tagHtml(badge) {
         : `<span ${attrs}>${esc(badge.label)}</span>`;
 }
 
+// a Matrix row leads with who wrote where; the detail is "room · sender", for a direct chat the sender alone
+function messageHead(item) {
+    const detail = item.detail || "";
+    const direct = (item.flags || []).some((f) => f.kind === "direct");
+    const cut = detail.lastIndexOf(" · ");
+    const room = direct || cut < 0 ? "" : detail.slice(0, cut);
+    const sender = direct || cut < 0 ? detail : detail.slice(cut + 3);
+    return `<div class="msg-head">${room ? `<span class="msg-room">${esc(room)}</span>` : ""}<span class="msg-sender">${esc(sender)}</span></div>`;
+}
+
 function row(item, timeMode) {
-    const title = item.url
-        ? `<a class="title" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
-        : `<span class="title">${esc(item.title)}</span>`;
+    const message = item.kind === "message";
+    const titleClass = message ? "title msg-text" : "title";
+    const title = (message ? messageHead(item) : "") + (item.url
+        ? `<a class="${titleClass}" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
+        : `<span class="${titleClass}">${esc(item.title)}</span>`);
     const failed = (STATUS[item.state] || [])[0] === "failed" && item.kind !== "pr";
     const stacked = item.kind === "pr";
     const flags = item.flags || [];
@@ -222,7 +234,7 @@ function row(item, timeMode) {
     const meta = `<div class="meta">
                 <span class="origin">${esc(SOURCES[item.source] || item.source)} · ${esc(item.origin)}</span>
                 ${item.project ? `<span class="project"${item.repository && projectKey(item.repository) !== projectKey(item.project) ? ` title="Repository ${esc(item.repository)}"` : ""}>${esc(item.project)}</span>` : ""}
-                ${item.detail ? `<span class="detail">${esc(item.detail)}</span>` : ""}
+                ${item.detail && !message ? `<span class="detail">${esc(item.detail)}</span>` : ""}
             </div>`;
     // a one-line row, e.g. a Matrix message, carries its markers at the end
     const aside = `<div class="aside">${stacked ? "" : flagHtml}${(item.badges || []).map(tagHtml).join("")}${statusHtml(item)}${copy}</div>`;
