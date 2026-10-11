@@ -26,6 +26,8 @@ import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClientI
 import de.connect2x.trixnity.clientserverapi.client.classicLoginWithPassword
 import de.connect2x.trixnity.clientserverapi.model.authentication.IdentifierType
 import de.connect2x.trixnity.core.model.events.ClientEvent.RoomEvent
+import de.connect2x.trixnity.client.room.getAccountData
+import de.connect2x.trixnity.core.model.events.m.FullyReadEventContent
 import de.connect2x.trixnity.core.model.events.m.RelatesTo
 import de.connect2x.trixnity.core.model.events.m.room.RoomMessageEventContent
 import de.hoennig.werkregie.dashboard.Item
@@ -34,7 +36,11 @@ import de.hoennig.werkregie.dashboard.Source
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -137,12 +143,18 @@ class MatrixSource(
         }
     }
 
-    /** Follows the user's read receipts in [roomId]: a row read in Element or elsewhere loses its mark. */
+    /**
+     * Follows the user's read receipts and read marker in [roomId]: a row read in Element or elsewhere loses its mark.
+     */
     private fun watchReceipts(scope: CoroutineScope, client: MatrixClient, roomId: String) {
         if (!watched.add(roomId)) return
+        val room = RoomId(roomId)
         scope.launch {
-            client.user.getReceiptsById(RoomId(roomId), client.userId).collect { receipts ->
-                val read = readUntil(receipts) ?: return@collect
+            combine(
+                client.user.getReceiptsById(room, client.userId).map(::receiptTime),
+                client.room.getAccountData<FullyReadEventContent>(room).map { marker -> marker?.let { markerTime(client, room, it.eventId) } },
+            ) { receipt, marker -> MatrixMessages.readUntil(receipt, marker) }.distinctUntilChanged().collect { read ->
+                if (read == null) return@collect
                 readUntil[roomId] = read
                 synchronized(items) {
                     val before = items.toMap()
@@ -155,8 +167,19 @@ class MatrixSource(
         }
     }
 
-    private fun readUntil(receipts: RoomUserReceipts?): Instant? =
+    private fun receiptTime(receipts: RoomUserReceipts?): Instant? =
         receipts?.receipts?.values?.maxOfOrNull { it.receipt.timestamp }?.let(Instant::ofEpochMilli)
+
+    /** When the event that the read marker stands on was sent. */
+    private suspend fun markerTime(client: MatrixClient, room: RoomId, eventId: EventId): Instant? =
+        withTimeoutOrNull(30.seconds) {
+            client.room.getTimelineEvent(room, eventId) { fetchTimeout = 20.seconds }.filterNotNull().first()
+        }?.event?.originTimestamp?.let(Instant::ofEpochMilli)
+
+    private suspend fun readUntilNow(client: MatrixClient, room: RoomId): Instant? = MatrixMessages.readUntil(
+        receiptTime(client.user.getReceiptsById(room, client.userId).first()),
+        client.room.getAccountData<FullyReadEventContent>(room).first()?.let { markerTime(client, room, it.eventId) },
+    )
 
     private suspend fun decryptAgain(client: MatrixClient) {
         val encrypted = synchronized(items) { items.values.filter { it.state == "encrypted" }.mapNotNull { it.url } }
@@ -181,7 +204,7 @@ class MatrixSource(
         val sender = client.user.getById(event.roomId, event.sender).first()?.name ?: event.sender.full
         val me = client.user.getById(event.roomId, client.userId).first()?.name
         val time = Instant.ofEpochMilli(event.originTimestamp)
-        val read = readUntil[event.roomId.full] ?: readUntil(client.user.getReceiptsById(event.roomId, client.userId).first())
+        val read = readUntil[event.roomId.full] ?: readUntilNow(client, event.roomId)
         return MatrixMessage(
             eventId = event.id.full,
             roomId = event.roomId.full,

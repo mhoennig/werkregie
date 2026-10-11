@@ -42,7 +42,7 @@
         - [^] #dash.matrix.last: Each direct chat and configured room keeps its last message (S)
           " Werkregie PR#13; mentions stay within the period.
         - [^] #dash.matrix.read: Unread messages stand out, read ones are subdued (S)
-          " Werkregie PR#13: read as the user's read receipts say, from Element or any client.
+          " Werkregie PR#13: read receipts; PR#14: also Element's read marker m.fully_read.
         - [^] An empty panel counts the older messages and offers 7 days (XS)
         - [ ] #dash.matrix.accounts: Several Matrix accounts and servers (M)
         - [^] #dash.matrix.link: Link into Element (XS)

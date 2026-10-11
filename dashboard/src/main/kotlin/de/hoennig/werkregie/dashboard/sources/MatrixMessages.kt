@@ -87,6 +87,12 @@ object MatrixMessages {
         flags = listOfNotNull(Flag(reason), if (message.unread) Flag(UNREAD) else null),
     )
 
+    /**
+     * Until when the user read a room: the later of the newest read receipt and the read marker.
+     * An Element without read receipts only moves its read marker `m.fully_read`.
+     */
+    fun readUntil(receipt: Instant?, marker: Instant?): Instant? = listOfNotNull(receipt, marker).maxOrNull()
+
     /** The row with its read state as of [readUntil], the time the user last read its room. */
     fun read(item: Item, readUntil: Instant): Item {
         val unread = (item.time ?: Instant.EPOCH).isAfter(readUntil)

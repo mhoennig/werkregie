@@ -127,4 +127,17 @@ class MatrixMessagesTest : FunSpec({
         MatrixMessages.read(item, message.time.plusSeconds(60)).flags.map { it.kind } shouldBe listOf("direct")
         MatrixMessages.read(item, message.time.minusSeconds(60)).flags.map { it.kind } shouldBe listOf("direct", "unread")
     }
+
+    // Scenario#14.01, Scenario#14.02, Scenario#14.03
+    test("the later of read receipt and read marker decides until when a room is read") {
+        val receipt = Instant.parse("2026-08-10T17:50:38Z")
+        val marker = Instant.parse("2026-10-09T20:18:39Z")
+        MatrixMessages.readUntil(receipt, marker) shouldBe marker
+        MatrixMessages.readUntil(marker, receipt) shouldBe marker
+        MatrixMessages.readUntil(null, marker) shouldBe marker
+        MatrixMessages.readUntil(receipt, null) shouldBe receipt
+        MatrixMessages.readUntil(null, null) shouldBe null
+        val item = MatrixMessages.item(message.copy(time = Instant.parse("2026-10-09T20:18:39Z"), unread = true), "room", "example.org", "matrix.to")
+        MatrixMessages.read(item, MatrixMessages.readUntil(receipt, marker)!!).flags.map { it.kind } shouldBe listOf("room")
+    }
 })
