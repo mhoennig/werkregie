@@ -62,4 +62,11 @@ class ClaudeCodeSourceTest : FunSpec({
         working.detail shouldBe "claude-opus-5-5 · worktree x-1"
         working.command shouldBe "cd '/home/u/Projekte/werkator/.claude/worktrees/x-1' && claude --resume cli-busy"
     }
+
+    test("a Desktop session links into Claude Desktop, a terminal session does not") {
+        val items = source(alivePids = setOf(1, 4)).fetch(now, since)
+
+        items.first { it.title == "Working" }.url shouldBe "claude://code/continue?session=local_busy"
+        items.first { it.title == "notes" }.url shouldBe null
+    }
 })

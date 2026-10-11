@@ -369,7 +369,11 @@ function logo(tool, label = "") {
 const PHONE = Boolean(navigator.userAgentData?.mobile) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
     (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 
+// an app on this desktop, e.g. Claude Desktop; a phone has none of them
+const APP_LINKS = /^claude:/;
+
 function href(item) {
+    if (PHONE && item.url && APP_LINKS.test(item.url)) return null;
     if (!PHONE || item.source !== "matrix" || !item.url || item.url.startsWith("https://")) return item.url;
     const [room, event] = (item.url.split("#/")[1] || "").split("/").slice(-2);
     return room?.startsWith("!") && event?.startsWith("$") ? `https://matrix.to/#/${room}/${event}` : item.url;
@@ -378,6 +382,7 @@ function href(item) {
 // a web address opens in a new tab; an app's scheme, e.g. io.element.desktop, hands over without leaving a blank one
 function linkAttrs(item) {
     const url = href(item);
+    if (!url) return "";
     return ` href="${esc(url)}"${/^https?:/.test(url) ? ` target="_blank" rel="noopener"` : ""}`;
 }
 
@@ -476,7 +481,7 @@ function copyButton(item) {
 function row(item, timeMode) {
     const message = item.kind === "message";
     const titleClass = message ? "title msg-text" : "title";
-    const title = (message ? messageHead(item) : "") + (item.url
+    const title = (message ? messageHead(item) : "") + (href(item)
         ? `<a class="${titleClass}"${linkAttrs(item)}>${esc(item.title)}</a>`
         : `<span class="${titleClass}">${esc(item.title)}</span>`);
     const stacked = item.kind === "pr";
@@ -586,8 +591,9 @@ function renderConnection() {
         : down.length ? t("conn.some", { ok: all.length - down.length, n: all.length }) : t("conn.all", { n: all.length });
     const notes = [...down, ...warn].map((c) => `${c.label}: ${c.message || t("conn.error")}`);
     const tiles = all.map((c) => {
-        const tag = c.url ? "a" : "span";
-        const href = c.url ? ` href="${esc(c.url)}" target="_blank" rel="noopener"` : "";
+        const url = c.url || (c.tool === "claude" && !PHONE ? "claude://code/needs-input?source=werkregie" : null);
+        const tag = url ? "a" : "span";
+        const href = url ? ` href="${esc(url)}"${/^https?:/.test(url) ? ` target="_blank" rel="noopener"` : ""}` : "";
         const cls = c.ok ? (c.warn ? "warn" : "ok") : "bad";
         const title = [c.label, c.message || (c.count != null ? t("conn.entries", { n: c.count }) : "")].filter(Boolean).join(" — ");
         const text = c.ok && !c.warn ? "" : `<span class="tile-text">${esc(c.short)}</span>`;
@@ -633,12 +639,12 @@ function todoRow(group, { item, flag }) {
     const { room, sender } = message ? senderOf(item) : {};
     const title = message ? `${sender}${room ? ` · ${room}` : ""}` : item.title;
     const detail = message ? item.title : [reason(flag?.reason), item.project].filter(Boolean).join(" · ");
-    const tag = item.url ? "a" : "div";
-    return `<${tag} class="todo-row"${item.url ? linkAttrs(item) : ""}>
+    const tag = href(item) ? "a" : "div";
+    return `<${tag} class="todo-row"${linkAttrs(item)}>
         ${logo(item.source)}
         <span class="todo-what"><span class="todo-title">${esc(title)}</span><span class="todo-detail">${esc(detail)}</span></span>
         <span class="todo-age" title="${esc(item.time ? new Date(item.time).toLocaleString(locale()) : "")}">${esc(item.time ? span(item.time) : "")}</span>
-        ${item.url ? `<span class="act">${esc(t(`act.${group}`))}${ARROW}</span>` : ""}
+        ${href(item) ? `<span class="act">${esc(t(`act.${group}`))}${ARROW}</span>` : ""}
     </${tag}>`;
 }
 
@@ -761,9 +767,9 @@ function renderCards(items) {
     const all = [...running.map((i) => [i, false]), ...waiting.map((i) => [i, true])];
     const shown = all.length > MAX_CARDS ? all.slice(0, MAX_CARDS - 1) : all;
     const cards = shown.map(([item, waits]) => {
-        const tag = item.url ? "a" : "div";
+        const tag = href(item) ? "a" : "div";
         const what = [item.project, item.kind === "session" ? item.origin : item.detail].filter(Boolean).join(" · ");
-        return `<${tag} class="card${waits ? " is-waiting" : ""}"${item.url ? ` href="${esc(item.url)}" target="_blank" rel="noopener"` : ""}>
+        return `<${tag} class="card${waits ? " is-waiting" : ""}"${linkAttrs(item)}>
             <span class="card-head">${logo(item.source)}${statusHtml(item)}<span class="card-age">${esc(item.time ? span(item.time) : "")}</span>${copyButton(item)}</span>
             <span class="card-title">${esc(item.title)}</span>
             <span class="card-meta">${esc(waits ? `${t("cards.waits")} · ${what}` : what)}</span>

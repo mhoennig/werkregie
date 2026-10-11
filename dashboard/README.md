@@ -16,6 +16,9 @@ The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM 
 It opens on the overview, which answers two questions first: is every source connected, and where must the user act?
 
 - The connection bar shows each tool as its logo with a status dot, and names a source that fails or is silent.
+  On the desktop the Claude logo opens Claude Desktop's sessions waiting for the user (`claude://code/needs-input`),
+  and a session of Claude Desktop opens there (`claude://code/continue?session=…`); a phone gets no such links.
+  Codex has no such link yet: the ChatGPT app on Linux takes `codex://threads/…` but does not act on it.
 - *Du bist dran* groups what asks something of the user: Festgefahren, Nacharbeiten, Freigeben, Mergen, Antworten.
 - Beside it: the load of each Werkator host with its CPU of 24 hours, Werkator's builds of 24 hours, werkrevisor's costs.
 - Below it: what runs and which sessions wait, as cards; the history of 24 hours as a lane per tool.

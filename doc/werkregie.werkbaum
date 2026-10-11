@@ -10,8 +10,12 @@
     - [^] #dash.sources: Sources
       - [^] #dash.claude: Claude Code sessions, Desktop and terminal (S)
         " Busy, waiting and closed sessions; the resume command to copy.
+        - [^] A Desktop session opens in Claude Desktop; the logo opens the sessions waiting (XS)
+          " Werkregie PR#30: claude://code/continue and claude://code/needs-input; not on a phone.
       - [^] #dash.codex: Codex threads, Desktop, IDE and CLI (S)
         " Codex' SQLite state read-only; a running turn from the tail of the rollout file.
+        + [ ] A thread opens in the Codex app (XS)
+          " Werkregie PR#30: the ChatGPT app on Linux takes codex://threads/<id>, but does not act on it yet.
       - [^] #dash.werkator: Werkator builds, any number of instances (S)
         " Running and finished builds, @ai-review builds as werkrevisor;
         " three repositories at a time with a 30 s timeout; the control token reveals private repositories.

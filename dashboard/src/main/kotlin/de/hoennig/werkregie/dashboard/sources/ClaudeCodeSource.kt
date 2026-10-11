@@ -90,6 +90,7 @@ class ClaudeCodeSource(
             detail = listOfNotNull(node.text("model"), Projects.shortPath(cwd)).joinToString(" · "),
             command = node.text("cliSessionId")?.let { resumeCommand(cwd, it) },
             repository = Projects.repository(cwd),
+            url = sessionId.takeIf { DESKTOP_SESSION.matches(it) }?.let { "claude://code/continue?session=$it" },
         )
     }
 
@@ -106,6 +107,11 @@ class ClaudeCodeSource(
         command = resumeCommand(live.cwd, live.sessionId),
         repository = Projects.repository(live.cwd),
     )
+
+    companion object {
+        // the session IDs Claude Desktop accepts in claude://code/continue
+        private val DESKTOP_SESSION = Regex("^local_[A-Za-z0-9-]{1,64}$")
+    }
 
     private fun sectionOf(status: String) = if (status == "busy") Section.RUNNING else Section.OPEN
 
