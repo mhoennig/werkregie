@@ -15,8 +15,11 @@ The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM 
 
 The page installs as an app (PWA): `manifest.webmanifest`, icons and the service worker `sw.js` in `static/`.
 The service worker keeps the page, styles and fonts for a start without network, fetching them anew first whenever it can;
-it never touches `/api/`, so no data outlives the page. The PNG icons are rendered from the SVGs, e.g.
-`inkscape icon-maskable.svg -w 512 -h 512 -o icon-maskable-512.png`.
+it never touches `/api/`.
+The page itself keeps the last state of `/api/dashboard` in the browser's `localStorage` (`werkregie-last`):
+when the server does not answer, it shows that state under an amber banner with its age.
+Demo data is never kept, and forgetting the access token deletes the state.
+The PNG icons are rendered from the SVGs, e.g. `inkscape icon-maskable.svg -w 512 -h 512 -o icon-maskable-512.png`.
 
 ## Modes
 

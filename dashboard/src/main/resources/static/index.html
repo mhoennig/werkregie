@@ -46,6 +46,10 @@
         <span>Erfundene Beispieldaten – mit dem Zugriffstoken siehst du die echten.</span>
         <button class="chip is-active" type="button" data-open-token>Token eingeben</button>
     </div>
+    <div id="stale-banner" class="demo-banner stale-banner" role="status" hidden>
+        <strong>Offline</strong>
+        <span id="stale-text"></span>
+    </div>
     <div id="source-banner" class="watcher-banner" role="status" hidden></div>
 
     <div class="filters">
@@ -462,12 +466,46 @@ async function load() {
         const response = await fetch("/api/dashboard", { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         state.data = await response.json();
+        keepLast(state.data);
         setLive(true);
+        showStale(false);
         renderChrome();
         render();
     } catch (e) {
         setLive(false);
+        if (!state.data) {
+            state.data = readLast();
+            if (state.data) { renderChrome(); render(); }
+        }
+        showStale(Boolean(state.data));
     }
+}
+
+// ---- the last state for the offline view, in this browser only; never demo data ----
+const LAST_KEY = "werkregie-last";
+
+function keepLast(data) {
+    try {
+        if (data.access === "DEMO") return storage?.removeItem(LAST_KEY);
+        // the server answers every 5 s; an unchanged state need not be written again
+        if (readLast()?.generatedAt !== data.generatedAt) storage?.setItem(LAST_KEY, JSON.stringify(data));
+    } catch (e) {}
+}
+
+function readLast() {
+    try { return JSON.parse(storage?.getItem(LAST_KEY) || "null"); } catch (e) { return null; }
+}
+
+function forgetLast() {
+    try { storage?.removeItem(LAST_KEY); } catch (e) {}
+}
+
+function showStale(stale) {
+    $("stale-banner").hidden = !stale;
+    if (!stale) return;
+    const at = state.data.generatedAt;
+    const age = ago(at) === "jetzt" ? "gerade eben" : `vor ${ago(at)}`;
+    $("stale-text").textContent = `Server nicht erreichbar – letzter Stand von ${clock(at)}, ${age}.`;
 }
 
 // ---- the project filter: typing narrows the list to projects containing the text ----
@@ -587,6 +625,7 @@ $("token-button").addEventListener("click", () => {
     if (!hasToken()) return openTokenDialog();
     if (confirm("Zugriffstoken in diesem Browser vergessen?")) {
         storeToken(null);
+        forgetLast();
         describeTokenButton();
         load();
     }

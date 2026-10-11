@@ -159,6 +159,8 @@ a.repo-chip:hover { color: var(--accent); }
 .demo-banner strong { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
 .demo-banner .chip { margin-left: auto; }
 .demo-banner[hidden] { display: none; }
+.stale-banner { border-color: var(--amber); background: var(--amber-soft); }
+.stale-banner strong { color: var(--amber); }
 
 /* the token dialog: a panel like the others */
 .token-dialog { width: min(440px, calc(100% - 36px)); padding: 0; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); color: var(--text); box-shadow: 0 12px 32px rgb(0 0 0 / 0.25); }

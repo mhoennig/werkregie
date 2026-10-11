@@ -76,7 +76,8 @@
         " Werkregie PR#2; the title bar follows the header's light or dark colour.
       - [^] Service worker: app shell offline, API never cached (S)
         " Werkregie PR#2: network first; Chrome finds no installability errors.
-      - [ ] Last state shown offline, marked as stale (S)
+      - [^] Last state shown offline, marked as stale (S)
+        " Werkregie PR#19: localStorage, an amber banner with the age; never demo data.
       - [ ] Installed and checked on Android, iOS and desktop (XS)
       + [?] Push notification when a pull request needs the user
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
@@ -119,9 +120,10 @@
 
   The service worker caches the page, styles, fonts and icons only. The API
   answers carry private data behind the access token and are never cached by
-  the service worker; offline the page shows the last state it holds, marked
-  with its age. The local mode on localhost counts as a
-  secure context, so the PWA works there too.
+  the service worker; offline the page shows the last state it keeps in the
+  browser's storage, marked with its age. Forgetting the access token deletes
+  it. The local mode on localhost counts as a secure context, so the PWA works
+  there too.
 
 #dash.matrix
   User request of 2026-10-10: messages that matter to the user show in
