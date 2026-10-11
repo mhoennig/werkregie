@@ -28,7 +28,12 @@
           " Werkregie PR#17; ORANGE before YELLOW.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
-      - [ ] #dash.taiga: Taiga
+      - [^] #dash.taiga: Taiga, any number of instances and projects
+        - [^] Open stories, tasks and issues assigned to the user (S)
+          " Werkregie PR#21: panel Aufgaben; login by user and password from the environment.
+        - [^] Configured statuses first, in their order (XS)
+        - [ ] A story links to its pull requests and its Werkbaum node (S)
+        - [?] Other task boards than Taiga
       - [~] #dash.matrix: Matrix messages with the user's own account
         " Werkregie PR#8: walking skeleton; PR#12: verification and key backup.
         - [^] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
@@ -78,7 +83,9 @@
         " Werkregie PR#2: network first; Chrome finds no installability errors.
       - [^] Last state shown offline, marked as stale (S)
         " Werkregie PR#19: localStorage, an amber banner with the age; never demo data.
-      - [ ] Installed and checked on Android, iOS and desktop (XS)
+      - [^] Installed and checked offline on Android (XS)
+        " 2026-10-11: flight mode, a new start shows the last state under the banner.
+      - [ ] Installed and checked on iOS and desktop (XS)
       + [?] Push notification when a pull request needs the user
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
     - [?] #dash.store: One database for Werkregie, to be discussed
@@ -162,10 +169,16 @@
   trixnity-client-repository-exposed on the sqlite-jdbc the dashboard has.
 
 #dash.taiga
-  User request of 2026-10-11: plan a Taiga integration. Its scope is open:
-  which user stories and tasks show, the user's own or a project's; whether
-  a story links to its pull requests and its Werkbaum node, which marks a
-  subtree with &taiga.<project-slug>; and which Taiga instances and tokens.
+  User request of 2026-10-11: plan a Taiga integration. User decisions of
+  2026-10-11: the open user stories, tasks and issues assigned to the user;
+  several projects per instance; instances and projects only from the
+  configuration; the statuses "In Arbeit", then "Bereit" first, configurable,
+  other open ones after them; login by user and password from the
+  environment; read by the server and the local mode. The configuration is a
+  list of task boards with a type, so that more instances and other task
+  boards fit in later. A link of a story to its pull requests and its
+  Werkbaum node, which marks a subtree with &taiga.<project-slug>, follows in
+  a PR of its own.
 
 #dash.matrix.accounts
   matrix becomes a list of named accounts, as giteas; a single block is still

@@ -143,5 +143,12 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   Within each group the PR that waits longest comes first.
   `reviewBots` (default `[ai-reviewer]`) names accounts whose approval is no human's.
 
-Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time), Gitea every 30 s;
+- **Taiga:** `taskboards` with `type: taiga` list the open user stories, tasks and issues assigned to the user
+  in the configured `projects`, in the panel *Aufgaben*.
+  There is no default instance or project.
+  Werkregie logs in with the user and the password of the variable `passwordEnv` and logs in again when the token expires;
+  on a server the variable stands in `dashboard.env`, in the local mode it has to be in the environment.
+  `statuses` names the most important statuses first; other open statuses follow them, within one the latest change first.
+
+Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time), Gitea every 30 s, Taiga every 60 s;
 cached data is served at once while a due source refreshes in the background.

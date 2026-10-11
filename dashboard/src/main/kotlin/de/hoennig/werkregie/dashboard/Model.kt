@@ -31,6 +31,8 @@ data class Item(
     val repository: String? = null,
     // what this asks of whom, most urgent first, e.g. a pull request waiting for the user's approval
     val flags: List<Flag> = emptyList(),
+    // the order within its panel where the source knows it, lower first, e.g. a task by its configured status
+    val rank: Int? = null,
 )
 
 /**

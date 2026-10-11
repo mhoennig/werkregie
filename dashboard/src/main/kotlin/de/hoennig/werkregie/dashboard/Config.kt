@@ -17,6 +17,7 @@ data class DashboardConfig(
     val werkators: List<WerkatorConfig> = emptyList(),
     val giteas: List<GiteaConfig> = emptyList(),
     val matrix: MatrixConfig? = null,
+    val taskboards: List<TaskboardConfig> = emptyList(),
     val server: ServerConfig = ServerConfig(),
     val relay: RelayConfig = RelayConfig(),
 )
@@ -86,6 +87,24 @@ data class GiteaConfig(
     val maxPullRequests: Int = 30,
     // accounts whose approval is no human's, such as werkrevisor's
     val reviewBots: List<String> = listOf("ai-reviewer"),
+)
+
+/**
+ * A task board with the items assigned to the user, read in the modes `local` and `server`.
+ * Only `type: taiga` exists yet; instance and projects come from the configuration alone.
+ */
+data class TaskboardConfig(
+    val name: String,
+    val type: String,
+    // the address of the board's web pages, e.g. https://taiga.example.org; its API lies below /api/v1
+    val url: String,
+    val username: String? = null,
+    val usernameEnv: String? = null,
+    val passwordEnv: String? = null,
+    // project slugs, as in the address of a project
+    val projects: List<String> = emptyList(),
+    // status names, most important first; other open items follow them, closed ones never show
+    val statuses: List<String> = emptyList(),
 )
 
 /** Matrix with the user's own account, read in the modes `local` and `relay`; `matrix login` signs in. */

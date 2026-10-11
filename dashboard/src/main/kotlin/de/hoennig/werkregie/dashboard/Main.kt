@@ -11,6 +11,7 @@ import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
 import de.hoennig.werkregie.dashboard.sources.CodexSource
 import de.hoennig.werkregie.dashboard.sources.GiteaSource
 import de.hoennig.werkregie.dashboard.sources.MatrixSource
+import de.hoennig.werkregie.dashboard.sources.TaigaSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
 import java.net.URI
 import java.net.http.HttpClient
@@ -168,6 +169,12 @@ private fun matrixLogin(config: DashboardConfig): String {
 private fun remoteSources(config: DashboardConfig, http: JsonHttp, mapper: ObjectMapper): List<Source> = buildList {
     config.werkators.forEach { add(WerkatorSource(it, http)) }
     config.giteas.forEach { add(GiteaSource(it, http, mapper)) }
+    config.taskboards.forEach {
+        when (it.type) {
+            "taiga" -> add(TaigaSource(it, http))
+            else -> fail("taskboards: Typ '${it.type}' von '${it.name}' unbekannt, bisher nur taiga")
+        }
+    }
 }
 
 // fills the caches, so the first page load does not wait for the remote servers

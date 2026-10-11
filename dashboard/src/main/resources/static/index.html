@@ -88,6 +88,12 @@
             <button class="panel-more" type="button" data-panel="prs" hidden></button>
             </section>
         </div>
+        <!-- only where a task board is configured -->
+        <section id="tasks-panel" class="panel" hidden>
+            <h2><span class="panel-title">Aufgaben <span id="tasks-sources" class="panel-sources"></span></span><em id="tasks-count"></em></h2>
+            <div id="tasks" class="panel-body"></div>
+            <button class="panel-more" type="button" data-panel="tasks" hidden></button>
+        </section>
         <!-- only where a Matrix source is configured -->
         <section id="messages-panel" class="panel" hidden>
             <h2><span class="panel-title">Nachrichten <span id="messages-sources" class="panel-sources"></span></span><em id="messages-count"></em></h2>
@@ -128,7 +134,9 @@
 </footer>
 
 <script>
-const SOURCES = { claude: "Claude", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", matrix: "Matrix" };
+const SOURCES = { claude: "Claude", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", taiga: "Taiga", matrix: "Matrix" };
+// the items of a task board
+const TASK_KINDS = new Set(["story", "task", "issue"]);
 
 // Werkator's status classes: accent for good and running, clay for failed, amber for timeouts,
 // an outlined dot for waiting, ghost for everything that is over without a verdict
@@ -363,10 +371,11 @@ const PANEL_SOURCES = {
     running: ["claude", "codex", "werkator", "werkrevisor"],
     sessions: ["claude"],
     prs: ["gitea"],
+    tasks: ["taiga"],
     messages: ["matrix"],
     recent: ["claude", "codex", "werkator", "werkrevisor", "gitea"],
 };
-const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", matrix: "Matrix" };
+const TOOL_NAMES = { claude: "Claude Code", codex: "Codex", werkator: "Werkator", werkrevisor: "werkrevisor", gitea: "Gitea", taiga: "Taiga", matrix: "Matrix" };
 
 /** "Werkator javagil, vm4006": a tool with its configured instances, or null when none is configured. */
 function toolLabel(tool, sources) {
@@ -403,7 +412,12 @@ function render() {
         (!needle || `${i.title} ${i.project} ${i.repository || ""} ${i.detail} ${i.origin}`.toLowerCase().includes(needle)));
 
     fill("running", visible.filter((i) => i.section === "RUNNING"), "Nichts in Arbeit.", "aktiv");
-    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind !== "pr" && i.kind !== "message"), "Keine offenen Sessions.", "bereit");
+    fill("sessions", visible.filter((i) => i.section === "OPEN" && i.kind === "session"), "Keine offenen Sessions.", "bereit");
+    $("tasks-panel").hidden = !toolLabel("taiga", data.sources) && !data.items.some((i) => TASK_KINDS.has(i.kind));
+    // the configured statuses first, in their order; within one, the latest change first
+    fill("tasks", visible.filter((i) => TASK_KINDS.has(i.kind))
+        .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0)),
+        "Nichts zugewiesen.", "offen");
     $("messages-panel").hidden = !toolLabel("matrix", data.sources) && !data.items.some((i) => i.source === "matrix");
     renderMessages(visible.filter((i) => i.kind === "message"), since);
     // the user's next step first, then what waits for others, drafts last; the longest waiting first in each group
@@ -691,7 +705,7 @@ $("source-chips").addEventListener("click", (e) => {
 });
 document.querySelectorAll(".panel-more").forEach((button) =>
     button.addEventListener("click", () => toggle(button.dataset.panel)));
-window.addEventListener("resize", () => ["running", "sessions", "prs", "messages", "recent"].forEach(clamp));
+window.addEventListener("resize", () => ["running", "sessions", "prs", "tasks", "messages", "recent"].forEach(clamp));
 $("window").value = String(state.windowHours);
 $("window").addEventListener("change", (e) => setWindow(Number(e.target.value)));
 $("messages").addEventListener("click", (e) => {

@@ -23,3 +23,13 @@ giteas:
     url: https://git.example.org
     tokenEnv: WERKREGIE_TOKEN_JAVAGIL             # or token: <token>; no tea on the host
     pullRequests: all
+
+# task boards with what is assigned to you (modes local and server); only type taiga so far
+# taskboards:
+#   - name: team
+#     type: taiga
+#     url: https://taiga.example.org        # the web pages; the API lies below /api/v1
+#     usernameEnv: WERKREGIE_TAIGA_USER     # or username: <name>
+#     passwordEnv: WERKREGIE_TAIGA_PASSWORD # never the password itself
+#     projects: [shop, docs]                # project slugs, as in the address of a project
+#     statuses: [In Arbeit, Bereit]         # most important first; other open statuses follow
