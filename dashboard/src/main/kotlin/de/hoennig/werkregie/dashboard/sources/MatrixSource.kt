@@ -29,9 +29,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.r2dbc.R2dbcDatabase
+import java.nio.channels.FileChannel
+import java.nio.channels.FileLock
+import java.nio.channels.OverlappingFileLockException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
 import java.time.Instant
@@ -41,6 +45,10 @@ import kotlin.time.Duration.Companion.seconds
  * Matrix messages, read with the user's own account as a device of its own, so that end-to-end
  * encrypted rooms can be read once the device has their keys. The client syncs in a thread of its
  * own; [fetch] only hands out what it collected. The rows survive a restart in `messages.json`.
+ *
+ * One client per machine: a relay and the local mode share the state directory, and two clients
+ * with the same keys would spoil each other's sessions. The process that holds `sync.lock` syncs;
+ * another one reads `messages.json` along and takes over once the lock is free.
  */
 class MatrixSource(
     private val config: MatrixConfig,
@@ -63,18 +71,30 @@ class MatrixSource(
     private var origin = "Matrix"
     private val started = lazy { start() }
 
+    @Volatile
+    private var lock: FileLock? = null
+
+    /** Whether this process runs the client, rather than reading along. */
+    internal val syncing: Boolean get() = lock != null
+
     override fun fetch(now: Instant, since: Instant): List<Item> {
         if (!loggedIn(dir)) throw IllegalStateException(NOT_LOGGED_IN)
+        // a lock once taken is never given back to null, whichever thread asks
+        synchronized(this) { if (lock == null) lock = tryLock(dir) }
+        if (lock == null) return readSaved().filter { (it.time ?: Instant.EPOCH).isAfter(since) }
         started.value
         error?.let { throw IllegalStateException(it) }
         return synchronized(items) { items.values.filter { (it.time ?: Instant.EPOCH).isAfter(since) } }
     }
 
+    override fun note(): String? = if (lock == null) "liest mit; ein anderer Prozess synchronisiert" else null
+
+    private fun readSaved(): List<Item> =
+        if (Files.exists(saved)) runCatching { mapper.readValue<List<Item>>(saved.toFile()) }.getOrDefault(emptyList())
+        else emptyList()
+
     private fun start() {
-        if (Files.exists(saved)) {
-            runCatching { mapper.readValue<List<Item>>(saved.toFile()) }.getOrNull()
-                ?.forEach { items[it.url ?: return@forEach] = it }
-        }
+        readSaved().forEach { items[it.url ?: return@forEach] = it }
         Thread.ofPlatform().name("matrix-sync").daemon().start {
             runCatching { runBlocking { sync() } }.onFailure {
                 // a store without an account: the login broke off, or the files were copied
@@ -152,19 +172,23 @@ class MatrixSource(
             runBlocking {
                 val dir = stateDir.resolve("matrix")
                 check(!loggedIn(dir)) { "schon angemeldet; zum Neuanmelden $dir löschen" }
-                val baseUrl = baseUrl(config.homeserver ?: error("matrix.homeserver fehlt"))
-                val auth = MatrixClientAuthProviderData.classicLoginWithPassword(
-                    baseUrl = baseUrl,
-                    identifier = IdentifierType.User(user),
-                    password = password,
-                    initialDeviceDisplayName = deviceName,
-                ).getOrThrow()
-                // a half-written store would count as a login
-                val client = openClient(dir, auth).onFailure { deleteStore(dir) }.getOrThrow()
-                try {
-                    client.userId.full to client.deviceId
-                } finally {
-                    client.closeSuspending()
+                val lock = checkNotNull(tryLock(dir)) { "ein Relay oder der lokale Modus liest Matrix; erst stoppen" }
+                // closing the channel frees the lock, also when the login fails
+                lock.channel().use {
+                    val baseUrl = baseUrl(config.homeserver ?: error("matrix.homeserver fehlt"))
+                    val auth = MatrixClientAuthProviderData.classicLoginWithPassword(
+                        baseUrl = baseUrl,
+                        identifier = IdentifierType.User(user),
+                        password = password,
+                        initialDeviceDisplayName = deviceName,
+                    ).getOrThrow()
+                    // a half-written store would count as a login
+                    val client = openClient(dir, auth).onFailure { deleteStore(dir) }.getOrThrow()
+                    try {
+                        client.userId.full to client.deviceId
+                    } finally {
+                        client.closeSuspending()
+                    }
                 }
             }
 
@@ -175,14 +199,35 @@ class MatrixSource(
             return Url(discovery.getOrNull()?.homeserver?.baseUrl ?: "https://$homeserver")
         }
 
+        /**
+         * The lock of the process that runs the client, or null when another process holds it.
+         * The operating system frees it when the process ends; the channel stays open until then.
+         */
+        internal fun tryLock(dir: Path): FileLock? {
+            ensureDir(dir)
+            val channel = FileChannel.open(dir.resolve("sync.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+            val lock = try {
+                channel.tryLock()
+            } catch (_: OverlappingFileLockException) {
+                null
+            }
+            if (lock == null) channel.close()
+            return lock
+        }
+
+        // session, keys and message texts: for the user only
+        private fun ensureDir(dir: Path) {
+            if (!Files.isDirectory(dir)) {
+                Files.createDirectories(dir, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
+            }
+        }
+
         private fun deleteStore(dir: Path) {
             Files.list(dir).use { files -> files.filter { it.fileName.toString().startsWith(STORE) }.forEach(Files::delete) }
         }
 
         internal suspend fun openClient(dir: Path, authProviderData: MatrixClientAuthProviderData?): Result<MatrixClient> {
-            if (!Files.isDirectory(dir)) {
-                Files.createDirectories(dir, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
-            }
+            ensureDir(dir)
             // r2dbc-h2 drops the first slash of the path, and H2 wants it absolute
             val database = R2dbcDatabase.connect(url = "r2dbc:h2:file:///${dir.resolve(STORE).toAbsolutePath()}")
             return MatrixClient.create(

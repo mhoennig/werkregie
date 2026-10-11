@@ -30,6 +30,7 @@
           " Werkregie PR#5: it does; the spike is in dashboard/spikes/matrix-sdk.
         - [^] Login as a device of its own, in the relay (S) :#dash.matrix.sdk
           " Werkregie PR#8: werkregie-dashboard matrix login; the session lives in an H2 file.
+          " Werkregie PR#11: one client per machine; a second process reads along.
         - [ ] Device verified by emoji comparison (S)
         - [ ] Room keys from the key backup (S)
         - [^] Direct messages, mentions in every room, configured rooms (S)

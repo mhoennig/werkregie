@@ -106,6 +106,9 @@ The session and the keys live in `<stateDir>/matrix/` (mode 0700):
 an H2 database `client.mv.db` and the shown rows in `messages.json`.
 To sign in anew, delete that directory and remove the device "Werkregie <host>" in Element.
 A relay reports only the start of each text, at most 80 characters, to the server.
+One process per machine runs the client, the one that holds `sync.lock`:
+a relay and the local mode share the state directory, and two clients with the same keys would spoil each other's sessions.
+The other process shows the same messages from `messages.json` and takes over when the first one ends.
 Until the device is verified and has the keys, an encrypted message shows as "verschlüsselt", with room, sender and time.
 
 ## Configuration
