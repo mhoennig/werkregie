@@ -106,9 +106,11 @@
     - [~] #ops.jdk: Temurin 25 as JDK and runtime of all werk repositories
       " Werkregie PR#20: doc/adrs/0001-2026-10-11.temurin-25.md; decided by mi on 2026-10-11.
       - [x] Decision as an ADR (XS)
-      - [ ] Werkator's build environment with Temurin 25 beside OpenJDK 21 (S)
+      - [x] Revision: Temurin 25 comes from Foojay (XS)
+        " Werkregie PR#22; decided by mi on 2026-10-11.
       - [ ] werkregie builds and runs on Temurin 25 (XS)
-      - [ ] OpenJDK 21 leaves the build environment (XS)
+      - [-] Werkator's build environment with Temurin 25
+        " Foojay caches the JDK in the shared Gradle home; a rootfs would need an upload for each Java update.
   - [?] #orchestrator: Orchestrator for agentic software development
     " Designed in doc/agentic-flow.werkbaum; nodes move here once they are decided.
 
