@@ -90,7 +90,8 @@ the core ones are Problem, Non-Goals, Specification, Solution and Open Questions
 
 Rules for Gherkin features:
 
-- A Gherkin feature holds one or more scenarios, each `Scenario#<n>.<nn>` with one aspect and a "So that …".
+- A Gherkin feature holds one or more scenarios, each `Scenario#<n>.<nn>` with one aspect
+  and a purpose line `&hellip; so that …`, in lower case after the ellipsis.
 - **Given** names the state, **When** exactly one action, **Then** the observable result.
 - A scenario describes behaviour, not its implementation.
 - "Verified by" links the tests that check the scenario.

@@ -92,6 +92,7 @@
       " Werkregie PR#6; JDK 21 stays, as Werkator's.
     - [^] #ops.workflow: The shared agentic workflow of all werk repositories (S)
       " Werkregie PR#7: doc/agentic-workflow.md, AGENTS.md, CLAUDE.md and PR documents.
+      " Werkregie PR#18: the purpose line of a scenario reads "&hellip; so that …".
     - [^] #ops.master: Master copy of the shared workflow (XS) :#ops.workflow
       " Werkregie PR#16; decided by mi on 2026-10-11.
   - [?] #orchestrator: Orchestrator for agentic software development
