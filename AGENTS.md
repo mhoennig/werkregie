@@ -24,8 +24,6 @@ roles, steps of a PR, review rounds, PR documents, the plan, versions and the wr
 In addition, for werkregie:
 
 - Its documents live in `doc/`, not `docs/`: `doc/agentic-workflow.md`, `doc/prs/`, `doc/werkregie.werkbaum`.
-- werkregie takes the master copy of the shared workflow over once every werk repository has it.
+- werkregie holds the master copy of the shared workflow.
 - The version stands in `dashboard/build.gradle.kts`.
 - GitHub `mhoennig/werkregie` is only a mirror of `main`; branches go to Gitea only.
-- Until Werkator builds werkregie (`#ops.werkator`), there is no CI and no review by werkrevisor;
-  the human checks and merges each PR.

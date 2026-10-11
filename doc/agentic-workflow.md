@@ -3,7 +3,7 @@
 This document is the same in all werk repositories; each one keeps it as `docs/agentic-workflow.md`.
 The `AGENTS.md` of a repository refers to it and holds only what differs or adds:
 build and test commands, architecture, hard invariants, and exceptions to this document.
-werkrevisor holds the master copy until every repository has the document; then werkregie takes it over.
+werkregie holds the master copy, as `doc/agentic-workflow.md`.
 A change goes into the master copy first, then into each repository with its next PR.
 
 ## Goal

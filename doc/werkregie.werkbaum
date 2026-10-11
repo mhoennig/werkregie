@@ -84,15 +84,16 @@
   - [ ] #ops: Build and delivery
     - [^] #ops.werkator: Werkator builds werkregie (S)
       " Werkregie PR#9: .werkator.yml; mih09 registers the repository since 2026-10-10.
-    - [~] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
-      " Werkregie PR#10: risk categories; branch protection and the reviewer's rights follow.
+    - [^] #ops.werkrevisor: werkrevisor reviews werkregie's pull requests (XS) :#ops.werkator
+      " Werkregie PR#10: risk categories; the human set branch protection and the reviewer's rights.
     - [ ] #ops.github: Werkator pushes a green main to GitHub (XS) :#ops.werkator
     - [ ] #ops.port: Port 18091 confirmed with Hostsharing (XS)
     - [^] #ops.deps: Kotlin 2.4, Gradle 9.8.1 and current libraries (XS)
       " Werkregie PR#6; JDK 21 stays, as Werkator's.
     - [^] #ops.workflow: The shared agentic workflow of all werk repositories (S)
       " Werkregie PR#7: doc/agentic-workflow.md, AGENTS.md, CLAUDE.md and PR documents.
-    - [ ] #ops.master: Master copy of the shared workflow, once every repository has it (XS) :#ops.workflow
+    - [^] #ops.master: Master copy of the shared workflow (XS) :#ops.workflow
+      " Werkregie PR#16; decided by mi on 2026-10-11.
   - [?] #orchestrator: Orchestrator for agentic software development
     " Designed in doc/agentic-flow.werkbaum; nodes move here once they are decided.
 
