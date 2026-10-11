@@ -12,7 +12,14 @@ import de.connect2x.trixnity.client.media.inMemory
 import de.connect2x.trixnity.client.room
 import de.connect2x.trixnity.client.store.TimelineEvent
 import de.connect2x.trixnity.client.store.repository.exposed.exposed
+import de.connect2x.trixnity.client.key
 import de.connect2x.trixnity.client.user
+import de.connect2x.trixnity.client.verification
+import de.connect2x.trixnity.client.verification.SelfVerificationMethod
+import de.connect2x.trixnity.client.verification.VerificationService.SelfVerificationMethods
+import de.connect2x.trixnity.core.model.EventId
+import de.connect2x.trixnity.core.model.RoomId
+import de.connect2x.trixnity.crypto.key.DeviceTrustLevel
 import de.connect2x.trixnity.clientserverapi.client.MatrixClientAuthProviderData
 import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClientImpl
 import de.connect2x.trixnity.clientserverapi.client.classicLoginWithPassword
@@ -28,6 +35,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.exposed.v1.r2dbc.R2dbcDatabase
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -39,6 +48,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
 import java.time.Instant
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -115,6 +125,20 @@ class MatrixSource(
                 }
             }
             client.startSync()
+            // rows shown as encrypted get another try: the device may have their keys by now
+            launch { decryptAgain(client) }
+        }
+    }
+
+    private suspend fun decryptAgain(client: MatrixClient) {
+        val encrypted = synchronized(items) { items.values.filter { it.state == "encrypted" }.mapNotNull { it.url } }
+        for (url in encrypted) {
+            val (roomId, eventId) = MatrixMessages.ids(url) ?: continue
+            val event = withTimeoutOrNull(1.minutes) {
+                client.room.getTimelineEvent(RoomId(roomId), EventId(eventId)) { decryptionTimeout = 30.seconds }
+                    .first { it?.content != null }
+            } ?: continue
+            runCatching { message(client, event) }.getOrNull()?.takeIf { it.text != null }?.let(::add)
         }
     }
 
@@ -161,6 +185,7 @@ class MatrixSource(
     companion object {
         private const val STORE = "client"
         private const val NOT_LOGGED_IN = "nicht angemeldet: werkregie-dashboard matrix login"
+        private const val LOCKED = "ein Relay oder der lokale Modus liest Matrix; erst stoppen"
 
         fun loggedIn(dir: Path): Boolean = Files.exists(dir.resolve("$STORE.mv.db"))
 
@@ -172,7 +197,7 @@ class MatrixSource(
             runBlocking {
                 val dir = stateDir.resolve("matrix")
                 check(!loggedIn(dir)) { "schon angemeldet; zum Neuanmelden $dir löschen" }
-                val lock = checkNotNull(tryLock(dir)) { "ein Relay oder der lokale Modus liest Matrix; erst stoppen" }
+                val lock = checkNotNull(tryLock(dir)) { LOCKED }
                 // closing the channel frees the lock, also when the login fails
                 lock.channel().use {
                     val baseUrl = baseUrl(config.homeserver ?: error("matrix.homeserver fehlt"))
@@ -191,6 +216,47 @@ class MatrixSource(
                     }
                 }
             }
+
+        /**
+         * Verifies the device with the recovery key or the security phrase, which [secret] asks for:
+         * the device signs itself with the user's cross-signing keys and gets the key of the key backup.
+         */
+        fun verify(stateDir: Path, secret: () -> String): String = runBlocking {
+            val dir = stateDir.resolve("matrix")
+            check(loggedIn(dir)) { "erst anmelden: werkregie-dashboard matrix login" }
+            val lock = checkNotNull(tryLock(dir)) { LOCKED }
+            lock.channel().use {
+                val client = openClient(dir, authProviderData = null).getOrThrow()
+                try {
+                    client.startSync()
+                    val methods = withTimeout(2.minutes) {
+                        client.verification.getSelfVerificationMethods().first { it !is SelfVerificationMethods.PreconditionsNotMet }
+                    }
+                    when (methods) {
+                        is SelfVerificationMethods.AlreadyCrossSigned -> "Gerät ${client.deviceId} ist schon verifiziert."
+                        is SelfVerificationMethods.CrossSigningEnabled -> verifyWith(client, methods.methods, secret())
+                        else -> error("das Konto hat kein Cross-Signing; richte in Element zuerst die Sicherung ein")
+                    }
+                } finally {
+                    client.stopSync()
+                    client.closeSuspending()
+                }
+            }
+        }
+
+        private suspend fun verifyWith(client: MatrixClient, methods: Set<SelfVerificationMethod>, secret: String): String {
+            val result = if (MatrixMessages.isRecoveryKey(secret)) {
+                methods.filterIsInstance<SelfVerificationMethod.AesHmacSha2RecoveryKey>().firstOrNull()?.verify(secret)
+            } else {
+                methods.filterIsInstance<SelfVerificationMethod.AesHmacSha2RecoveryKeyWithPbkdf2Passphrase>().firstOrNull()?.verify(secret)
+            }
+            checkNotNull(result) { "das Konto bietet diese Art Schlüssel nicht an; versuche den Wiederherstellungsschlüssel" }
+            result.getOrElse { error("der Schlüssel passt nicht; das Gerät bleibt unverifiziert") }
+            withTimeoutOrNull(1.minutes) {
+                client.key.getTrustLevel(client.userId, client.deviceId).first { it is DeviceTrustLevel.CrossSigned && it.verified }
+            } ?: error("der Schlüssel passt, aber die Signatur des Geräts ist noch nicht bestätigt; starte verify noch einmal")
+            return "Gerät ${client.deviceId} ist verifiziert. Nach dem Neustart des Relays entschlüsselt er auch ältere Nachrichten."
+        }
 
         /** A server name is looked up in its .well-known; a URL is taken as it is. */
         private suspend fun baseUrl(homeserver: String): Url {

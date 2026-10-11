@@ -100,7 +100,12 @@ It runs in the modes `local` and `relay`, never on the server: the device keys s
    ```bash
    werkregie-dashboard matrix login
    ```
-3. Start the relay or the local mode again.
+3. Verify the device with the recovery key, formerly "Security Key", or the security phrase;
+   this also unlocks the key backup, so that older encrypted messages become readable:
+   ```bash
+   werkregie-dashboard matrix verify
+   ```
+4. Start the relay or the local mode again; it decrypts the rows shown as "verschlüsselt" once more.
 
 The session and the keys live in `<stateDir>/matrix/` (mode 0700):
 an H2 database `client.mv.db` and the shown rows in `messages.json`.
@@ -109,7 +114,7 @@ A relay reports only the start of each text, at most 80 characters, to the serve
 One process per machine runs the client, the one that holds `sync.lock`:
 a relay and the local mode share the state directory, and two clients with the same keys would spoil each other's sessions.
 The other process shows the same messages from `messages.json` and takes over when the first one ends.
-Until the device is verified and has the keys, an encrypted message shows as "verschlüsselt", with room, sender and time.
+Until the device has the keys, an encrypted message shows as "verschlüsselt", with room, sender and time.
 
 ## Configuration
 

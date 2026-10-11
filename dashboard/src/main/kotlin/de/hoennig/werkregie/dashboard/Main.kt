@@ -31,6 +31,8 @@ werkregie-dashboard [MODUS] [--config DATEI]
   token         gibt das Zugriffstoken des Servers aus (erzeugt es beim ersten Mal)
   matrix login  meldet Werkregie als eigenes Gerät deines Matrix-Kontos an (matrix.homeserver);
                 Benutzer und Passwort fragt es ab, die Sitzung liegt im Zustandsverzeichnis
+  matrix verify verifiziert dieses Gerät mit dem Wiederherstellungsschlüssel (früher "Security Key")
+                oder der Sicherheitsphrase und holt die Schlüssel älterer Nachrichten aus dem Backup
   forget-relay NAME
                 entfernt einen Relay, der sich nicht mehr meldet, vom Server
                 (über den laufenden Server, sonst direkt aus relays.json)
@@ -59,8 +61,11 @@ fun main(args: Array<String>) {
         "relay" -> relay(config, mapper)
         "token" -> println(AccessToken(stateDir(config.server).resolve(AccessToken.FILE_NAME)).token)
         "matrix" -> {
-            if (arguments.removeFirstOrNull() != "login") fail("matrix kennt nur 'login'")
-            println(matrixLogin(config))
+            when (arguments.removeFirstOrNull()) {
+                "login" -> println(matrixLogin(config))
+                "verify" -> println(matrixVerify(config))
+                else -> fail("matrix kennt 'login' und 'verify'")
+            }
         }
         "forget-relay" -> println(forgetRelay(config, mapper, arguments.removeFirstOrNull() ?: fail("forget-relay braucht den Namen des Relays")))
         "init" -> {
@@ -133,6 +138,15 @@ internal fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<S
     if (config.codex.enabled) add(CodexSource(config.codex, mapper))
     // no homeserver, no Matrix: nothing is assumed
     config.matrix?.takeIf { it.homeserver != null }?.let { add(MatrixSource(it, stateDir(config.server), mapper)) }
+}
+
+private fun matrixVerify(config: DashboardConfig): String {
+    val console = System.console() ?: fail("matrix verify braucht ein Terminal")
+    return runCatching {
+        MatrixSource.verify(stateDir(config.server)) {
+            console.readPassword("Wiederherstellungsschlüssel oder Sicherheitsphrase: ")?.let(::String).orEmpty()
+        }
+    }.getOrElse { fail("Verifizierung fehlgeschlagen: ${it.message}") }
 }
 
 private fun matrixLogin(config: DashboardConfig): String {

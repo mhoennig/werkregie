@@ -25,14 +25,17 @@
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
       - [~] #dash.matrix: Matrix messages with the user's own account
-        " Werkregie PR#8: walking skeleton; encrypted messages need verification and keys.
+        " Werkregie PR#8: walking skeleton; PR#12: verification and key backup.
         - [^] #dash.matrix.sdk: Trixnity on the JVM, with vodozemac rather than libolm (XS)
           " Werkregie PR#5: it does; the spike is in dashboard/spikes/matrix-sdk.
         - [^] Login as a device of its own, in the relay (S) :#dash.matrix.sdk
           " Werkregie PR#8: werkregie-dashboard matrix login; the session lives in an H2 file.
           " Werkregie PR#11: one client per machine; a second process reads along.
-        - [ ] Device verified by emoji comparison (S)
-        - [ ] Room keys from the key backup (S)
+        - [^] #dash.matrix.verify: Device verified by the recovery key (S)
+          " Werkregie PR#12: werkregie-dashboard matrix verify; also takes the security phrase.
+        - [^] Room keys from the key backup (S) :#dash.matrix.verify
+          " Werkregie PR#12: rows shown as encrypted get another try when the relay starts.
+        + [ ] Device verified by emoji comparison (S)
         - [^] Direct messages, mentions in every room, configured rooms (S)
         - [^] The server gets room, sender, time and the start of the text (S)
         - [^] Panel for the messages (S)

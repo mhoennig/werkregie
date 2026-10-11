@@ -20,7 +20,7 @@ Requirements in Markdown-native pseudo-Gherkin, one aspect per scenario.
 
 #### Scenario#999.01: a requirement in the shape of a scenario
 
-So that … (the goal behind the requirement).
+&hellip; so that … (the goal behind the requirement), in lower case after the ellipsis.
 
 - **Given** a precondition
 - **When** something is done

@@ -100,4 +100,24 @@ class MatrixSourceTest : FunSpec({
         }
         MatrixSource.tryLock(other.resolve("matrix")).shouldNotBeNull().channel().close()
     }
+
+    // Scenario#12.05
+    test("no verification while another process syncs") {
+        val other = Files.createTempDirectory("werkregie-state")
+        val dir = other.resolve("matrix")
+        Files.createDirectories(dir)
+        Files.createFile(dir.resolve("client.mv.db"))
+        val held = MatrixSource.tryLock(dir)!!
+        try {
+            shouldThrow<IllegalStateException> { MatrixSource.verify(other) { "secret" } }.message shouldContain "erst stoppen"
+        } finally {
+            held.channel().close()
+        }
+    }
+
+    // Scenario#12.06
+    test("no verification before the login") {
+        val other = Files.createTempDirectory("werkregie-state")
+        shouldThrow<IllegalStateException> { MatrixSource.verify(other) { "secret" } }.message shouldContain "matrix login"
+    }
 })

@@ -73,4 +73,20 @@ class MatrixMessagesTest : FunSpec({
         MatrixMessages.link("element", "!room:example.org", "\$event") shouldBe "element://vector/webapp/#/room/!room:example.org/\$event"
         MatrixMessages.link("io.element.desktop", "!r:x", "\$e") shouldBe "io.element.desktop://vector/webapp/#/room/!r:x/\$e"
     }
+
+    // Scenario#12.04
+    test("a row's link gives back room ID and event ID, in each form") {
+        for (style in listOf("matrix.to", "element", "io.element.desktop")) {
+            MatrixMessages.ids(MatrixMessages.link(style, "!room:example.org", "\$event")) shouldBe ("!room:example.org" to "\$event")
+        }
+        MatrixMessages.ids("https://matrix.to/#/!demo:example.org") shouldBe null
+    }
+
+    // Scenario#12.01, Scenario#12.02
+    test("a recovery key is told apart from a security phrase") {
+        MatrixMessages.isRecoveryKey("EsTc LW2K PGiF wKEA 3As5 g5c4 BXwk qeeJ ZJV8 Q9fu gUMN UE4d") shouldBe true
+        MatrixMessages.isRecoveryKey("EsTcLW2KPGiFwKEA3As5g5c4BXwkqeeJZJV8Q9fugUMNUE4d") shouldBe true
+        MatrixMessages.isRecoveryKey("correct horse battery staple") shouldBe false
+        MatrixMessages.isRecoveryKey("EsTc LW2K PGiF wKEA 3As5 g5c4 BXwk qeeJ ZJV8 Q9fu gUMN UE40") shouldBe false
+    }
 })

@@ -53,6 +53,25 @@ object MatrixMessages {
         else -> "https://matrix.to/#/$roomId/$eventId"
     }
 
+    /** Room ID and event ID of a row, from its link in any of the forms of [link]. */
+    fun ids(url: String): Pair<String, String>? {
+        val parts = url.substringAfter("#/", "").split('/')
+        if (parts.size < 2) return null
+        val (room, event) = parts.takeLast(2)
+        return if (room.startsWith("!") && event.startsWith("$")) room to event else null
+    }
+
+    /**
+     * A recovery key, formerly "Security Key", rather than a security phrase:
+     * 48 characters of base58, which Element shows in groups of four.
+     */
+    fun isRecoveryKey(secret: String): Boolean {
+        val compact = secret.filterNot { it.isWhitespace() }
+        return compact.length == 48 && compact.all { it in BASE58 }
+    }
+
+    private const val BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
     fun item(message: MatrixMessage, reason: String, origin: String, linkStyle: String) = Item(
         source = "matrix",
         origin = origin,
