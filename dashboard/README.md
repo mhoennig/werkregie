@@ -97,6 +97,7 @@ One program, three ways to run it:
   Else there is one entry per project and day.
   The minutes are the union of the sessions' active spans and of 15 min before each action in Gitea, Taiga and Matrix;
   builds, reviews and pull requests are evidence only.
+  A minute in which several entries are active counts once, shared equally among them.
   They are rounded half up to whole hours; less than 30 min is a hint, and a day over 12 h gives from its largest entry.
   Ids and descriptions derive from the day's data, so importing the same file twice adds nothing in Werkjournal.
   `GET /api/journal/YYYY-MM-DD/proposal` returns the proposal, on a server only with the access token.

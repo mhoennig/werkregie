@@ -97,6 +97,24 @@ class JournalProposerTest : FunSpec({
         proposal.entries.single().let { it.minutes to it.hours } shouldBe (95L to 2)
     }
 
+    test("two entries at the same time share the minutes") {
+        val proposal = propose(sessions = listOf(session("a", "werkregie", "09:00" to "11:00"), session("b", "hs.hsadmin.ng", "10:00" to "11:00")))
+
+        proposal.entries.map { it.project to it.minutes } shouldContainExactlyInAnyOrder listOf("Werkregie" to 90L, "HSAdmin NG" to 30L)
+    }
+
+    test("the shared minutes add up to the time of the clock") {
+        val proposal = propose(
+            sessions = listOf(
+                session("a", "werkregie", "09:00" to "09:10"),
+                session("b", "hs.hsadmin.ng", "09:00" to "09:10"),
+                session("c", "keluna", "09:00" to "09:10"),
+            ),
+        )
+
+        proposal.entries.map { it.minutes }.sorted() shouldContainExactly listOf(3L, 3L, 4L)
+    }
+
     test("less than half an hour is a hint, not an entry of the file") {
         val proposal = propose(sessions = listOf(session("a", "werkregie", "09:00" to "09:20"), session("b", "hs.hsadmin.ng", "10:00" to "10:30")))
 

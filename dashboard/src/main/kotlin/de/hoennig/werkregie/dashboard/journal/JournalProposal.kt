@@ -58,6 +58,7 @@ data class WerkjournalEntry(
 /**
  * Proposes the Werkjournal entries of a recorded day: one per Taiga story where a Taiga ID is known, else one per project.
  * The minutes are the union of the sessions' active spans and of [ACTION] before each action in Gitea, Taiga and Matrix;
+ * a minute in which several entries are active counts once, shared among them, so the day adds up to the time of the clock;
  * builds, reviews and pull requests are evidence only, since they run without the user.
  * The same day gives the same proposal: ids derive from names, the description from sorted evidence,
  * because Werkjournal matches an entry by its content and adds a changed one as a new one.
@@ -113,14 +114,31 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
             }
         }
 
-        val proposed = groups.values.map { entry(day.day, it) }
+        val minutes = sharedMinutes(groups.values.map { Spans.merge(it.spans) })
+        val proposed = groups.values.mapIndexed { index, group -> entry(day.day, group, minutes[index]) }
         val entries = withinDailyLimit(proposed)
             .sortedWith(compareBy({ !it.mapped }, { it.hours == 0 }, { it.customer }, { it.project }, { it.story?.ref ?: 0L }))
         return Proposal(day.day, entries, file(day.day, entries))
     }
 
-    private fun entry(day: LocalDate, group: Group): ProposedEntry {
-        val minutes = Spans.merge(group.spans).sumOf { Duration.between(it.from, it.to).toMinutes() }
+    /** The minutes of each entry, its spans given: each stretch of time is divided equally among the entries active in it. */
+    private fun sharedMinutes(spansOfEntries: List<List<Span>>): List<Long> {
+        val seconds = DoubleArray(spansOfEntries.size)
+        val boundaries = spansOfEntries.flatten().flatMap { listOf(it.from, it.to) }.distinct().sorted()
+        for ((from, to) in boundaries.zipWithNext()) {
+            val active = spansOfEntries.indices.filter { index -> spansOfEntries[index].any { !it.from.isAfter(from) && !it.to.isBefore(to) } }
+            val share = Duration.between(from, to).seconds.toDouble() / active.size.coerceAtLeast(1)
+            active.forEach { seconds[it] += share }
+        }
+        // rounded by the largest remainders, so the entries add up to the rounded time of the clock
+        val minutes = seconds.map { it / 60 }
+        val rounded = minutes.map { Math.floor(it).toLong() }.toMutableList()
+        val missing = Math.round(minutes.sum()) - rounded.sum()
+        minutes.indices.sortedByDescending { minutes[it] - rounded[it] }.take(missing.toInt()).forEach { rounded[it] += 1 }
+        return rounded
+    }
+
+    private fun entry(day: LocalDate, group: Group, minutes: Long): ProposedEntry {
         val target = group.target
         val evidence = group.evidence.distinct().sortedWith(compareBy({ it.time }, { it.kind }, { it.title }))
         return ProposedEntry(
