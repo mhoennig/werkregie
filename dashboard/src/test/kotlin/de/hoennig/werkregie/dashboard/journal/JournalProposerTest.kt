@@ -115,6 +115,18 @@ class JournalProposerTest : FunSpec({
         proposal.entries.map { it.minutes }.sorted() shouldContainExactly listOf(3L, 3L, 4L)
     }
 
+    test("a story below half an hour joins the entry of its project") {
+        val stories = TaigaStories { slug, ref -> Story(slug, ref, "US", if (ref == 544L) "Hardening" else "Tariffs") }
+        val proposal = JournalProposer(config, stories).propose(JournalDay(day, "UTC", listOf(
+            session("s1", "hs.hsadmin.ng", "09:00" to "09:15", branches = listOf("mihoe/Taiga544-hardening")),
+            session("s2", "hs.hsadmin.ng", "10:00" to "10:28"),
+            session("s3", "hs.hsadmin.ng", "11:00" to "12:00", branches = listOf("mihoe/Taiga597-tariffs")),
+        ), emptyList()))
+
+        proposal.entries.map { Triple(it.story?.ref, it.minutes, it.hours) } shouldContainExactly listOf(Triple(null, 43L, 1), Triple(597L, 60L, 1))
+        proposal.entries.first().description shouldBe "Taiga#US-544 Hardening; Sitzung „s1“; Sitzung „s2“"
+    }
+
     test("less than half an hour is a hint, not an entry of the file") {
         val proposal = propose(sessions = listOf(session("a", "werkregie", "09:00" to "09:20"), session("b", "hs.hsadmin.ng", "10:00" to "10:30")))
 

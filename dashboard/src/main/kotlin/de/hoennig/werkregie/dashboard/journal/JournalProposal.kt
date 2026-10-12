@@ -69,6 +69,9 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
     private class Group(val target: Target, val story: Story?) {
         val spans = mutableListOf<Span>()
         val evidence = mutableListOf<Evidence>()
+        // the stories below half an hour that joined this entry of their project
+        val joined = mutableListOf<Story>()
+        var minutes = 0L
     }
 
     private val projects = config.customers.flatMap { customer -> customer.projects.map { Target(customer.name, it.name, it, true) } }
@@ -114,8 +117,16 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
             }
         }
 
-        val minutes = sharedMinutes(groups.values.map { Spans.merge(it.spans) })
-        val proposed = groups.values.mapIndexed { index, group -> entry(day.day, group, minutes[index]) }
+        sharedMinutes(groups.values.map { Spans.merge(it.spans) }).zip(groups.values).forEach { (minutes, group) -> group.minutes = minutes }
+        // a story below half an hour would be no entry of its own: it joins the entry of its project without story
+        groups.values.filter { it.story != null && it.minutes < HALF_HOUR }.sortedBy { it.story!!.ref }.forEach { story ->
+            val project = groups.getOrPut(story.target to null) { Group(story.target, null) }
+            project.minutes += story.minutes
+            project.evidence += story.evidence
+            project.joined += story.story!!
+            groups.remove(story.target to story.story)
+        }
+        val proposed = groups.values.map { entry(day.day, it) }
         val entries = withinDailyLimit(proposed)
             .sortedWith(compareBy({ !it.mapped }, { it.hours == 0 }, { it.customer }, { it.project }, { it.story?.ref ?: 0L }))
         return Proposal(day.day, entries, file(day.day, entries))
@@ -138,8 +149,9 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
         return rounded
     }
 
-    private fun entry(day: LocalDate, group: Group, minutes: Long): ProposedEntry {
+    private fun entry(day: LocalDate, group: Group): ProposedEntry {
         val target = group.target
+        val minutes = group.minutes
         val evidence = group.evidence.distinct().sortedWith(compareBy({ it.time }, { it.kind }, { it.title }))
         return ProposedEntry(
             id = uuid("entry:$day:${target.customer}:${target.project}:${group.story?.let { "${it.slug}#${it.ref}" } ?: ""}"),
@@ -151,8 +163,8 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
             story = group.story,
             minutes = minutes,
             // half an hour and more counts as an hour, less as none
-            hours = if (target.mapped) ((minutes + 30) / 60).toInt().coerceAtMost(DAILY_LIMIT) else 0,
-            description = description(target, group.story, evidence),
+            hours = if (target.mapped) ((minutes + HALF_HOUR) / 60).toInt().coerceAtMost(DAILY_LIMIT) else 0,
+            description = description(target, group.story, group.joined, evidence),
             evidence = evidence,
         )
     }
@@ -170,17 +182,17 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
         return entries.mapIndexed { index, entry -> entry.copy(hours = hours[index]) }
     }
 
-    private fun description(target: Target, story: Story?, evidence: List<Evidence>): String {
+    private fun description(target: Target, story: Story?, joined: List<Story>, evidence: List<Evidence>): String {
         // Gitea's own title of an open pull request starts with its number, a draft's with WIP
         val pulls = evidence.mapNotNull { PULL.find(it.title)?.let { match -> match.groupValues[1].toLong() to match.groupValues[2] } }
             .map { (number, subject) -> number to subject.trim().removePrefix("#$number").trim().removePrefix("WIP:").trim() }
             .groupBy({ it.first }, { it.second }).toSortedMap()
             .map { (number, subjects) -> "PR#$number" + (subjects.firstOrNull { it.isNotEmpty() }?.let { " $it" } ?: "") }
-        val parts = pulls +
+        val parts = joined.map { head(it) } + pulls +
             evidence.filter { it.kind == "task" || it.kind == "issue" || it.kind == "story" }.map { it.title }.distinct().sorted() +
             evidence.filter { it.kind == "session" }.map { "Sitzung „${it.title}“" }.distinct().sorted() +
             evidence.filter { it.kind == "message" }.map { "Matrix ${it.title.substringBefore(" · ").substringBefore(": ")}" }.distinct().sorted()
-        val head = story?.let { "Taiga#${it.kind}-${it.ref} ${it.subject}" }
+        val head = story?.let { head(it) }
         val text = when {
             head != null && parts.isNotEmpty() -> "$head: ${parts.joinToString("; ")}"
             head != null -> head
@@ -189,6 +201,8 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
         }
         return if (text.length > MAX_DESCRIPTION) text.take(MAX_DESCRIPTION - 1) + "…" else text
     }
+
+    private fun head(story: Story) = "Taiga#${story.kind}-${story.ref} ${story.subject}"
 
     private fun file(day: LocalDate, entries: List<ProposedEntry>): WerkjournalFile {
         val booked = entries.filter { it.mapped && it.hours > 0 }
@@ -236,6 +250,7 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
     companion object {
         private val ACTION: Duration = Duration.ofMinutes(15)
         private const val DAILY_LIMIT = 12
+        private const val HALF_HOUR = 30L
         private const val MAX_DESCRIPTION = 2000
         // Taiga#US-591, Taiga#591, Taiga545, US-591 and Taiga's own TG-591
         val TAIGA_ID = Regex("""(?i)\b(?:taiga\s*#?\s*(?:us-?)?|us-|tg-)(\d+)""")

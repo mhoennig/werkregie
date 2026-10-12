@@ -172,6 +172,7 @@
         " Werkregie PR#45: tab Journal; mapping in journal: of dashboard.yml; one entry per Taiga story, else per project.
         " Werkregie PR#49: no HTTP 500 for a project with a story and other work.
         " Werkregie PR#53: parallel entries share their minutes, so a day adds up to the clock.
+        " Werkregie PR#54: a story below 30 min joins the entry of its project.
       - [ ] AI summary as the description of an entry (S) :#dash.journal.proposal
       - [?] Days before the deployment, read from older transcripts
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
