@@ -83,6 +83,42 @@ class WebServerTest : FunSpec({
         get("/api/journal/../relays.json", "Authorization", "Bearer ${accessToken.token}").statusCode() shouldBe 400
     }
 
+    test("a dismissal needs the access token as bearer header") {
+        val ownState = Files.createTempDirectory("state")
+        val ownRelays = RelayRegistry(ownState.resolve("relays.json"), mapper, Duration.ofSeconds(30), Duration.ofSeconds(120))
+        val dismissals = Dismissals(ownState.resolve(Dismissals.FILE_NAME), mapper)
+        val ownServer = WebServer("127.0.0.1", 0, Dashboard(listOf(ownRelays), windowHours = 24, dismissals = dismissals), mapper,
+            accessToken, ownRelays, dismissals = dismissals)
+        val ownBase = "http://127.0.0.1:${ownServer.start()}"
+        val time = Instant.parse("2026-10-12T10:00:00Z")
+        val asking = Item("claude", "Desktop", "session", Section.OPEN, "Asks", "idle", time,
+            url = "claude://code/continue?session=local_a", flags = listOf(Flag("ask", "wartet auf dich")))
+        ownRelays.accept(report.copy(items = listOf(asking)))
+        fun dismiss(key: String, vararg headers: String) = client.send(
+            HttpRequest.newBuilder(URI("$ownBase/api/dismiss")).headers(*headers)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(mapper.writeValueAsBytes(mapOf("key" to key, "time" to time)))).build(),
+            HttpResponse.BodyHandlers.ofString(),
+        ).statusCode()
+        fun flags() = mapper.readValue<Snapshot>(client.send(
+            HttpRequest.newBuilder(URI("$ownBase/api/dashboard")).header("Authorization", "Bearer ${accessToken.token}").build(),
+            HttpResponse.BodyHandlers.ofString(),
+        ).body()).items.single().flags
+        val json = arrayOf("Content-Type", "application/json")
+
+        try {
+            dismiss(asking.url!!, *json) shouldBe 401
+            dismiss(asking.url!!, *json, "Cookie", "${AccessToken.COOKIE}=${accessToken.token}") shouldBe 401
+            dismiss(asking.url!!, "Content-Type", "text/plain", "Authorization", "Bearer ${accessToken.token}") shouldBe 415
+            dismiss("claude://code/continue?session=local_other", *json, "Authorization", "Bearer ${accessToken.token}") shouldBe 404
+            flags() shouldBe listOf(Flag("ask", "wartet auf dich"))
+
+            dismiss(asking.url!!, *json, "Authorization", "Bearer ${accessToken.token}") shouldBe 204
+            flags() shouldBe emptyList()
+        } finally {
+            ownServer.stop()
+        }
+    }
+
     test("verifies a token for the page before it keeps it") {
         get("/api/token/verify", "Authorization", "Bearer ${accessToken.token}").statusCode() shouldBe 204
         get("/api/token/verify", "Authorization", "Bearer wrong").statusCode() shouldBe 401

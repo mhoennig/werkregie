@@ -233,7 +233,8 @@ const TEXT = {
         "empty.running": "Nichts in Arbeit.", "empty.sessions": "Keine offenen Sessions.", "empty.prs": "Keine offenen Pull Requests.",
         "empty.tasks": "Nichts zugewiesen.", "empty.messages": "Keine Nachrichten im gewählten Zeitraum.", "empty.history": "Nichts im gewählten Zeitraum.",
         "messages.older": "{n} ältere Nachrichten", "messages.older1": "1 ältere Nachricht", "messages.show7": "7 Tage zeigen",
-        "copy.title": "Resume-Befehl kopieren", "copy.failed": "Kopieren fehlgeschlagen", repository: "Repository {name}",
+        "copy.title": "Resume-Befehl kopieren", "copy.failed": "Kopieren fehlgeschlagen",
+        "dismiss.title": "Ausblenden, bis die Sitzung etwas Neues schreibt", "dismiss.failed": "Ausblenden fehlgeschlagen", repository: "Repository {name}",
         "sources.title": "Quellen", "sources.connected": "verbunden", "sources.count": "{ok} von {n} verbunden",
     },
     en: {
@@ -280,7 +281,8 @@ const TEXT = {
         "empty.running": "Nothing in progress.", "empty.sessions": "No open sessions.", "empty.prs": "No open pull requests.",
         "empty.tasks": "Nothing assigned.", "empty.messages": "No messages in the chosen period.", "empty.history": "Nothing in the chosen period.",
         "messages.older": "{n} older messages", "messages.older1": "1 older message", "messages.show7": "show 7 days",
-        "copy.title": "Copy resume command", "copy.failed": "Copy failed", repository: "Repository {name}",
+        "copy.title": "Copy resume command", "copy.failed": "Copy failed",
+        "dismiss.title": "Dismiss until the session writes something new", "dismiss.failed": "Dismiss failed", repository: "Repository {name}",
         "sources.title": "Sources", "sources.connected": "connected", "sources.count": "{ok} of {n} connected",
     },
 };
@@ -720,7 +722,30 @@ function todoRow(group, entry) {
         <span class="todo-what"><span class="todo-title">${esc(title)}</span><span class="todo-detail">${esc(detail)}</span></span>
         <span class="todo-age" title="${esc(item.time ? new Date(item.time).toLocaleString(locale()) : "")}">${esc(item.time ? span(item.time) : "")}</span>
         ${href(item) ? `<span class="act">${esc(t(`act.${group}`))}${ARROW}</span>` : ""}
+        ${dismissButton(item)}
     </${tag}>`;
+}
+
+// a session that asks only formally, e.g. about a pull request in someone else's review, goes until it writes again;
+// the server keeps it for all devices, so the demo has no such button
+const sessionKey = (item) => item.url || item.command;
+function dismissButton(item) {
+    if (item.kind !== "session" || state.data?.access === "DEMO" || !sessionKey(item) || !item.time) return "";
+    return `<button class="dismiss-button" type="button" data-key="${esc(sessionKey(item))}" data-time="${esc(item.time)}" title="${esc(t("dismiss.title"))}" aria-label="${esc(t("dismiss.title"))}">✕</button>`;
+}
+
+async function dismiss(button) {
+    const token = document.cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${TOKEN_COOKIE}=`))?.slice(TOKEN_COOKIE.length + 1);
+    button.disabled = true;
+    const response = await fetch("/api/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ key: button.dataset.key, time: button.dataset.time }),
+        cache: "no-store",
+    }).catch(() => null);
+    if (response?.ok) return load();
+    button.disabled = false;
+    button.title = t("dismiss.failed");
 }
 
 function renderTodo(items) {
@@ -1353,6 +1378,13 @@ $("tasks-count").addEventListener("click", (e) => {
     render();
 });
 $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });
+document.addEventListener("click", (e) => {
+    const button = e.target.closest(".dismiss-button");
+    if (!button) return;
+    // the row links into Claude Desktop; dismissing must not open it
+    e.preventDefault();
+    dismiss(button);
+});
 document.addEventListener("click", async (e) => {
     const button = e.target.closest(".copy-button");
     if (!button) return;

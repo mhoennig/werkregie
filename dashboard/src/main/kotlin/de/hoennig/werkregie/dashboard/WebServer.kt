@@ -26,6 +26,7 @@ class WebServer(
     private val accessToken: AccessToken? = null,
     private val relays: RelayRegistry? = null,
     private val journal: JournalArchive? = null,
+    private val dismissals: Dismissals? = null,
 ) {
     private lateinit var server: HttpServer
 
@@ -37,6 +38,7 @@ class WebServer(
         server.createContext("/api/token/verify") { exchange -> handle(exchange) { verify(it) } }
         server.createContext("/api/relay") { exchange -> handle(exchange) { relay(it) } }
         server.createContext("/api/journal/") { exchange -> handle(exchange) { journal(it) } }
+        server.createContext("/api/dismiss") { exchange -> handle(exchange) { dismiss(it) } }
         server.createContext("/") { exchange -> handle(exchange) { StaticFiles.serve(it) } }
         server.start()
         return server.address.port
@@ -100,6 +102,33 @@ class WebServer(
         exchange.respond(204, "text/plain", ByteArray(0))
     }
 
+    /**
+     * `POST /api/dismiss` with `{"key", "time"}`: the page dismisses a session from "Du bist dran".
+     * Like a relay, only with the bearer header; and only JSON, which a form of another site cannot send to the local mode.
+     */
+    private fun dismiss(exchange: HttpExchange) {
+        if (dismissals == null) return exchange.respond(404, "text/plain", "no dismissals in this mode".toByteArray())
+        if (exchange.requestMethod != "POST") return exchange.respond(405, "text/plain", "POST only".toByteArray())
+        if (accessToken != null && !accessToken.matches(exchange.bearer())) {
+            return exchange.respond(401, "text/plain", "token required".toByteArray())
+        }
+        if (exchange.requestHeaders.getFirst("Content-Type")?.substringBefore(';')?.trim() != "application/json") {
+            return exchange.respond(415, "text/plain", "JSON only".toByteArray())
+        }
+        val body = exchange.requestBody.readNBytes(MAX_DISMISS_BYTES + 1)
+        if (body.size > MAX_DISMISS_BYTES) return exchange.respond(413, "text/plain", "too large".toByteArray())
+        val request = runCatching { mapper.readValue<DismissRequest>(body) }.getOrNull()
+            ?: return exchange.respond(400, "text/plain", "invalid request".toByteArray())
+        // only a session that asks now, so the file holds nothing a caller made up
+        if (!Dismissals.asks(dashboard.snapshot().items, request.key)) {
+            return exchange.respond(404, "text/plain", "no session asks with this key".toByteArray())
+        }
+        dismissals.dismiss(request.key, request.time)
+        exchange.respond(204, "text/plain", ByteArray(0))
+    }
+
+    private data class DismissRequest(val key: String, val time: Instant)
+
     /** `DELETE /api/relay/NAME`: what `werkregie-dashboard forget-relay NAME` sends. */
     private fun forget(exchange: HttpExchange, name: String) {
         if (exchange.requestMethod != "DELETE") return exchange.respond(405, "text/plain", "DELETE only".toByteArray())
@@ -122,6 +151,7 @@ class WebServer(
         // a few hundred sessions of a week fit into well under a megabyte
         private const val MAX_REPORT_BYTES = 4 * 1024 * 1024
         private val DAY = Regex("""^\d{4}-\d{2}-\d{2}$""")
+        private const val MAX_DISMISS_BYTES = 4 * 1024
     }
 }
 

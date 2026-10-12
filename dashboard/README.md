@@ -166,6 +166,9 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   Only with `claude.jev` does the last text, at most 3000 characters, go to Jev, once per message;
   its key comes from `apiKey` or `apiKeyEnv`, e.g. `TYPESAFE_API_KEY` in the relay's `dashboard.env`.
   An archived session carries no marker.
+  ✕ on a session in *Du bist dran* dismisses it until the session changes, e.g. with a new message;
+  the server keeps the dismissals in `dismissed.json` of its state directory, for all devices,
+  and takes them only with the access token as bearer header.
 - **Werkator:** private repositories are redacted for anonymous readers.
   `controlToken` (or `controlTokenEnv`) is sent as the `werkator_token` cookie, the way Werkator's own pages do;
   `tools/remote --env-file .env.<instance> werkator control-token` prints it.

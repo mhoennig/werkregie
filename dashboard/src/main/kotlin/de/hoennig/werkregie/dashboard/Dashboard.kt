@@ -45,6 +45,7 @@ class Dashboard(
     private val windowHours: Long,
     val version: String = "dev",
     private val executor: ExecutorService = Executors.newVirtualThreadPerTaskExecutor(),
+    private val dismissals: Dismissals? = null,
 ) {
     private class Entry(
         var items: List<Item> = emptyList(),
@@ -78,6 +79,7 @@ class Dashboard(
         }
         val items = sources.flatMap { source -> entries.getValue(source.id).let { synchronized(it) { it.items } } }
             .sortedByDescending { it.time ?: Instant.EPOCH }
+            .let { dismissals?.apply(it) ?: it }
         return Snapshot(version, now, windowHours, items, statuses, access,
             loads = sources.mapNotNull { it.load() }, costs = sources.mapNotNull { it.costs() })
     }

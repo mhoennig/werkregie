@@ -87,10 +87,12 @@ fun main(args: Array<String>) {
 
 private fun local(config: DashboardConfig, configPath: Path, mapper: ObjectMapper) {
     val http = JsonHttp(mapper)
-    val dashboard = Dashboard(localSources(config, mapper) + remoteSources(config, http, mapper), config.windowHours, version())
+    val dismissals = Dismissals(stateDir(config.server).resolve(Dismissals.FILE_NAME), mapper)
+    val dashboard = Dashboard(localSources(config, mapper) + remoteSources(config, http, mapper), config.windowHours, version(),
+        dismissals = dismissals)
     val journal = journal(config, mapper, dashboard, transcripts(config, mapper))
     // loopback only: the page shows private work and the backend holds the Gitea tokens
-    val port = WebServer("127.0.0.1", config.port, dashboard, mapper, journal = journal).start()
+    val port = WebServer("127.0.0.1", config.port, dashboard, mapper, journal = journal, dismissals = dismissals).start()
     warm(dashboard)
     println("Werkregie-Dashboard (lokal): http://localhost:$port/  (Konfiguration: $configPath)")
 }
@@ -105,9 +107,11 @@ private fun server(config: DashboardConfig, configPath: Path, mapper: ObjectMapp
         gone = Duration.ofSeconds(config.server.relayGoneSeconds),
     )
     Runtime.getRuntime().addShutdownHook(Thread { runCatching { relays.save() } })
-    val dashboard = Dashboard(remoteSources(config, JsonHttp(mapper), mapper) + relays, config.windowHours, version())
+    val dismissals = Dismissals(state.resolve(Dismissals.FILE_NAME), mapper)
+    val dashboard = Dashboard(remoteSources(config, JsonHttp(mapper), mapper) + relays, config.windowHours, version(),
+        dismissals = dismissals)
     val journal = journal(config, mapper, dashboard) { _, _ -> relays.activity() }
-    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays, journal).start()
+    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays, journal, dismissals).start()
     warm(dashboard)
     println("Werkregie-Dashboard (Server): ${config.server.bindAddress}:$port  (Konfiguration: $configPath, Zustand: $state)")
 }
