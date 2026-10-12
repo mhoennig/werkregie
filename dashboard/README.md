@@ -21,7 +21,7 @@ It opens on the overview, which answers two questions first: is every source con
   Codex has no such link yet: the ChatGPT app on Linux takes `codex://threads/…` but does not act on it.
 - *Du bist dran* groups what asks something of the user: Festgefahren, Nacharbeiten, Freigeben, Mergen, Antworten.
 - Beside it: the load of each Werkator host, Werkator's builds of 24 hours, werkrevisor's costs.
-  A Werkator panel charts 24 hours of CPU, RAM, its first disk and load,
+  A Werkator panel charts 24 hours of CPU, RAM, each disk and load,
   and the worst of swap, CPU wait, memory wait and disk wait.
 - Below it: what runs and which sessions wait, as cards; the history of 24 hours as a lane per tool.
 

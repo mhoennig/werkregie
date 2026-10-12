@@ -78,20 +78,18 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         return load(system, steps)
     }
 
-    /** Werkator's verdict, the charts of CPU, RAM, the first disk and load, and the worst of swap and the waits. */
+    /** Werkator's verdict, the charts of CPU, RAM, each disk and load, and the worst of swap and the waits. */
     internal fun load(system: JsonNode, steps: Map<String, List<Double?>>): HostLoad {
         val cpus = system.total("cpuCount")
-        val disk = system["disks"]?.firstOrNull()
         val swap = system.total("swapTotalGib")
-        val fixed = listOfNotNull(
+        val disks = system["disks"]?.map {
+            utilization("disk", "disk.${it.text("key")}.usedGib", it["usedGib"]?.number("current"), it.total("totalGib"), it.text("label"))
+        }.orEmpty()
+        val fixed = listOf(
             utilization("cpu", "cpuUsed", system["cpuUsed"]?.number("current"), cpus),
             utilization("ram", "ramUsedGib", system["ramUsedGib"]?.number("current"), system.total("ramTotalGib")),
-            disk?.let {
-                utilization("disk", "disk.${it.text("key")}.usedGib", it["usedGib"]?.number("current"), it.total("totalGib"), it.text("label"))
-            },
-            Metric("load", "load1", system.number("load1"), cpus,
-                warn = cpus?.times(LOAD_PRESSURE_PER_THREAD), bad = cpus?.times(LOAD_OVERLOAD_PER_THREAD)),
-        )
+        ) + disks + Metric("load", "load1", system.number("load1"), cpus,
+            warn = cpus?.times(LOAD_PRESSURE_PER_THREAD), bad = cpus?.times(LOAD_OVERLOAD_PER_THREAD))
         val others = listOf(
             Metric("swap", "swapUsedGib", system["swapUsedGib"]?.number("current"), swap, warn = swap?.times(SWAP_PRESSURE_SHARE)),
             Metric("cpuPressure", "cpuPressure", system.number("cpuPressure"), PERCENT, warn = CPU_PRESSURE_PERCENT),

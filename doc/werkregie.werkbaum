@@ -39,6 +39,8 @@
           " Werkregie PR#27; replaced by the small charts of PR#31.
         - [^] Small charts: CPU, RAM, disk, load, and the worst of swap and the waits (XS)
           " Werkregie PR#31: levels and scales as on Werkator's home rail.
+        - [^] A chart for each disk, not only the first (XS)
+          " Werkregie PR#32: e.g. SSD and HDD of Werkator javagil.
       - [^] #dash.costs: werkrevisor's review costs of 24 hours and 7 days (XS)
         " Werkregie PR#27: /api/stats of the statistics service.
       - [^] #dash.taiga: Taiga, any number of instances and projects

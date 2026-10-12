@@ -42,27 +42,28 @@ class WerkatorSourceTest : FunSpec({
     fun system(extra: String = "") = mapper.readTree(
         """{"timestamp":"2026-10-11T15:42:26Z","cpuCount":4,"ramTotalGib":8.0,
            "cpuUsed":{"current":3.0},"ramUsedGib":{"current":7.6},"load1":4.4,
-           "disks":[{"key":"ssd","label":"SSD","totalGib":16.0,"usedGib":{"current":12.0}},{"key":"hdd","label":"HDD","totalGib":20.0}],
+           "disks":[{"key":"ssd","label":"SSD","totalGib":16.0,"usedGib":{"current":12.0}},{"key":"hdd","label":"HDD","totalGib":20.0,"usedGib":{"current":19.0}}],
            "swapTotalGib":4.0,"swapUsedGib":{"current":1.0},"cpuPressure":5.0,"memoryPressure":0.5,"ioPressure":1.0,
            "health":{"level":"pressure","reasons":["swap 2.54 of 4.00 GiB in use"]}$extra}""",
     )
 
-    test("the load holds the four fixed charts with their levels") {
+    test("the load holds the fixed charts with their levels") {
         val load = source.load(system(), mapOf("cpuUsed" to listOf(2.0, null, 4.0), "load1" to listOf(2.0, 8.0)))
 
         load.level shouldBe "pressure"
         load.reasons shouldBe listOf("swap 2.54 of 4.00 GiB in use")
         load.at shouldBe Instant.parse("2026-10-11T15:42:26Z")
-        load.charts.take(4).map { Triple(it.key, it.value, it.level) } shouldBe listOf(
+        load.charts.take(5).map { Triple(it.key, it.value, it.level) } shouldBe listOf(
             Triple("cpu", 0.75, "ok"),
             Triple("ram", 0.95, "bad"),
             Triple("disk", 0.75, "ok"),
+            Triple("disk", 0.95, "bad"),
             Triple("load", 4.4, "warn"),
         )
-        load.charts[2].label shouldBe "SSD"
+        load.charts.filter { it.key == "disk" }.map { it.label } shouldBe listOf("SSD", "HDD")
         load.charts[0].history shouldBe listOf(0.5, null, 1.0)
         // load above the threads: the highest value is the scale
-        load.charts[3].history shouldBe listOf(0.25, 1.0)
+        load.charts[4].history shouldBe listOf(0.25, 1.0)
     }
 
     test("the fifth chart is the worst of swap and the waits") {
@@ -71,7 +72,7 @@ class WerkatorSourceTest : FunSpec({
         // CPU pressure above 20 % warns
         val charts = source.load(system(""","cpuPressure":24.0"""), mapOf("cpuPressure" to listOf(12.0))).charts
 
-        charts.size shouldBe 5
+        charts.size shouldBe 6
         charts.last().key shouldBe "cpuPressure"
         charts.last().value shouldBe 0.24
         charts.last().level shouldBe "warn"
