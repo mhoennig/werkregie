@@ -322,10 +322,10 @@ a.costs-tile:hover { border-color: var(--accent); color: var(--text); }
 .card-meta { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-more { align-items: center; justify-content: center; border-style: dashed; color: var(--accent); font-weight: 500; }
 
-/* A card with new content shows for 12 s in the other mode: its tokens are pairs of the light and the dark
+/* A card or a row of "Du bist dran" with new content shows for 12 s in the other mode: its tokens are pairs of the light and the dark
    lists above, and its color-scheme picks the one the page does not use. It switches at once and fades back;
    the fade moves nothing, so it stays for prefers-reduced-motion as well. */
-.card.is-flash {
+.is-flash {
     color-scheme: dark;
     --bg: light-dark(#ffffff, #242928);
     --panel: light-dark(#fafafa, #2a302f);
@@ -347,14 +347,16 @@ a.costs-tile:hover { border-color: var(--accent); color: var(--text); }
     --blue: light-dark(#3a62b0, #8eaef0);
     --green: light-dark(#2e7d4a, #7cc793);
 }
-.card.is-flash .app-logo.is-mono { filter: invert(1); }
+.todo-row.is-flash { background: var(--bg); }
+.todo-row.is-flash:hover { background: var(--panel-2); }
+.is-flash .app-logo.is-mono { filter: invert(1); }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .card.is-flash { color-scheme: light; }
-    :root:not([data-theme="light"]) .card.is-flash .app-logo.is-mono { filter: none; }
+    :root:not([data-theme="light"]) .is-flash { color-scheme: light; }
+    :root:not([data-theme="light"]) .is-flash .app-logo.is-mono { filter: none; }
 }
-:root[data-theme="dark"] .card.is-flash { color-scheme: light; }
-:root[data-theme="dark"] .card.is-flash .app-logo.is-mono { filter: none; }
-.card.is-flash-end, .card.is-flash-end * { transition: background-color 0.8s, border-color 0.8s, color 0.8s, stroke 0.8s, filter 0.8s; }
+:root[data-theme="dark"] .is-flash { color-scheme: light; }
+:root[data-theme="dark"] .is-flash .app-logo.is-mono { filter: none; }
+.is-flash-end, .is-flash-end * { transition: background-color 0.8s, border-color 0.8s, color 0.8s, stroke 0.8s, filter 0.8s; }
 
 /* the history of 24 hours: a lane per tool, a cell per hour */
 .lanes { display: grid; gap: 5px; padding: 12px 14px 10px; }

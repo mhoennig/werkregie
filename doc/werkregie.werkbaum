@@ -90,6 +90,8 @@
         " Werkregie PR#27, design A3 of the design canvas.
         - [^] Connection bar with the tools' logos; a silent relay counts as not connected (S)
         - [^] Du bist dran, grouped by action, with the tool's logo and a link (S)
+        - [^] A row of Du bist dran with new content shows inverted for 12 s (XS)
+          " Werkregie PR#38: as the cards since PR#33; time in a reason, e.g. "RED seit 2 h", is no change.
         - [^] Werkator's load and builds, werkrevisor's costs beside it (S)
         - [^] Running work and waiting sessions as cards (XS)
         - [^] A card with new content shows inverted for 12 s (XS)
