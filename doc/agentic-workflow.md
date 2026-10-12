@@ -36,6 +36,7 @@ A critical PR, e.g. one that touches security or weakens the checks, waits for t
    Once the PR number is known, the file name of the PR document gets it.
 4. Implement in focused commits and push each one.
    Start long local test runs only after the push; the CI runs meanwhile.
+   After each push, watch the PR until it needs the agent (see "Watching a PR").
 5. Keep the PR document current: decisions, findings, open points.
 6. Remove `WIP: ` only when everything is done:
    the CI is green, tests cover the change, and the PR document matches the code.
@@ -48,6 +49,19 @@ A PR opened without `WIP: ` gets no review until it was set to `WIP: ` and back.
 `main` takes squash merges only.
 After the merge of a PR, a branch that builds on it gets rebased onto `main` without the already merged commits:
 `git rebase --onto main <last commit of the merged branch>`.
+
+## Watching a PR
+
+From its opening to its merge, the PR is the coding agent's to keep mergeable.
+
+- After each push, the agent watches its PR until it must act: a merge, a conflict or a new `main`, a red build,
+  a green build of a `WIP: ` PR, or a review that asks for work.
+  werkregie provides the watch: `werkregie-dashboard watch-pr <URL of the PR>` prints one line and ends.
+- A conflict with `main` is the agent's to fix at once, without waiting for the human:
+  rebase onto `main`, raise the version to the next free one, push.
+- The next free version is above the one of `main` and above those of the open PRs.
+  When another PR merges first, the agent rebases and raises it again.
+- The watch ends with the agent's session; then "Du bist dran" in werkregie shows the human a conflict that the agent leaves.
 
 ## Review Rounds
 

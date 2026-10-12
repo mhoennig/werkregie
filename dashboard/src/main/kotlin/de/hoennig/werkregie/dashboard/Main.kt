@@ -49,6 +49,9 @@ werkregie-dashboard [MODUS] [--config DATEI]
                 (über den laufenden Server, sonst direkt aus relays.json)
   init server|relay [VERZEICHNIS]
                 schreibt systemd-Unit (und für den Server .htaccess) zum Installieren
+  watch-pr URL [--interval SEKUNDEN]
+                beobachtet einen Pull Request in Gitea, bis sein Agent handeln muss, und gibt eine Zeile aus:
+                MERGED, CLOSED, BEHIND, CONFLICT, FAILED, REVIEW oder READY; den Token nimmt es aus giteas
   version       gibt die Version aus
 
 Konfiguration: --config, sonst WERKREGIE_DASHBOARD_CONFIG, sonst ~/.config/werkregie/dashboard.yml
@@ -78,6 +81,7 @@ fun main(args: Array<String>) {
                 else -> fail("matrix kennt 'login' und 'verify'")
             }
         }
+        "watch-pr" -> println(watchPullRequest(config, mapper, arguments))
         "forget-relay" -> println(forgetRelay(config, mapper, arguments.removeFirstOrNull() ?: fail("forget-relay braucht den Namen des Relays")))
         "init" -> {
             val target = arguments.removeFirstOrNull() ?: fail("init braucht 'server' oder 'relay'")
@@ -147,6 +151,25 @@ private fun proposer(config: DashboardConfig, sources: List<Source>): JournalPro
 
 private fun transcripts(config: DashboardConfig, mapper: ObjectMapper) =
     TranscriptActivity(config.claude, config.codex, Duration.ofMinutes(config.journal.gapMinutes), mapper)
+
+private fun watchPullRequest(config: DashboardConfig, mapper: ObjectMapper, arguments: MutableList<String>): String {
+    val interval = arguments.indexOf("--interval").takeIf { it >= 0 }?.let { index ->
+        arguments.removeAt(index)
+        arguments.removeAtOrNull(index)?.toLongOrNull()?.takeIf { it > 0 } ?: fail("--interval braucht Sekunden")
+    } ?: 30
+    val url = arguments.removeFirstOrNull() ?: fail("watch-pr braucht die Adresse des Pull Requests")
+    val ref = PullRequestRef.parse(url) ?: fail("keine Adresse eines Pull Requests in Gitea: $url")
+    val token = PullRequestWatch.token(config, ref) ?: fail("giteas kennt keinen Token für ${ref.base}")
+    val http = JsonHttp(mapper)
+    val headers = mapOf("Authorization" to "token $token")
+    val check = {
+        val pr = http.get("${ref.api}/pulls/${ref.number}", headers)
+        val head = pr["head"]?.get("sha")?.asText()
+        pr to head?.let { http.get("${ref.api}/commits/$it/status", headers) }
+    }
+    return runCatching { PullRequestWatch(check, java.time.Duration.ofSeconds(interval)).run() }
+        .getOrElse { e -> System.err.println("watch-pr: ${e.message}"); exitProcess(3) }
+}
 
 /** Asks the running server to drop the relay; with no server running, edits its state file. */
 private fun forgetRelay(config: DashboardConfig, mapper: ObjectMapper, name: String): String {

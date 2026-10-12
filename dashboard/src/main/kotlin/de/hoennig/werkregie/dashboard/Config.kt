@@ -1,6 +1,10 @@
 package de.hoennig.werkregie.dashboard
 
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -191,8 +195,26 @@ object ConfigLoader {
 
     private val yaml = ObjectMapper(YAMLFactory()).registerKotlinModule()
 
-    fun load(path: Path): DashboardConfig =
-        if (Files.exists(path)) yaml.readValue(path.toFile()) else DashboardConfig()
+    /**
+     * The configuration at [path]; an entry this version does not know is named on [warn] and skipped,
+     * since a newer version may already have written it, e.g. while its pull request waits for the deployment.
+     */
+    fun load(path: Path, warn: (String) -> Unit = System.err::println): DashboardConfig {
+        if (!Files.exists(path)) return DashboardConfig()
+        val tolerant = yaml.copy().addHandler(object : DeserializationProblemHandler() {
+            override fun handleUnknownProperty(
+                context: DeserializationContext, parser: JsonParser, deserializer: JsonDeserializer<*>, bean: Any?, name: String,
+            ): Boolean {
+                // a data class buffers its entries before it reads them, so the parser's path may name the wrong one;
+                // the class of the section is always right
+                val section = ((bean as? Class<*>) ?: bean?.javaClass)?.simpleName ?: "?"
+                warn("Konfiguration $path: unbekannter Eintrag '$name' in $section übergangen")
+                parser.skipChildren()
+                return true
+            }
+        })
+        return tolerant.readValue(path.toFile())
+    }
 
     /** The token of the tea login named [login], or else of the login of user [login] on [url]. */
     fun teaToken(login: String, url: String, teaConfig: Path = expandHome("~/.config/tea/config.yml")): String? {

@@ -182,6 +182,8 @@
       " Werkregie PR#18: the purpose line of a scenario reads "&hellip; so that …".
     - [^] #ops.master: Master copy of the shared workflow (XS) :#ops.workflow
       " Werkregie PR#16; decided by mi on 2026-10-11.
+    - [^] #ops.watch: A coding agent watches its pull request until it must act (XS) :#ops.workflow
+      " Werkregie PR#48: werkregie-dashboard watch-pr; a conflict with main is the agent's to fix at once.
     - [~] #ops.jdk: Temurin 25 as JDK and runtime of all werk repositories
       " Werkregie PR#20: doc/adrs/0001-2026-10-11.temurin-25.md; decided by mi on 2026-10-11.
       - [x] Decision as an ADR (XS)

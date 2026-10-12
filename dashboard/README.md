@@ -62,6 +62,7 @@ One program, three ways to run it:
 | `local` (default) | Claude Code, Codex, Werkator, Gitea | `127.0.0.1` only, no token |
 | `server` | Werkator, Gitea, and whatever the relays report | real data only with the access token, invented demo data without |
 | `relay` | Claude Code, Codex | nothing: posts its state to `relay.serverUrl` |
+| `watch-pr URL` | one pull request of a Gitea in `giteas` | nothing: prints one line when its coding agent must act, then ends |
 
 - **Access token:** the server creates it on its first start in `<stateDir>/access-token` (mode 0600);
   `werkregie-dashboard token` prints it, deleting the file rotates it.
@@ -172,6 +173,7 @@ unlike Android, a Linux desktop has no app that takes `https://matrix.to` from t
 
 `~/.config/werkregie/dashboard.yml`, or `--config FILE`, or `WERKREGIE_DASHBOARD_CONFIG`.
 See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a file only Claude Code and Codex are shown.
+An entry this version does not know is named on stderr and skipped, so that a newer version may add entries before its deployment.
 
 - **Claude Code:** a session that is not busy is marked 💬 *Claude fragt* when it waits for the user:
   *Frage offen* or *Dialog offen* by its process file, *Frage offen* by an unanswered AskUserQuestion in its transcript,
