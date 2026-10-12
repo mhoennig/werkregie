@@ -64,7 +64,7 @@ data class SourceStatus(
 /** Who sees what: `open` in local mode, `granted` with the access token, `demo` without it. */
 enum class Access { OPEN, GRANTED, DEMO }
 
-/** The load of a build host, e.g. a Werkator instance: its own verdict, and a small chart per metric. */
+/** The load of a build host, e.g. a Werkator instance: its own verdict, and small charts of its most critical metrics. */
 data class HostLoad(
     val source: String,
     val label: String,

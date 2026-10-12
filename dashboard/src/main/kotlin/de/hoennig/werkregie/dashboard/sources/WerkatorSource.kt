@@ -72,25 +72,28 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         val system = http.get("$url/api/system", headers)
         // the history is long; its lines change slowly, so it is read less often than the snapshot
         if (historyAt?.isAfter(now.minus(HISTORY_TTL)) != true) {
-            steps = runCatching { steps(http.get("$url/api/system/history?range=24h", headers)) }.getOrDefault(steps)
-            historyAt = now
+            // a failed read keeps the last lines and is tried again at the next fetch, not in 5 minutes
+            runCatching { steps(http.get("$url/api/system/history?range=24h", headers, REQUEST_TIMEOUT)) }.onSuccess {
+                steps = it
+                historyAt = now
+            }
         }
         return load(system, steps)
     }
 
-    /** Werkator's verdict, the charts of CPU, RAM, each disk and load, and the worst of swap and the waits. */
+    /** Werkator's verdict and the charts of its [CHARTS] most critical metrics, in Werkator's order. */
     internal fun load(system: JsonNode, steps: Map<String, List<Double?>>): HostLoad {
         val cpus = system.total("cpuCount")
         val swap = system.total("swapTotalGib")
         val disks = system["disks"]?.map {
             utilization("disk", "disk.${it.text("key")}.usedGib", it["usedGib"]?.number("current"), it.total("totalGib"), it.text("label"))
         }.orEmpty()
-        val fixed = listOf(
+        val metrics = listOf(
             utilization("cpu", "cpuUsed", system["cpuUsed"]?.number("current"), cpus),
             utilization("ram", "ramUsedGib", system["ramUsedGib"]?.number("current"), system.total("ramTotalGib")),
-        ) + disks + Metric("load", "load1", system.number("load1"), cpus,
-            warn = cpus?.times(LOAD_PRESSURE_PER_THREAD), bad = cpus?.times(LOAD_OVERLOAD_PER_THREAD))
-        val others = listOf(
+        ) + disks + listOf(
+            Metric("load", "load1", system.number("load1"), cpus,
+                warn = cpus?.times(LOAD_PRESSURE_PER_THREAD), bad = cpus?.times(LOAD_OVERLOAD_PER_THREAD)),
             Metric("swap", "swapUsedGib", system["swapUsedGib"]?.number("current"), swap, warn = swap?.times(SWAP_PRESSURE_SHARE)),
             Metric("cpuPressure", "cpuPressure", system.number("cpuPressure"), PERCENT, warn = CPU_PRESSURE_PERCENT),
             Metric("memoryPressure", "memoryPressure", system.number("memoryPressure"), PERCENT,
@@ -98,14 +101,16 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
             // Werkator gives disk wait no level; for the ranking it counts like CPU wait
             Metric("ioPressure", "ioPressure", system.number("ioPressure"), PERCENT, warn = null, reference = CPU_PRESSURE_PERCENT),
         )
-        val worst = others.filter { it.used != null }.maxWithOrNull(compareBy({ LEVELS.indexOf(it.level) }, { it.weight }))
+        val critical = metrics.filter { it.used != null }
+            .sortedWith(compareByDescending<Metric> { LEVELS.indexOf(it.level) }.thenByDescending { it.weight })
+            .take(CHARTS).toSet()
         return HostLoad(
             source = id,
             label = label,
             url = url,
             level = system["health"]?.text("level") ?: "unknown",
             reasons = system["health"]?.get("reasons")?.mapNotNull { it.asText(null) }.orEmpty(),
-            charts = (fixed + listOfNotNull(worst)).map { it.chart(steps[it.series].orEmpty()) },
+            charts = metrics.filter { it in critical }.map { it.chart(steps[it.series].orEmpty()) },
             at = system.text("timestamp")?.let(Instant::parse),
         )
     }
@@ -211,6 +216,7 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(30)
         private val HISTORY_TTL: Duration = Duration.ofMinutes(5)
         private const val HISTORY_STEPS = 48
+        private const val CHARTS = 3
         private val LEVELS = listOf("ok", "warn", "bad")
         // Werkator's thresholds, see its SystemHealth
         private const val WARN_SHARE = 0.8

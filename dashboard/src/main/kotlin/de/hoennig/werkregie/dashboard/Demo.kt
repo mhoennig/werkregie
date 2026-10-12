@@ -65,8 +65,6 @@ object Demo {
             charts = listOf(
                 LoadChart("cpu", value = 0.62, level = "ok", history = busy.map { 0.15 + 0.6 * it }),
                 LoadChart("ram", value = 0.88, level = "warn", history = busy.map { 0.55 + 0.33 * it }),
-                LoadChart("disk", "SSD", 0.54, "ok", busy.indices.map { 0.5 + 0.04 * it / 47.0 }),
-                LoadChart("load", value = 2.31, level = "ok", history = busy.map { 0.1 + 0.45 * it }),
                 LoadChart("cpuPressure", value = 0.245, level = "warn", history = busy.map { 0.02 + 0.25 * it }),
             ), at = now))
         val costs = listOf(Costs("werkrevisor:acme", "werkrevisor acme", null, day = 1.84, week = 11.20, reviews = 31, pullRequests = 14,
