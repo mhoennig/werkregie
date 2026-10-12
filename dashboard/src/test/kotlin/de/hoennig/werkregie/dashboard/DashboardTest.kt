@@ -41,7 +41,7 @@ class DashboardTest : FunSpec({
     }
 
     test("carries the load and the costs the sources report") {
-        val load = HostLoad("w", "W", null, "healthy", emptyList(), 0.1, 0.2, 0.3, "SSD", at = now)
+        val load = HostLoad("w", "W", null, "healthy", emptyList(), listOf(LoadChart("cpu", value = 0.1, level = "ok")), at = now)
         val costs = Costs("r", "R", null, 1.0, 7.0, 3, 2)
         val werkator = object : Source by FakeSource("w", { emptyList() }) { override fun load() = load }
         val werkrevisor = object : Source by FakeSource("r", { emptyList() }) { override fun costs() = costs }

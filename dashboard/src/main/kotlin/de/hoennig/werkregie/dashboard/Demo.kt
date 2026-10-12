@@ -59,10 +59,16 @@ object Demo {
             status("taiga:acme", "Taiga acme", 5),
             status("werkrevisor:acme", "werkrevisor acme", 0),
         )
-        // a busy afternoon: the CPU rises after noon, RAM is tight
-        val cpu = (0 until 48).map { step -> 0.15 + 0.6 * (if (step in 28..44) 1.0 else 0.2) * (0.6 + 0.4 * ((step * 7) % 5) / 4.0) }
-        val loads = listOf(HostLoad("werkator:acme", "Werkator acme", null, "pressure", listOf("RAM 88 % in use"),
-            cpu = 0.62, ram = 0.88, disk = 0.54, diskLabel = "SSD", cpuHistory = cpu, at = now))
+        // a busy afternoon: the CPU rises after noon, RAM is tight, builds wait for the CPU
+        val busy = (0 until 48).map { step -> (if (step in 28..44) 1.0 else 0.2) * (0.6 + 0.4 * ((step * 7) % 5) / 4.0) }
+        val loads = listOf(HostLoad("werkator:acme", "Werkator acme", null, "pressure", listOf("RAM 88 % in use", "CPU pressure 24.5 %"),
+            charts = listOf(
+                LoadChart("cpu", value = 0.62, level = "ok", history = busy.map { 0.15 + 0.6 * it }),
+                LoadChart("ram", value = 0.88, level = "warn", history = busy.map { 0.55 + 0.33 * it }),
+                LoadChart("disk", "SSD", 0.54, "ok", busy.indices.map { 0.5 + 0.04 * it / 47.0 }),
+                LoadChart("load", value = 2.31, level = "ok", history = busy.map { 0.1 + 0.45 * it }),
+                LoadChart("cpuPressure", value = 0.245, level = "warn", history = busy.map { 0.02 + 0.25 * it }),
+            ), at = now))
         val costs = listOf(Costs("werkrevisor:acme", "werkrevisor acme", null, day = 1.84, week = 11.20, reviews = 31, pullRequests = 14,
             perDay = listOf(1.12, 2.40, 0.65, 1.95, 1.70, 1.54, 1.84)))
         return Snapshot(version, now, 24, items, sources, Access.DEMO, loads, costs)

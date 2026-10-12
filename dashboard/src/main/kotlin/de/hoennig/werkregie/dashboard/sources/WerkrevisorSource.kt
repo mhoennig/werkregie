@@ -43,8 +43,6 @@ class WerkrevisorSource(private val config: WerkrevisorConfig, private val http:
         )
     }
 
-    private fun JsonNode.number(field: String): Double? = get(field)?.takeIf { it.isNumber }?.asDouble()
-
     companion object {
         private const val DAYS = 7
     }

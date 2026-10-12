@@ -128,5 +128,7 @@ class ClaudeCodeSource(
 
 internal fun JsonNode.text(field: String): String? = get(field)?.takeIf { !it.isNull }?.asText()?.takeIf { it.isNotBlank() }
 
+internal fun JsonNode.number(field: String): Double? = get(field)?.takeIf { it.isNumber }?.asDouble()
+
 internal fun JsonNode.epochMillis(field: String): Instant? =
     get(field)?.takeIf { it.isNumber }?.let { Instant.ofEpochMilli(it.asLong()) }

@@ -210,7 +210,8 @@ const TEXT = {
         "hint.merge": "approved, nur noch mergen", "hint.answer": "an dich gerichtet",
         "act.stuck": "Eingreifen", "act.rework": "Ansehen", "act.approve": "Prüfen", "act.merge": "Mergen", "act.answer": "Öffnen",
         "load.healthy": "läuft rund", "load.pressure": "unter Druck", "load.overloaded": "überlastet", "load.unknown": "unbekannt",
-        "load.cpu24": "CPU · 24 h", "load.ram": "RAM", "load.cpu": "CPU", "load.disk": "Platte",
+        "chart.cpu": "CPU", "chart.ram": "RAM", "chart.disk": "Platte", "chart.load": "Load", "chart.swap": "Swap",
+        "chart.cpuPressure": "CPU-Warten", "chart.memoryPressure": "RAM-Warten", "chart.ioPressure": "IO-Warten", "chart.day": "{label} · 24 h",
         "builds.title": "Werkator · Builds 24 h", "builds.running": "{n} läuft", "builds.failed": "{n} rot", "builds.ok": "{n} grün",
         "builds.empty": "Keine Builds in 24 h.", "builds.chart": "Builds je Stunde der letzten 24 Stunden",
         "costs.title": "Review-Kosten", "costs.week": "{n} Reviews · 7 Tage ≈ {sum}", "costs.chart": "Review-Kosten der letzten 7 Tage",
@@ -256,7 +257,8 @@ const TEXT = {
         "hint.merge": "approved, just merge it", "hint.answer": "addressed to you",
         "act.stuck": "Step in", "act.rework": "Look", "act.approve": "Review", "act.merge": "Merge", "act.answer": "Open",
         "load.healthy": "healthy", "load.pressure": "under pressure", "load.overloaded": "overloaded", "load.unknown": "unknown",
-        "load.cpu24": "CPU · 24 h", "load.ram": "RAM", "load.cpu": "CPU", "load.disk": "Disk",
+        "chart.cpu": "CPU", "chart.ram": "RAM", "chart.disk": "Disk", "chart.load": "Load", "chart.swap": "Swap",
+        "chart.cpuPressure": "CPU wait", "chart.memoryPressure": "Mem wait", "chart.ioPressure": "Disk wait", "chart.day": "{label} · 24 h",
         "builds.title": "Werkator · builds 24 h", "builds.running": "{n} running", "builds.failed": "{n} red", "builds.ok": "{n} green",
         "builds.empty": "No builds in 24 h.", "builds.chart": "Builds per hour of the last 24 hours",
         "costs.title": "Review costs", "costs.week": "{n} reviews · 7 days ≈ {sum}", "costs.chart": "Review costs of the last 7 days",
@@ -660,8 +662,8 @@ function renderTodo(items) {
     return total;
 }
 
-// ---- Werkator's load: the verdict, the CPU line of 24 hours, CPU, RAM and disk as meters ----
-function sparkline(values, level) {
+// ---- Werkator's load: the verdict, then a small chart of 24 hours per metric ----
+function sparkline(values, level, label) {
     const at = (i, v) => `${((i / Math.max(1, values.length - 1)) * 100).toFixed(2)},${(30 - v * 28).toFixed(2)}`;
     // a step without samples breaks the line
     const runs = [];
@@ -670,17 +672,20 @@ function sparkline(values, level) {
     if (run.length) runs.push(run);
     const line = runs.map((r) => `M${r.map(([i, v]) => at(i, v)).join(" L")}`).join(" ");
     const area = runs.map((r) => `M${at(r[0][0], 0)} L${r.map(([i, v]) => at(i, v)).join(" L")} L${at(r[r.length - 1][0], 0)} Z`).join(" ");
-    return `<svg class="spark spark-${esc(level)}" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="${esc(t("load.cpu24"))}">
+    return `<svg class="spark spark-${esc(level)}" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="${esc(label)}">
         <path class="spark-area" d="${area}"/><path class="spark-line" d="${line}" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
-const shareLevel = (share) => (share == null ? "none" : share >= 0.95 ? "bad" : share >= 0.8 ? "warn" : "ok");
-
-function meter(label, share) {
-    const width = share == null ? 0 : Math.round(share * 100);
-    return `<div class="meter meter-${shareLevel(share)}"><span class="meter-label">${esc(label)}</span>
-        <span class="meter-track"><span class="meter-fill" style="width: ${width}%"></span></span>
-        <span class="meter-value">${share == null ? "–" : esc(percent(share))}</span></div>`;
+function chartTile(chart) {
+    const level = ["ok", "warn", "bad"].includes(chart.level) ? chart.level : "ok";
+    const label = chart.label || t(`chart.${chart.key}`);
+    const value = chart.value == null ? "–"
+        : chart.key === "load" ? new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 }).format(chart.value)
+        : percent(chart.value);
+    return `<div class="chart chart-${level}" title="${esc(t("chart.day", { label }))}">
+        <span class="chart-label">${esc(label)}</span><span class="chart-value">${esc(value)}</span>
+        ${chart.history?.length ? sparkline(chart.history, level, t("chart.day", { label })) : `<span class="spark spark-empty"></span>`}
+    </div>`;
 }
 
 function loadPanel(load) {
@@ -689,8 +694,7 @@ function loadPanel(load) {
     return `<section class="panel load-panel load-${level}">
         <h2><span class="panel-title">${logo("werkator")}${title}</span><em class="load-level">${esc(t(`load.${level}`))}</em></h2>
         ${load.reasons?.length ? `<div class="load-reasons">${esc(load.reasons.join(" · "))}</div>` : ""}
-        ${load.cpuHistory?.length ? `<div class="load-spark">${sparkline(load.cpuHistory, level)}<span class="axis"><span>${esc(t("load.cpu24"))}</span><span>${esc(t("now"))}</span></span></div>` : ""}
-        <div class="meters">${meter(t("load.cpu"), load.cpu)}${meter(t("load.ram"), load.ram)}${meter(load.diskLabel || t("load.disk"), load.disk)}</div>
+        <div class="charts">${(load.charts || []).map(chartTile).join("")}</div>
     </section>`;
 }
 

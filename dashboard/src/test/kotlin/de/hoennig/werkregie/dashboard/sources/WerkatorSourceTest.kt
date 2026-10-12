@@ -39,43 +39,64 @@ class WerkatorSourceTest : FunSpec({
         source.item("r", "r", build("b", "success", now.minus(Duration.ofDays(8))), now, since) shouldBe null
     }
 
-    test("the load: Werkator's verdict and the shares of CPU, RAM and the first disk") {
-        val system = mapper.readTree(
-            """{"timestamp":"2026-10-11T15:42:26Z","cpuCount":4,"ramTotalGib":8.0,
-               "cpuUsed":{"current":3.0},"ramUsedGib":{"current":6.0},
-               "disks":[{"key":"ssd","label":"SSD","totalGib":16.0,"usedGib":{"current":12.0}},{"key":"hdd","label":"HDD","totalGib":20.0}],
-               "health":{"level":"pressure","reasons":["swap 2.54 of 4.00 GiB in use"]}}""",
-        )
+    fun system(extra: String = "") = mapper.readTree(
+        """{"timestamp":"2026-10-11T15:42:26Z","cpuCount":4,"ramTotalGib":8.0,
+           "cpuUsed":{"current":3.0},"ramUsedGib":{"current":7.6},"load1":4.4,
+           "disks":[{"key":"ssd","label":"SSD","totalGib":16.0,"usedGib":{"current":12.0}},{"key":"hdd","label":"HDD","totalGib":20.0}],
+           "swapTotalGib":4.0,"swapUsedGib":{"current":1.0},"cpuPressure":5.0,"memoryPressure":0.5,"ioPressure":1.0,
+           "health":{"level":"pressure","reasons":["swap 2.54 of 4.00 GiB in use"]}$extra}""",
+    )
 
-        val load = source.load(system, listOf(0.5))
+    test("the load holds the four fixed charts with their levels") {
+        val load = source.load(system(), mapOf("cpuUsed" to listOf(2.0, null, 4.0), "load1" to listOf(2.0, 8.0)))
 
         load.level shouldBe "pressure"
         load.reasons shouldBe listOf("swap 2.54 of 4.00 GiB in use")
-        load.cpu shouldBe 0.75
-        load.ram shouldBe 0.75
-        load.disk shouldBe 0.75
-        load.diskLabel shouldBe "SSD"
         load.at shouldBe Instant.parse("2026-10-11T15:42:26Z")
+        load.charts.take(4).map { Triple(it.key, it.value, it.level) } shouldBe listOf(
+            Triple("cpu", 0.75, "ok"),
+            Triple("ram", 0.95, "bad"),
+            Triple("disk", 0.75, "ok"),
+            Triple("load", 4.4, "warn"),
+        )
+        load.charts[2].label shouldBe "SSD"
+        load.charts[0].history shouldBe listOf(0.5, null, 1.0)
+        // load above the threads: the highest value is the scale
+        load.charts[3].history shouldBe listOf(0.25, 1.0)
+    }
+
+    test("the fifth chart is the worst of swap and the waits") {
+        // all ok: swap at 25 % is half its threshold of 50 %, the waits are lower against theirs
+        source.load(system(), emptyMap()).charts.last().key shouldBe "swap"
+        // CPU pressure above 20 % warns
+        val charts = source.load(system(""","cpuPressure":24.0"""), mapOf("cpuPressure" to listOf(12.0))).charts
+
+        charts.size shouldBe 5
+        charts.last().key shouldBe "cpuPressure"
+        charts.last().value shouldBe 0.24
+        charts.last().level shouldBe "warn"
+        charts.last().history shouldBe listOf(0.12)
     }
 
     test("a load without numbers says nothing rather than zero") {
-        val load = source.load(mapper.readTree("""{"cpuCount":0,"disks":[]}"""), emptyList())
+        val load = source.load(mapper.readTree("""{"cpuCount":0,"disks":[]}"""), emptyMap())
 
         load.level shouldBe "unknown"
-        load.cpu shouldBe null
-        load.ram shouldBe null
-        load.disk shouldBe null
+        load.charts.map { it.key } shouldBe listOf("cpu", "ram", "load")
+        load.charts.map { it.value } shouldBe listOf(null, null, null)
+        load.charts.map { it.history } shouldBe listOf(emptyList(), emptyList(), emptyList())
     }
 
-    test("the CPU history: 48 means of equal steps, as a share of the CPUs; a step without samples is null") {
+    test("the history: 48 means of equal steps per series; a step without samples is null") {
         val samples = (0 until 96).map { if (it in 2..3) "null" else (it % 2 * 2).toString() }
-        val history = mapper.readTree("""{"values":{"cpuUsed":[${samples.joinToString(",")}]}}""")
+        val history = mapper.readTree("""{"values":{"cpuUsed":[${samples.joinToString(",")}],"load1":[]}}""")
 
-        val shares = source.cpuHistory(history, mapper.readTree("""{"cpuCount":2}"""))
+        val steps = source.steps(history)
 
-        shares.size shouldBe 48
-        shares[0] shouldBe 0.5
-        shares[1] shouldBe null
-        shares[47] shouldBe 0.5
+        steps.getValue("cpuUsed").size shouldBe 48
+        steps.getValue("cpuUsed")[0] shouldBe 1.0
+        steps.getValue("cpuUsed")[1] shouldBe null
+        steps.getValue("cpuUsed")[47] shouldBe 1.0
+        steps.getValue("load1") shouldBe emptyList()
     }
 })

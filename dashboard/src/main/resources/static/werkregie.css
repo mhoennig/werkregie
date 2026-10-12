@@ -255,29 +255,29 @@ a.tile:hover { border-color: var(--accent); }
 .act-arrow { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; }
 .todo-row:hover .act { background: var(--accent-soft); }
 
-/* Werkator's load: the verdict in the heading, the CPU line of 24 hours, then meters */
+/* Werkator's load: the verdict in the heading, then a tile per metric with its line of 24 hours */
 .load-level { font-weight: 500 !important; color: var(--accent); }
 .load-pressure .load-level { color: var(--amber); }
 .load-overloaded .load-level { color: var(--clay); }
 .load-pressure { border-top: 3px solid var(--amber); }
 .load-overloaded { border-top: 3px solid var(--clay); }
 .load-reasons { padding: 8px 14px 0; font-size: 12.5px; color: var(--text-2); }
-.load-spark { padding: 8px 14px 0; }
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; padding: 10px 14px 12px; }
+.chart { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px 6px;
+    padding: 6px 8px 4px; border-radius: 6px; background: var(--panel-2); }
+.chart-label { font: 500 10.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-value { font: 600 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.chart-warn .chart-value { color: var(--amber); }
+.chart-bad .chart-value { color: var(--clay); }
+.chart .spark { grid-column: 1 / -1; height: 30px; }
 .spark { display: block; width: 100%; height: 42px; }
 .spark-area { fill: var(--accent-soft); }
 .spark-line { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; }
-.spark-pressure .spark-line { stroke: var(--amber); }
-.spark-pressure .spark-area { fill: var(--amber-soft); }
-.spark-overloaded .spark-line { stroke: var(--clay); }
-.spark-overloaded .spark-area { fill: var(--clay-soft); }
-.meters { display: grid; gap: 6px; padding: 10px 14px 12px; }
-.meter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
-.meter-label { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.meter-track { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
-.meter-fill { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
-.meter-value { font: 600 13px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
-.meter-warn .meter-fill { background: var(--amber); } .meter-warn .meter-value { color: var(--amber); }
-.meter-bad .meter-fill { background: var(--clay); } .meter-bad .meter-value { color: var(--clay); }
+.spark-warn .spark-line { stroke: var(--amber); }
+.spark-warn .spark-area { fill: var(--amber-soft); }
+.spark-bad .spark-line { stroke: var(--clay); }
+.spark-bad .spark-area { fill: var(--clay-soft); }
 
 /* Werkator's builds: running and failed ones, a bar per hour */
 .build-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text); }
@@ -500,13 +500,8 @@ a.tag:hover { color: var(--accent); border-color: var(--accent); }
     .tile { padding: 0 6px; }
     .empty { padding: 14px 12px; }
     .load-reasons { padding: 6px 12px 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .load-spark { padding: 6px 12px 0; }
-    .spark { height: 30px; }
-    .meters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 8px 12px 10px; }
-    .meter { grid-template-columns: auto auto; grid-template-areas: "label value" "track track"; justify-content: space-between; gap: 3px 6px; }
-    .meter-label { grid-area: label; }
-    .meter-value { grid-area: value; font-size: 12px; }
-    .meter-track { grid-area: track; height: 6px; }
+    .charts { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; padding: 8px 12px 10px; }
+    .chart .spark { height: 22px; }
     .todo-row { gap: 10px; padding: 8px 12px; }
     .todo-row .act { display: none; }
     .group-hint { display: none; }

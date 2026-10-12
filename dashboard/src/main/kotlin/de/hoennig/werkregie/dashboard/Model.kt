@@ -64,10 +64,7 @@ data class SourceStatus(
 /** Who sees what: `open` in local mode, `granted` with the access token, `demo` without it. */
 enum class Access { OPEN, GRANTED, DEMO }
 
-/**
- * The load of a build host, e.g. a Werkator instance: its own verdict, and the share in use of CPU, RAM and its first disk.
- * The shares run from 0 to 1; [cpuHistory] holds the CPU share of the last 24 hours in equal steps, oldest first.
- */
+/** The load of a build host, e.g. a Werkator instance: its own verdict, and a small chart per metric. */
 data class HostLoad(
     val source: String,
     val label: String,
@@ -75,12 +72,22 @@ data class HostLoad(
     // healthy, pressure or overloaded, as Werkator judges it
     val level: String,
     val reasons: List<String>,
-    val cpu: Double?,
-    val ram: Double?,
-    val disk: Double?,
-    val diskLabel: String?,
-    val cpuHistory: List<Double?> = emptyList(),
+    val charts: List<LoadChart> = emptyList(),
     val at: Instant?,
+)
+
+/**
+ * One metric of a [HostLoad], e.g. `cpu`, `load` or `cpuPressure`: [value] is the share of its total from 0 to 1,
+ * except for `load`, which is the load average; [level] is ok, warn or bad.
+ * [history] holds the last 24 hours in equal steps, oldest first, from 0 to 1 of the chart's height.
+ */
+data class LoadChart(
+    val key: String,
+    // only a disk has a name of its own, e.g. SSD; the page names the others
+    val label: String? = null,
+    val value: Double?,
+    val level: String,
+    val history: List<Double?> = emptyList(),
 )
 
 /** What the reviews cost in US dollars, e.g. werkrevisor's; [perDay] holds the last 7 days, oldest first. */

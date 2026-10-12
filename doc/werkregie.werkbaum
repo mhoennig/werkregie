@@ -32,8 +32,13 @@
           " Werkregie PR#17; ORANGE before YELLOW.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
-      - [^] #dash.load: Werkator's host load: verdict, CPU, RAM, disk, CPU of 24 hours (XS)
-        " Werkregie PR#27: /api/system, and /api/system/history every 5 min.
+      - [^] #dash.load: Werkator's host load
+        - [^] Werkator's verdict and its reasons (XS)
+          " Werkregie PR#27: /api/system.
+        - [-] CPU line of 24 hours, meters of CPU, RAM and disk (XS)
+          " Werkregie PR#27; replaced by the small charts of PR#31.
+        - [^] Small charts: CPU, RAM, disk, load, and the worst of swap and the waits (XS)
+          " Werkregie PR#31: levels and scales as on Werkator's home rail.
       - [^] #dash.costs: werkrevisor's review costs of 24 hours and 7 days (XS)
         " Werkregie PR#27: /api/stats of the statistics service.
       - [^] #dash.taiga: Taiga, any number of instances and projects

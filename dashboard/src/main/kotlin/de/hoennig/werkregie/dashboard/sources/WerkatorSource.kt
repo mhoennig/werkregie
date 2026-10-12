@@ -5,6 +5,7 @@ import de.hoennig.werkregie.dashboard.Badge
 import de.hoennig.werkregie.dashboard.HostLoad
 import de.hoennig.werkregie.dashboard.Item
 import de.hoennig.werkregie.dashboard.JsonHttp
+import de.hoennig.werkregie.dashboard.LoadChart
 import de.hoennig.werkregie.dashboard.Section
 import de.hoennig.werkregie.dashboard.Source
 import de.hoennig.werkregie.dashboard.WerkatorConfig
@@ -41,7 +42,7 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
     private var load: HostLoad? = null
 
     @Volatile
-    private var cpuHistory: List<Double?> = emptyList()
+    private var steps: Map<String, List<Double?>> = emptyMap()
 
     @Volatile
     private var historyAt: Instant? = null
@@ -69,47 +70,95 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
 
     private fun readLoad(now: Instant): HostLoad {
         val system = http.get("$url/api/system", headers)
-        // the history is long; its line changes slowly, so it is read less often than the snapshot
+        // the history is long; its lines change slowly, so it is read less often than the snapshot
         if (historyAt?.isAfter(now.minus(HISTORY_TTL)) != true) {
-            cpuHistory = runCatching { cpuHistory(http.get("$url/api/system/history?range=24h", headers), system) }
-                .getOrDefault(cpuHistory)
+            steps = runCatching { steps(http.get("$url/api/system/history?range=24h", headers)) }.getOrDefault(steps)
             historyAt = now
         }
-        return load(system, cpuHistory)
+        return load(system, steps)
     }
 
-    internal fun load(system: JsonNode, cpuHistory: List<Double?>): HostLoad {
+    /** Werkator's verdict, the charts of CPU, RAM, the first disk and load, and the worst of swap and the waits. */
+    internal fun load(system: JsonNode, steps: Map<String, List<Double?>>): HostLoad {
+        val cpus = system.total("cpuCount")
         val disk = system["disks"]?.firstOrNull()
+        val swap = system.total("swapTotalGib")
+        val fixed = listOfNotNull(
+            utilization("cpu", "cpuUsed", system["cpuUsed"]?.number("current"), cpus),
+            utilization("ram", "ramUsedGib", system["ramUsedGib"]?.number("current"), system.total("ramTotalGib")),
+            disk?.let {
+                utilization("disk", "disk.${it.text("key")}.usedGib", it["usedGib"]?.number("current"), it.total("totalGib"), it.text("label"))
+            },
+            Metric("load", "load1", system.number("load1"), cpus,
+                warn = cpus?.times(LOAD_PRESSURE_PER_THREAD), bad = cpus?.times(LOAD_OVERLOAD_PER_THREAD)),
+        )
+        val others = listOf(
+            Metric("swap", "swapUsedGib", system["swapUsedGib"]?.number("current"), swap, warn = swap?.times(SWAP_PRESSURE_SHARE)),
+            Metric("cpuPressure", "cpuPressure", system.number("cpuPressure"), PERCENT, warn = CPU_PRESSURE_PERCENT),
+            Metric("memoryPressure", "memoryPressure", system.number("memoryPressure"), PERCENT,
+                warn = MEMORY_PRESSURE_PERCENT, bad = MEMORY_OVERLOAD_PERCENT),
+            // Werkator gives disk wait no level; for the ranking it counts like CPU wait
+            Metric("ioPressure", "ioPressure", system.number("ioPressure"), PERCENT, warn = null, reference = CPU_PRESSURE_PERCENT),
+        )
+        val worst = others.filter { it.used != null }.maxWithOrNull(compareBy({ LEVELS.indexOf(it.level) }, { it.weight }))
         return HostLoad(
             source = id,
             label = label,
             url = url,
             level = system["health"]?.text("level") ?: "unknown",
             reasons = system["health"]?.get("reasons")?.mapNotNull { it.asText(null) }.orEmpty(),
-            cpu = share(system["cpuUsed"]?.get("current"), system["cpuCount"]),
-            ram = share(system["ramUsedGib"]?.get("current"), system["ramTotalGib"]),
-            disk = share(disk?.get("usedGib")?.get("current"), disk?.get("totalGib")),
-            diskLabel = disk?.text("label"),
-            cpuHistory = cpuHistory,
+            charts = (fixed + listOfNotNull(worst)).map { it.chart(steps[it.series].orEmpty()) },
             at = system.text("timestamp")?.let(Instant::parse),
         )
     }
 
-    /** The CPU share of the 24 hours in [HISTORY_STEPS] equal steps, each the mean of its samples; a step without any is null. */
-    internal fun cpuHistory(history: JsonNode, system: JsonNode): List<Double?> {
-        val cpus = system["cpuCount"]?.takeIf { it.isNumber }?.asDouble()?.takeIf { it > 0 } ?: return emptyList()
-        val values = history["values"]?.get("cpuUsed")?.map { if (it.isNumber) it.asDouble() / cpus else null }.orEmpty()
-        if (values.isEmpty()) return emptyList()
-        val size = values.size.toDouble() / HISTORY_STEPS
-        return (0 until HISTORY_STEPS).map { step ->
-            values.subList((step * size).toInt(), ((step + 1) * size).toInt().coerceAtMost(values.size))
-                .filterNotNull().takeIf { it.isNotEmpty() }?.average()?.coerceIn(0.0, 1.0)
-        }
-    }
+    /** Each series of the 24 hours in [HISTORY_STEPS] equal steps, each the mean of its samples; a step without any is null. */
+    internal fun steps(history: JsonNode): Map<String, List<Double?>> =
+        history["values"]?.properties()?.associate { (series, samples) ->
+            val values = samples.map { if (it.isNumber) it.asDouble() else null }
+            val size = values.size.toDouble() / HISTORY_STEPS
+            series to if (values.isEmpty()) emptyList() else (0 until HISTORY_STEPS).map { step ->
+                values.subList((step * size).toInt(), ((step + 1) * size).toInt().coerceAtMost(values.size))
+                    .filterNotNull().takeIf { it.isNotEmpty() }?.average()
+            }
+        }.orEmpty()
 
-    private fun share(used: JsonNode?, total: JsonNode?): Double? {
-        val all = total?.takeIf { it.isNumber }?.asDouble()?.takeIf { it > 0 } ?: return null
-        return used?.takeIf { it.isNumber }?.asDouble()?.let { (it / all).coerceIn(0.0, 1.0) }
+    private fun utilization(key: String, series: String, used: Double?, total: Double?, label: String? = null) =
+        Metric(key, series, used, total, warn = total?.times(WARN_SHARE), bad = total?.times(BAD_SHARE), label = label)
+
+    private fun JsonNode.total(field: String) = number(field)?.takeIf { it > 0 }
+
+    /** One metric of `/api/system` in the unit of its history series, with Werkator's thresholds. */
+    private class Metric(
+        val key: String,
+        val series: String,
+        val used: Double?,
+        val total: Double?,
+        val warn: Double?,
+        val bad: Double? = null,
+        val label: String? = null,
+        // where it starts to matter, to rank the metrics of equal level
+        reference: Double? = warn,
+    ) {
+        val level = when {
+            used == null -> "ok"
+            bad != null && used >= bad -> "bad"
+            warn != null && used >= warn -> "warn"
+            else -> "ok"
+        }
+        val weight = if (used != null && reference != null && reference > 0) used / reference else 0.0
+
+        // like on Werkator's home rail: the scale is the total, or the highest value if it is above it
+        fun chart(steps: List<Double?>): LoadChart {
+            val scale = total?.let { maxOf(it, steps.filterNotNull().maxOrNull() ?: 0.0) }
+            return LoadChart(
+                key = key,
+                label = label,
+                value = if (key == "load") used else total?.let { all -> used?.let { (it / all).coerceIn(0.0, 1.0) } },
+                level = level,
+                history = scale?.let { s -> steps.map { it?.div(s)?.coerceIn(0.0, 1.0) } }.orEmpty(),
+            )
+        }
     }
 
     private fun builds(repo: String, now: Instant, since: Instant): List<Item> {
@@ -164,5 +213,16 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(30)
         private val HISTORY_TTL: Duration = Duration.ofMinutes(5)
         private const val HISTORY_STEPS = 48
+        private val LEVELS = listOf("ok", "warn", "bad")
+        // Werkator's thresholds, see its SystemHealth
+        private const val WARN_SHARE = 0.8
+        private const val BAD_SHARE = 0.9
+        private const val LOAD_PRESSURE_PER_THREAD = 1.0
+        private const val LOAD_OVERLOAD_PER_THREAD = 2.0
+        private const val SWAP_PRESSURE_SHARE = 0.5
+        private const val CPU_PRESSURE_PERCENT = 20.0
+        private const val MEMORY_PRESSURE_PERCENT = 2.0
+        private const val MEMORY_OVERLOAD_PERCENT = 10.0
+        private const val PERCENT = 100.0
     }
 }

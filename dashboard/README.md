@@ -7,7 +7,7 @@ and what happened recently — read-only, links back to the tools.
 |---|---|---|
 | Claude Code (Desktop and terminal) | `~/.config/Claude/claude-code-sessions/**.json`, `~/.claude/sessions/<pid>.json` | busy / waiting / closed sessions, resume command |
 | Codex (ChatGPT Desktop, IDE, CLI) | `~/.codex/state_5.sqlite` (read-only), rollout files | threads, running turns, resume command |
-| Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history`, `/api/system` | running and finished builds; `@ai-review` builds as werkrevisor; the host's load |
+| Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history`, `/api/system`, `/api/system/history` | running and finished builds; `@ai-review` builds as werkrevisor; the host's load |
 | werkrevisor's statistics service | `/api/stats` | review costs of 24 hours and 7 days |
 | Gitea, any number of instances | `/api/v1` | open PRs with commit statuses (Werkator, werkrevisor run and verdict), own activity |
 | Matrix, with the user's own account | client-server API through Trixnity (`de.connect2x.trixnity`) | direct messages, mentions in every room, every message of configured rooms |
@@ -20,7 +20,9 @@ It opens on the overview, which answers two questions first: is every source con
   and a session of Claude Desktop opens there (`claude://code/continue?session=…`); a phone gets no such links.
   Codex has no such link yet: the ChatGPT app on Linux takes `codex://threads/…` but does not act on it.
 - *Du bist dran* groups what asks something of the user: Festgefahren, Nacharbeiten, Freigeben, Mergen, Antworten.
-- Beside it: the load of each Werkator host with its CPU of 24 hours, Werkator's builds of 24 hours, werkrevisor's costs.
+- Beside it: the load of each Werkator host, Werkator's builds of 24 hours, werkrevisor's costs.
+  A Werkator panel charts 24 hours of CPU, RAM, its first disk and load,
+  and the worst of swap, CPU wait, memory wait and disk wait.
 - Below it: what runs and which sessions wait, as cards; the history of 24 hours as a lane per tool.
 
 The tabs *Pull Requests*, *Sessions*, *Aufgaben*, *Nachrichten*, *Verlauf* and *Quellen* hold the full lists, with the filters;
@@ -178,6 +180,6 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   `hiddenStatuses`, e.g. `[Erledigt, Verworfen]`, are hidden until the panel's count shows them.
   Each status carries its colour from Taiga.
 
-Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time, its CPU line every 5 min),
+Local sources refresh every 2–3 s, Werkator every 30 s (three repositories at a time, its lines every 5 min),
 Gitea every 30 s, Taiga every 60 s, werkrevisor every 2 min;
 cached data is served at once while a due source refreshes in the background.
