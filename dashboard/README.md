@@ -5,7 +5,7 @@ and what happened recently — read-only, links back to the tools.
 
 | Source | Data | Shown |
 |---|---|---|
-| Claude Code (Desktop and terminal) | `~/.config/Claude/claude-code-sessions/**.json`, `~/.claude/sessions/<pid>.json` | busy / waiting / closed sessions, resume command |
+| Claude Code (Desktop and terminal) | `~/.config/Claude/claude-code-sessions/**.json`, `~/.claude/sessions/<pid>.json`, the end of `~/.claude/projects/*/<session>.jsonl` | busy / waiting / closed sessions, resume command, sessions waiting for the user |
 | Codex (ChatGPT Desktop, IDE, CLI) | `~/.codex/state_5.sqlite` (read-only), rollout files | threads, running turns, resume command |
 | Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history`, `/api/system`, `/api/system/history` | running and finished builds; `@ai-review` builds as werkrevisor; the host's load |
 | werkrevisor's statistics service | `/api/stats` | review costs of 24 hours and 7 days |
@@ -20,6 +20,7 @@ It opens on the overview, which answers two questions first: is every source con
   and a session of Claude Desktop opens there (`claude://code/continue?session=…`); a phone gets no such links.
   Codex has no such link yet: the ChatGPT app on Linux takes `codex://threads/…` but does not act on it.
 - *Du bist dran* groups what asks something of the user: Festgefahren, Nacharbeiten, Freigeben, Mergen, Antworten.
+  Antworten holds the Matrix messages to the user and the Claude Code sessions that wait for the user.
 - Beside it: the load of each Werkator host, Werkator's builds of 24 hours, werkrevisor's costs.
   A Werkator panel charts 24 hours of its 3 most critical metrics,
   out of CPU, RAM, each disk, load, swap, CPU wait, memory wait and disk wait.
@@ -152,6 +153,12 @@ unlike Android, a Linux desktop has no app that takes `https://matrix.to` from t
 `~/.config/werkregie/dashboard.yml`, or `--config FILE`, or `WERKREGIE_DASHBOARD_CONFIG`.
 See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a file only Claude Code and Codex are shown.
 
+- **Claude Code:** a session that is not busy is marked 💬 *Claude fragt* when it waits for the user:
+  *Frage offen* or *Dialog offen* by its process file, *Frage offen* by an unanswered AskUserQuestion in its transcript,
+  *wartet auf dich* when Jev rates Claude's last text at least `claude.jev.threshold` (default 0.75).
+  Only with `claude.jev` does the last text, at most 3000 characters, go to Jev, once per message;
+  its key comes from `apiKey` or `apiKeyEnv`, e.g. `TYPESAFE_API_KEY` in the relay's `dashboard.env`.
+  An archived session carries no marker.
 - **Werkator:** private repositories are redacted for anonymous readers.
   `controlToken` (or `controlTokenEnv`) is sent as the `werkator_token` cookie, the way Werkator's own pages do;
   `tools/remote --env-file .env.<instance> werkator control-token` prints it.

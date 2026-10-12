@@ -287,20 +287,20 @@ const TEXT = {
 // the words of statuses and markers, German and English
 const WORDS = {
     de: {
-        busy: "arbeitet", running: "läuft", pending: "wartet", queued: "wartet", idle: "bereit", open: "offen", success: "erfolgreich",
+        busy: "arbeitet", running: "läuft", waiting: "wartet", pending: "wartet", queued: "wartet", idle: "bereit", open: "offen", success: "erfolgreich",
         done: "fertig", failure: "fehler", failed: "fehler", error: "fehler", timed_out: "timeout", interrupted: "abgebrochen",
         closed: "beendet", archived: "archiviert", stale: "veraltet", draft: "entwurf",
         "flag.stuck": "Festgefahren", "flag.approve": "Dein Approval", "flag.merge": "Mergen", "flag.rework": "Nacharbeit",
         "flag.review": "Wartet auf Review", "flag.approved": "Von dir approved", "flag.unknown": "Status unbekannt", "flag.hidden": "ausgeblendet",
-        "flag.unread": "Neu", "flag.direct": "Direkt", "flag.mention": "Erwähnung", "flag.room": "Raum",
+        "flag.unread": "Neu", "flag.direct": "Direkt", "flag.mention": "Erwähnung", "flag.room": "Raum", "flag.ask": "Claude fragt",
     },
     en: {
-        busy: "working", running: "running", pending: "waiting", queued: "waiting", idle: "ready", open: "open", success: "success",
+        busy: "working", running: "running", waiting: "waiting", pending: "waiting", queued: "waiting", idle: "ready", open: "open", success: "success",
         done: "done", failure: "failed", failed: "failed", error: "failed", timed_out: "timeout", interrupted: "interrupted",
         closed: "closed", archived: "archived", stale: "stale", draft: "draft",
         "flag.stuck": "Stuck", "flag.approve": "Your approval", "flag.merge": "Merge", "flag.rework": "Rework",
         "flag.review": "Waits for review", "flag.approved": "Approved by you", "flag.unknown": "Unknown status", "flag.hidden": "hidden",
-        "flag.unread": "New", "flag.direct": "Direct", "flag.mention": "Mention", "flag.room": "Room",
+        "flag.unread": "New", "flag.direct": "Direct", "flag.mention": "Mention", "flag.room": "Room", "flag.ask": "Claude asks",
     },
 };
 // the reasons the server writes in German, in English
@@ -308,6 +308,7 @@ const REASONS_EN = [
     [/^Konflikt$/, "conflict"], [/^Build rot: /, "build red: "], [/^approved von /, "approved by "],
     [/^niemand angefragt$/, "nobody requested"], [/^angefragt: /, "requested: "], [/^kein werkrevisor$/, "no werkrevisor"],
     [/^Review angefragt$/, "review requested"],
+    [/^Frage offen$/, "question open"], [/^Dialog offen$/, "dialog open"], [/^wartet auf dich$/, "waits for you"],
     [/^werkrevisor ohne Urteil$/, "werkrevisor without verdict"], [/^RED, an Menschen eskaliert$/, "RED, escalated to a human"],
     [/^RED seit (.+) ohne neuen Commit$/, "RED for $1 without a new commit"], [/^zuletzt vor (.+)$/, "last seen $1 ago"],
     [/^(\d+) privates? Repos? verborgen – controlToken konfigurieren$/, "$1 private repos hidden – configure controlToken"],
@@ -417,7 +418,7 @@ const TASK_KINDS = new Set(["story", "task", "issue"]);
 // accent for good and running, clay for failed, amber for timeouts, an outlined dot for waiting,
 // ghost for everything that is over without a verdict
 const STATUS = {
-    busy: "running", running: "running", pending: "pending", queued: "pending", idle: "pending", open: "pending",
+    busy: "running", running: "running", waiting: "pending", pending: "pending", queued: "pending", idle: "pending", open: "pending",
     success: "success", done: "success", failure: "failed", failed: "failed", error: "failed", timed_out: "timed_out",
     interrupted: "unknown", closed: "unknown", archived: "unknown", stale: "unknown", draft: "unknown",
 };
@@ -425,6 +426,7 @@ const STATUS = {
 const FLAGS = { stuck: "⚠", approve: "✋", merge: "➜", rework: "🔧", review: "⏳", approved: "✓" };
 const TASK_FLAGS = { unknown: "?", hidden: "–" };
 const MESSAGE_FLAGS = { unread: "●", direct: "✉", mention: "@", room: "#" };
+const SESSION_FLAGS = { ask: "💬" };
 const COLOR = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const FLAG_ORDER = Object.keys(FLAGS);
 // among the approvals the graver verdict first, the pull request without werkrevisor last
@@ -471,7 +473,7 @@ function messageHead(item) {
 }
 
 function flagHtml(flag) {
-    const symbol = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || TASK_FLAGS[flag.kind] || "•";
+    const symbol = FLAGS[flag.kind] || MESSAGE_FLAGS[flag.kind] || TASK_FLAGS[flag.kind] || SESSION_FLAGS[flag.kind] || "•";
     const name = word(`flag.${flag.kind}`) || flag.kind;
     const why = reason(flag.reason);
     return `<span class="flag flag-${esc(flag.kind)}" title="${esc(name)}${why ? `: ${esc(why)}` : ""}">${symbol} ${esc(name)}${why ? ` <span class="flag-reason">${esc(why)}</span>` : ""}</span>`;
@@ -676,9 +678,13 @@ function todos(items) {
             if (mine.length) groups[mine[0].kind].push({ item, flag: mine[0] });
         } else if (item.kind === "message" && isUnread(item) && (item.flags || []).some((f) => f.kind === "direct" || f.kind === "mention")) {
             groups.answer.push({ item, flag: null });
+        } else if (item.kind === "session") {
+            // a Claude Code session that waits for the user's answer, by its process, its transcript or Jev
+            const ask = (item.flags || []).find((f) => f.kind === "ask");
+            if (ask) groups.answer.push({ item, flag: ask });
         }
     }
-    // the longest waiting first, the graver verdict before; a message, the newest first
+    // the longest waiting first, the graver verdict before; a message or a session, the newest first
     for (const group of GROUPS) {
         groups[group].sort((a, b) => (group === "answer"
             ? (Date.parse(b.item.time) || 0) - (Date.parse(a.item.time) || 0)

@@ -56,6 +56,20 @@ data class ClaudeConfig(
     val desktopDir: String = "~/.config/Claude/claude-code-sessions",
     // one JSON file per running Claude Code process, with its busy/idle status
     val liveDir: String = "~/.claude/sessions",
+    // one transcript per session, <dir>/<project>/<session>.jsonl
+    val projectsDir: String = "~/.claude/projects",
+    // rates whether the last message of an idle session waits for the user; without it, no chat text leaves the machine
+    val jev: JevConfig? = null,
+)
+
+/** TypeSafe's System One API (Jev), as werkrevisor uses it. */
+data class JevConfig(
+    val endpoint: String = "https://api.typesafe.ai/v1/systemone",
+    val model: String = "jev-latest",
+    val apiKey: String? = null,
+    val apiKeyEnv: String? = null,
+    // from this rating up, a session waits for the user; 0.75 kept every real request of the sample of PR#40
+    val threshold: Double = 0.75,
 )
 
 data class CodexConfig(

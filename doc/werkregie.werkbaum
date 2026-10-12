@@ -12,6 +12,8 @@
         " Busy, waiting and closed sessions; the resume command to copy.
         - [^] A Desktop session opens in Claude Desktop; the logo opens the sessions waiting (XS)
           " Werkregie PR#30: claude://code/continue and claude://code/needs-input; not on a phone.
+        - [^] #dash.claude.ask: Du bist dran for a session that waits for the user (S)
+          " Werkregie PR#40: the process file, an unanswered AskUserQuestion, or Jev's rating of Claude's last text.
       - [^] #dash.codex: Codex threads, Desktop, IDE and CLI (S)
         " Codex' SQLite state read-only; a running turn from the tail of the rollout file.
         + [ ] A thread opens in the Codex app (XS)

@@ -5,6 +5,10 @@ windowHours: 168          # how far back the backend collects the history
 
 claude:
   enabled: true           # ~/.config/Claude/claude-code-sessions + ~/.claude/sessions
+  # Jev rates whether the last message of an idle session waits for the user; without it, no chat text leaves the machine
+  # jev:
+  #   apiKeyEnv: TYPESAFE_API_KEY
+  #   threshold: 0.75
 codex:
   enabled: true           # ~/.codex/state_5.sqlite + rollout files
   includeSubagents: false

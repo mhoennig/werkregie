@@ -14,7 +14,8 @@ object Demo {
             session("claude", "laptop · Desktop", Section.RUNNING, "Checkout-Flow auf Events umstellen", "busy", ago(0), "shop-backend", "claude-opus · worktree checkout-events"),
             session("codex", "laptop · IDE/Desktop", Section.RUNNING, "Offline-Modus der Merkliste", "busy", ago(1), "mobile-app", "gpt · ⎇ feature/offline-wishlist"),
             build("werkator", "build", Section.RUNNING, "feature/checkout-events", "running", ago(2), "shop-backend", "a41c9e07"),
-            session("claude", "laptop · Desktop", Section.OPEN, "Flaky Integrationstest analysieren", "idle", ago(12), "shop-backend", "claude-opus · ~/Projekte/shop-backend"),
+            session("claude", "laptop · Desktop", Section.OPEN, "Flaky Integrationstest analysieren", "waiting", ago(12), "shop-backend", "claude-opus · ~/Projekte/shop-backend")
+                .copy(flags = listOf(Flag("ask", "Frage offen"))),
             session("claude", "laptop · Terminal", Section.OPEN, "Release-Notes 2.4 entwerfen", "idle", ago(48), "docs-site", "~/Projekte/docs-site"),
             pullRequest("#214 Checkout publishes order events", "pending", ago(3), "acme/shop-backend", listOf(
                 Badge("werkator", "pending", title = "build running"),

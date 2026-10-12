@@ -10,6 +10,7 @@ import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
 import de.hoennig.werkregie.dashboard.sources.CodexSource
 import de.hoennig.werkregie.dashboard.sources.GiteaSource
+import de.hoennig.werkregie.dashboard.sources.JevJudge
 import de.hoennig.werkregie.dashboard.sources.MatrixSource
 import de.hoennig.werkregie.dashboard.sources.TaigaSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
@@ -136,7 +137,10 @@ private fun forgetRelay(config: DashboardConfig, mapper: ObjectMapper, name: Str
 }
 
 internal fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<Source> = buildList {
-    if (config.claude.enabled) add(ClaudeCodeSource(config.claude, mapper))
+    if (config.claude.enabled) {
+        val (judge, problem) = config.claude.jev?.let { JevJudge.of(it, JsonHttp(mapper)) } ?: (null to null)
+        add(ClaudeCodeSource(config.claude, mapper, judge, problem))
+    }
     if (config.codex.enabled) add(CodexSource(config.codex, mapper))
     // no homeserver, no Matrix: nothing is assumed
     config.matrix?.takeIf { it.homeserver != null }?.let { add(MatrixSource(it, stateDir(config.server), mapper)) }

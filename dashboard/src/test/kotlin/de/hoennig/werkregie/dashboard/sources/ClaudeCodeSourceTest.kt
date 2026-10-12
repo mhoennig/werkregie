@@ -2,11 +2,14 @@ package de.hoennig.werkregie.dashboard.sources
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.hoennig.werkregie.dashboard.ClaudeConfig
+import de.hoennig.werkregie.dashboard.Flag
+import de.hoennig.werkregie.dashboard.JevConfig
 import de.hoennig.werkregie.dashboard.Section
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
 
@@ -69,4 +72,128 @@ class ClaudeCodeSourceTest : FunSpec({
         items.first { it.title == "Working" }.url shouldBe "claude://code/continue?session=local_busy"
         items.first { it.title == "notes" }.url shouldBe null
     }
+
+    /** Desktop sessions with live processes and transcripts, for the markers of sessions that wait for the user. */
+    class Sessions {
+        val root: Path = Files.createTempDirectory("claude")
+        private val desktop = Files.createDirectories(root.resolve("desktop/account/workspace"))
+        private val live = Files.createDirectories(root.resolve("live"))
+        private val projects = Files.createDirectories(root.resolve("projects/-home-u-Projekte-notes"))
+        val alive = mutableSetOf<Long>()
+        private var pid = 0L
+        private var uuid = 0
+
+        fun session(id: String, status: String? = null, waitingFor: String? = null, archived: Boolean = false, transcript: List<String> = emptyList()) {
+            Files.writeString(
+                desktop.resolve("local_$id.json"),
+                """{"sessionId":"local_$id","cliSessionId":"cli-$id","cwd":"/home/u/Projekte/notes","title":"$id",
+                   "lastActivityAt":${now.toEpochMilli()},"isArchived":$archived}""",
+            )
+            if (status != null) {
+                alive += ++pid
+                Files.writeString(
+                    live.resolve("$pid.json"),
+                    """{"pid":$pid,"sessionId":"cli-$id","hostSessionId":"local_$id","cwd":"/home/u/Projekte/notes","status":"$status",
+                       "updatedAt":${now.toEpochMilli()},"procStart":"1"${waitingFor?.let { ",\"waitingFor\":\"$it\"" } ?: ""}}""",
+                )
+            }
+            if (transcript.isNotEmpty()) Files.writeString(projects.resolve("cli-$id.jsonl"), transcript.joinToString("\n"))
+        }
+
+        fun claude(text: String) =
+            """{"type":"assistant","uuid":"u${++uuid}","message":{"role":"assistant","content":[{"type":"text","text":"$text"}]}}"""
+
+        fun ask(id: String) =
+            """{"type":"assistant","uuid":"u${++uuid}","message":{"content":[{"type":"tool_use","id":"$id","name":"AskUserQuestion","input":{}}]}}"""
+
+        fun answer(id: String) =
+            """{"type":"user","uuid":"u${++uuid}","message":{"content":[{"type":"tool_result","tool_use_id":"$id","content":"A"}]}}"""
+
+        fun user(text: String) = """{"type":"user","uuid":"u${++uuid}","message":{"role":"user","content":"$text"}}"""
+
+        fun source(judge: Judge? = null) = ClaudeCodeSource(
+            ClaudeConfig(
+                desktopDir = root.resolve("desktop").toString(),
+                liveDir = live.toString(),
+                projectsDir = root.resolve("projects").toString(),
+                jev = judge?.let { JevConfig(apiKey = "k") },
+            ),
+            ObjectMapper(),
+            judge,
+        ) { pid, _ -> pid in alive }
+    }
+
+    fun List<de.hoennig.werkregie.dashboard.Item>.asks() = associate { it.title to it.flags }
+
+    test("a session that waits for the user asks for an answer") {
+        val sessions = Sessions().apply {
+            session("question", status = "waiting", waitingFor = "input needed")
+            session("permission", status = "waiting", waitingFor = "dialog open")
+            session("sandbox", status = "waiting", waitingFor = "sandbox request")
+            session("working", status = "busy", transcript = listOf(ask("t1")))
+        }
+
+        sessions.source().fetch(now, since).asks() shouldBe mapOf(
+            "question" to listOf(Flag("ask", "Frage offen")),
+            "permission" to listOf(Flag("ask", "Dialog offen")),
+            "sandbox" to listOf(Flag("ask", "sandbox request")),
+            "working" to emptyList(),
+        )
+    }
+
+    test("an unanswered question in the transcript asks for an answer") {
+        val sessions = Sessions().apply {
+            session("closed", transcript = listOf(claude("Welche Variante?"), ask("t1")))
+            session("answered", transcript = listOf(ask("t1"), answer("t1"), claude("Erledigt.")))
+            session("archived", archived = true, transcript = listOf(ask("t1")))
+        }
+
+        sessions.source().fetch(now, since).asks() shouldBe mapOf(
+            "closed" to listOf(Flag("ask", "Frage offen")),
+            "answered" to emptyList(),
+            "archived" to emptyList(),
+        )
+    }
+
+    test("Jev decides on the last message of an idle session") {
+        val sessions = Sessions().apply {
+            session("asks", status = "idle", transcript = listOf(user("Los"), claude("Soll ich den PR anlegen?")))
+            session("reports", status = "idle", transcript = listOf(user("Los"), claude("Der PR ist gemergt.")))
+        }
+        val judge = Judge { message -> if (message.endsWith("?")) 0.9 else 0.3 }
+
+        sessions.source(judge).fetch(now, since).asks() shouldBe mapOf(
+            "asks" to listOf(Flag("ask", "wartet auf dich")),
+            "reports" to emptyList(),
+        )
+        sessions.source(judge = null).fetch(now, since).asks() shouldBe mapOf("asks" to emptyList(), "reports" to emptyList())
+    }
+
+    test("only the last message of Claude is rated, once") {
+        val sessions = Sessions().apply {
+            session("claude", status = "idle", transcript = listOf(claude("Soll ich?")))
+            session("user", status = "idle", transcript = listOf(claude("Soll ich?"), user("Ja, bitte.")))
+        }
+        val rated = mutableListOf<String>()
+        val source = sessions.source { message -> rated += message; 0.9 }
+
+        source.fetch(now, since)
+        source.fetch(now.plusSeconds(2), since)
+
+        rated shouldBe listOf("Soll ich?")
+    }
+
+    test("a failing Jev is noted and asked again only after a minute") {
+        val sessions = Sessions().apply { session("asks", status = "idle", transcript = listOf(claude("Soll ich?"))) }
+        var calls = 0
+        val source = sessions.source { calls++; throw IllegalStateException("HTTP 503") }
+
+        source.fetch(now, since).asks() shouldBe mapOf("asks" to emptyList())
+        source.fetch(now.plusSeconds(30), since)
+        calls shouldBe 1
+        source.note() shouldBe "Jev: HTTP 503"
+        source.fetch(now.plusSeconds(61), since)
+        calls shouldBe 2
+    }
 })
+
