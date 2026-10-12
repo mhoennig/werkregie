@@ -39,11 +39,17 @@ class GiteaSourceTest : FunSpec({
         """{"context":"$context","status":"$state","description":"$description","updated_at":"${now.minusSeconds(minutesAgo * 60)}"}""",
     )
     val gateDone = status("ai-review/gate", "success", "build succeeded")
-    fun foreign(vararg statuses: JsonNode, approvers: List<String> = emptyList(), conflict: Boolean = false, automerge: Boolean = false) =
-        GiteaSource.PullRequest(
-            own = false, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers,
-            author = "claude-code", automerge = automerge,
-        )
+    fun foreign(
+        vararg statuses: JsonNode,
+        approvers: List<String> = emptyList(),
+        requested: List<String> = emptyList(),
+        conflict: Boolean = false,
+        automerge: Boolean = false,
+        updated: Instant? = null,
+    ) = GiteaSource.PullRequest(
+        own = false, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers,
+        requested = requested, author = "claude-code", automerge = automerge, updated = updated,
+    )
     fun own(vararg statuses: JsonNode, conflict: Boolean = false, approvers: List<String> = emptyList(), requested: List<String> = emptyList()) =
         GiteaSource.PullRequest(own = true, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers, requested = requested)
     fun flags(pr: GiteaSource.PullRequest) = source.flags(pr, "mi", now)
@@ -62,6 +68,29 @@ class GiteaSourceTest : FunSpec({
     test("nothing to do while werkrevisor reviews or after it passed the pull request") {
         flags(foreign(status("ai-review/gate", "pending", "running"), status("ai-review/assessment", "failure", "rule violated"))) shouldBe emptyList()
         flags(foreign(gateDone, status("ai-review/assessment", "success", "AI review passed"))) shouldBe emptyList()
+    }
+
+    test("a review requested from the user asks for the approval, also while werkrevisor runs") {
+        val running = status("ai-review/gate", "pending", "build running")
+        flags(foreign(running, requested = listOf("mi"))) shouldBe listOf(Flag("approve", "Review angefragt"))
+        flags(foreign(running, requested = listOf("anna"))) shouldBe emptyList()
+        // werkrevisor requests again when the approval came before its result; Gitea keeps the approval
+        flags(foreign(gateDone, status("ai-review/assessment", "pending", "human review required"), approvers = listOf("mi"), requested = listOf("mi"))) shouldBe
+            listOf(Flag("approve", "werkrevisor YELLOW"))
+        flags(foreign(gateDone, at("ai-review/assessment", "failure", "rule violated", minutesAgo = 5), requested = listOf("mi"))) shouldBe emptyList()
+    }
+
+    test("werkrevisor's first status is awaited for 2 minutes after the last change") {
+        flags(foreign(status("werkator", "pending", "build running"), updated = now.minusSeconds(30))) shouldBe emptyList()
+        flags(foreign(status("werkator", "pending", "build running"), updated = now.minusSeconds(180))) shouldBe
+            listOf(Flag("approve", "kein werkrevisor"))
+    }
+
+    fun review(user: String, state: String) = mapper.readTree("""{"user":{"login":"$user"},"state":"$state","commit_id":""}""")
+
+    test("only a pending REQUEST_REVIEW is a requested review") {
+        source.requestedReviewers(listOf(review("mi", "APPROVED"), review("ai-reviewer", "COMMENT"))) shouldBe emptyList()
+        source.requestedReviewers(listOf(review("mi", "APPROVED"), review("mi", "REQUEST_REVIEW"))) shouldBe listOf("mi")
     }
 
     test("a pull request the user approved is marked so, and no longer asks for it") {

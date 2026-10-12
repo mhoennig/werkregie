@@ -159,7 +159,8 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   `pullRequests: mine` lists PRs created by, assigned to or awaiting review from the user, `all` every open PR the user can see.
   Each PR is marked by what it asks of whom; the panel sorts by these markers, in this order:
   ⚠ *Festgefahren* (werkrevisor escalated, RED for an hour without a new commit, ERROR, or a run without verdict),
-  ✋ *Dein Approval* (a foreign PR with a final ORANGE, then YELLOW, then without werkrevisor),
+  ✋ *Dein Approval* (a foreign PR with a final ORANGE, then YELLOW, then without werkrevisor 2 min after its last change,
+  or one whose review is requested from the user, also while werkrevisor runs and after an approval of the user),
   ➜ *Mergen* (the user's own PR approved by another human, or a foreign PR approved by anyone but its author,
   with all checks green and no automerge scheduled), 🔧 *Nacharbeit* (conflict or red build on the user's own PR),
   ⏳ *Wartet auf Review* (the user's own PR waits for another human), ✓ *Von dir approved*.

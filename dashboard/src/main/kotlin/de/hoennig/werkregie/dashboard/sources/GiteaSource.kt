@@ -88,9 +88,10 @@ class GiteaSource(
             conflict = conflict,
             statuses = statuses,
             approvers = approvers,
-            requested = pull?.get("requested_reviewers")?.mapNotNull { it.text("login") }.orEmpty(),
+            requested = requestedReviewers(reviews),
             author = author,
             automerge = automerge,
+            updated = issue.text("updated_at")?.let(::instant),
         )
         return Item(
             source = "gitea",
@@ -114,7 +115,8 @@ class GiteaSource(
 
     /**
      * What [flags] needs to know of a pull request; [approvers] approved its head commit,
-     * and [automerge] tells that Gitea merges it once its checks pass.
+     * [requested] are asked for their review, [automerge] tells that Gitea merges it once its checks pass,
+     * and [updated] is its last push or other change.
      */
     internal data class PullRequest(
         val own: Boolean,
@@ -125,7 +127,15 @@ class GiteaSource(
         val requested: List<String> = emptyList(),
         val author: String? = null,
         val automerge: Boolean = false,
+        val updated: Instant? = null,
     )
+
+    /**
+     * The users whose review is pending: Gitea removes a `REQUEST_REVIEW` once the user reviews.
+     * The pull request's `requested_reviewers` cannot tell this, as it lists everyone who reviewed.
+     */
+    internal fun requestedReviewers(reviews: List<JsonNode>): List<String> =
+        reviews.filter { it.text("state") == "REQUEST_REVIEW" }.mapNotNull { it["user"]?.text("login") }.distinct()
 
     /** The last word on a scheduled merge in the timeline of a pull request, oldest event first. */
     internal fun automergeScheduled(timeline: List<JsonNode>): Boolean =
@@ -137,12 +147,21 @@ class GiteaSource(
         val gate = pr.statuses.firstOrNull { it.text("context") == GATE }
         val assessment = pr.statuses.firstOrNull { it.text("context") == ASSESSMENT }
         val reviewed = gate != null || assessment != null
-        val running = gate?.text("status") == "pending"
+        // werkrevisor sets its first status some seconds after a push; until then it counts as running
+        val starting = !reviewed && pr.updated != null && Duration.between(pr.updated, now) < REVIEW_START
+        val running = gate?.text("status") == "pending" || starting
         val verdict = assessment?.let(::verdictOf)
         val humans = pr.approvers.filter { approver -> config.reviewBots.none { it.equals(approver, ignoreCase = true) } }
         // a human has to look: no werkrevisor reviews the PR, or its review has finished with YELLOW or ORANGE
-        val humanNeeded = !reviewed || !running && verdict in setOf("YELLOW", "ORANGE")
-        val werkrevisor = if (reviewed) "werkrevisor $verdict" else "kein werkrevisor"
+        val humanNeeded = !reviewed && !starting || !running && verdict in setOf("YELLOW", "ORANGE")
+        // werkrevisor requests the review again when an approval came before its result; Gitea keeps that approval
+        val askedForReview = login in pr.requested
+        val approved = login in pr.approvers && !askedForReview
+        val werkrevisor = when {
+            running && askedForReview -> "Review angefragt"
+            reviewed -> "werkrevisor $verdict"
+            else -> "kein werkrevisor"
+        }
         val failedBuilds = pr.statuses
             .filter { it.text("context")?.startsWith(REVIEW_PREFIX) == false && it.text("status") in setOf("failure", "error") }
             .mapNotNull { it.text("context") }
@@ -154,7 +173,7 @@ class GiteaSource(
             if (reviewed && !running) stuckReason(verdict, assessment, now)?.let { add(Flag("stuck", it)) }
             if (pr.own && pr.conflict) add(Flag("rework", "Konflikt"))
             if (pr.own && failedBuilds.isNotEmpty()) add(Flag("rework", "Build rot: ${failedBuilds.joinToString(", ")}"))
-            if (!pr.own && login !in pr.approvers && humanNeeded) add(Flag("approve", werkrevisor))
+            if (!pr.own && !approved && (humanNeeded || running && askedForReview)) add(Flag("approve", werkrevisor))
             if (mergeable && isEmpty()) add(Flag("merge", "approved von ${approvedBy.joinToString(", ")}"))
             val others = humans.filter { it != login }
             if (pr.own && others.isNotEmpty()) add(Flag("merge", "approved von ${others.joinToString(", ")}"))
@@ -162,7 +181,7 @@ class GiteaSource(
                 val asked = pr.requested.filter { it != login }
                 add(Flag("review", if (asked.isEmpty()) "niemand angefragt" else "angefragt: ${asked.joinToString(", ")}"))
             }
-            if (!pr.own && login in pr.approvers && none { it.kind == "merge" }) add(Flag("approved"))
+            if (!pr.own && approved && none { it.kind == "merge" }) add(Flag("approved"))
         }
     }
 
@@ -312,6 +331,8 @@ class GiteaSource(
         private const val ASSESSMENT = "ai-review/assessment"
         // in the agents' ping-pong a fix for RED never takes longer
         private val STUCK_AFTER: Duration = Duration.ofHours(1)
+        // werkrevisor's first status came 6 to 10 s after a push or the end of WIP
+        private val REVIEW_START: Duration = Duration.ofMinutes(2)
         // werkrevisor's report.STATUS_TEXTS and STATUS_STATES
         private val VERDICT_TEXTS = mapOf(
             "AI review passed" to "GREEN",
