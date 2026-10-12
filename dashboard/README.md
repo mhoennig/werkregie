@@ -187,6 +187,7 @@ An entry this version does not know is named on stderr and skipped, so that a ne
   The tooltip of its row in "Du bist dran" shows the user's last input and Claude's question:
   the open AskUserQuestion, else Claude's last text.
   The last input is a prompt or the answers to an AskUserQuestion, searched up to 8 MiB back in the transcript.
+  On a phone, which has no tooltip, the info symbol ⓘ of the row shows both texts below its title.
   A text over 160 characters is shortened by `claude.summary`, by default `anthropic/claude-haiku-5.5` through OpenRouter,
   with its key from `apiKeyEnv`, e.g. `OPENROUTER_API_KEY` in the relay's `dashboard.env`;
   each text costs one call, since the summaries stay in `summaries.json` in the state directory for a day after their last use.

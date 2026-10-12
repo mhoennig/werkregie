@@ -274,6 +274,10 @@ a.tile:hover { border-color: var(--accent); }
 .act { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 8px; border-radius: 5px; font-size: 12.5px; font-weight: 500; color: var(--accent); white-space: nowrap; }
 .act-arrow { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.75; }
 .todo-row:hover .act { background: var(--accent-soft); }
+.tip-button { appearance: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+.tip-button:hover, .tip-button[aria-expanded="true"] { color: var(--accent); border-color: var(--line-2); }
+.todo-tip { display: none; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 13px; color: var(--text-2); white-space: normal; overflow-wrap: anywhere; }
+.todo-row.is-open .todo-tip { display: flex; }
 .dismiss-button { appearance: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--ghost); font-size: 13px; cursor: pointer; }
 .dismiss-button:hover { color: var(--accent); border-color: var(--line-2); }
 .dismiss-button:disabled { opacity: 0.4; cursor: default; }

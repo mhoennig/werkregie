@@ -19,6 +19,8 @@
         - [^] #dash.claude.tip: The tooltip shows the user's last input and Claude's question (S)
           " Werkregie PR#47: a text over 160 characters summarized once by Haiku 5.5 through OpenRouter.
           " PR#50: an answer to AskUserQuestion counts as input; an older prompt is searched up to 8 MiB back.
+        - [^] #dash.claude.info: An info symbol shows the two texts on a phone (XS)
+          " Werkregie PR#51: a tap opens them below the title of the row, a second tap closes them.
       - [^] #dash.codex: Codex threads, Desktop, IDE and CLI (S)
         " Codex' SQLite state read-only; a running turn from the tail of the rollout file.
         + [ ] A thread opens in the Codex app (XS)
