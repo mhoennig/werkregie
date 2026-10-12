@@ -11,11 +11,13 @@ import de.hoennig.werkregie.dashboard.journal.JournalRecorder
 import de.hoennig.werkregie.dashboard.journal.TranscriptActivity
 import de.hoennig.werkregie.dashboard.relay.RelayClient
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
+import de.hoennig.werkregie.dashboard.sources.ChatSummarizer
 import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
 import de.hoennig.werkregie.dashboard.sources.CodexSource
 import de.hoennig.werkregie.dashboard.sources.GiteaSource
 import de.hoennig.werkregie.dashboard.sources.JevJudge
 import de.hoennig.werkregie.dashboard.sources.MatrixSource
+import de.hoennig.werkregie.dashboard.sources.Summaries
 import de.hoennig.werkregie.dashboard.sources.TaigaSource
 import de.hoennig.werkregie.dashboard.sources.WerkatorSource
 import de.hoennig.werkregie.dashboard.sources.WerkrevisorSource
@@ -163,7 +165,9 @@ private fun forgetRelay(config: DashboardConfig, mapper: ObjectMapper, name: Str
 internal fun localSources(config: DashboardConfig, mapper: ObjectMapper): List<Source> = buildList {
     if (config.claude.enabled) {
         val (judge, problem) = config.claude.jev?.let { JevJudge.of(it, JsonHttp(mapper)) } ?: (null to null)
-        add(ClaudeCodeSource(config.claude, mapper, judge, problem))
+        val (summarizer, summaryProblem) = config.claude.summary?.let { ChatSummarizer.of(it, JsonHttp(mapper)) } ?: (null to null)
+        val summaries = Summaries(summarizer, stateDir(config.server).resolve(Summaries.FILE_NAME), mapper)
+        add(ClaudeCodeSource(config.claude, mapper, judge, problem, summaries, summaryProblem))
     }
     if (config.codex.enabled) add(CodexSource(config.codex, mapper))
     // no homeserver, no Matrix: nothing is assumed

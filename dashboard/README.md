@@ -169,6 +169,13 @@ See [dashboard.example.yml](dashboard.example.yml) for the local mode; without a
   ✕ on a session in *Du bist dran* dismisses it until the session changes, e.g. with a new message;
   the server keeps the dismissals in `dismissed.json` of its state directory, for all devices,
   and takes them only with the access token as bearer header.
+  The tooltip of its row in "Du bist dran" shows the user's last input and Claude's question:
+  the open AskUserQuestion, else Claude's last text.
+  A text over 160 characters is shortened by `claude.summary`, by default `anthropic/claude-haiku-5.5` through OpenRouter,
+  with its key from `apiKeyEnv`, e.g. `OPENROUTER_API_KEY` in the relay's `dashboard.env`;
+  each text costs one call, since the summaries stay in `summaries.json` in the state directory for a day after their last use.
+  Without `claude.summary`, or while the model fails, such a text is cut.
+  Both texts go with the relay's report to the server.
 - **Werkator:** private repositories are redacted for anonymous readers.
   `controlToken` (or `controlTokenEnv`) is sent as the `werkator_token` cookie, the way Werkator's own pages do;
   `tools/remote --env-file .env.<instance> werkator control-token` prints it.

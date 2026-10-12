@@ -22,6 +22,7 @@ import kotlin.io.path.isRegularFile
  * per PID with its busy/idle status and, for Desktop, the id of its Desktop session.
  * A session that is not busy gets the marker `ask` when it waits for the user: by its process file,
  * by an unanswered AskUserQuestion in its transcript, or by [judge]'s rating of Claude's last text.
+ * The marker carries the user's last input and Claude's question, shortened by [summaries].
  */
 class ClaudeCodeSource(
     private val config: ClaudeConfig,
@@ -29,6 +30,9 @@ class ClaudeCodeSource(
     private val judge: Judge? = null,
     // why there is no judge although one is configured, e.g. a missing key
     private val judgeProblem: String? = null,
+    private val summaries: Summaries = Summaries(null, null, mapper),
+    // why there is no summary model although one is configured
+    private val summaryProblem: String? = null,
     private val processes: ProcessTable = ProcessTable.linux,
 ) : Source {
     override val id = "claude"
@@ -56,7 +60,7 @@ class ClaudeCodeSource(
 
     @Volatile private var judgeError: String? = null
 
-    override fun note(): String? = judgeProblem ?: judgeError
+    override fun note(): String? = judgeProblem ?: judgeError ?: summaryProblem ?: summaries.error
 
     override fun fetch(now: Instant, since: Instant): List<Item> {
         val live = readLive()
@@ -78,13 +82,16 @@ class ClaudeCodeSource(
 
         fun of(sessionId: String?, status: String?, waitingFor: String?): List<Flag> {
             if (status == "busy") return emptyList()
-            if (status == "waiting") return listOf(Flag("ask", WAITING_FOR[waitingFor] ?: waitingFor ?: QUESTION_OPEN))
-            val path = sessionId?.let(transcripts::get) ?: return emptyList()
-            val end = transcriptEnd(path)?.also { read.add(path) } ?: return emptyList()
-            if (end.openQuestion) return listOf(Flag("ask", QUESTION_OPEN))
-            if (!end.claudeLast) return emptyList()
-            val rating = rate(end) ?: return emptyList()
-            return if (rating >= (config.jev?.threshold ?: 1.0)) listOf(Flag("ask", WAITS_FOR_YOU)) else emptyList()
+            val end = sessionId?.let(transcripts::get)?.let { path -> transcriptEnd(path)?.also { read.add(path) } }
+            val reason = when {
+                status == "waiting" -> WAITING_FOR[waitingFor] ?: waitingFor ?: QUESTION_OPEN
+                end == null -> return emptyList()
+                end.openQuestion -> QUESTION_OPEN
+                !end.claudeLast -> return emptyList()
+                (rate(end) ?: return emptyList()) >= (config.jev?.threshold ?: 1.0) -> WAITS_FOR_YOU
+                else -> return emptyList()
+            }
+            return listOf(Flag("ask", reason, end?.prompt?.let { summaries.of(it, now) }, end?.question?.let { summaries.of(it, now) }))
         }
 
         private fun rate(end: TranscriptEnd): Double? {

@@ -111,7 +111,7 @@ class ClaudeCodeSourceTest : FunSpec({
 
         fun user(text: String) = """{"type":"user","uuid":"u${++uuid}","message":{"role":"user","content":"$text"}}"""
 
-        fun source(judge: Judge? = null) = ClaudeCodeSource(
+        fun source(judge: Judge? = null, summaries: Summaries = Summaries(null, null, ObjectMapper())) = ClaudeCodeSource(
             ClaudeConfig(
                 desktopDir = root.resolve("desktop").toString(),
                 liveDir = live.toString(),
@@ -120,6 +120,7 @@ class ClaudeCodeSourceTest : FunSpec({
             ),
             ObjectMapper(),
             judge,
+            summaries = summaries,
         ) { pid, _ -> pid in alive }
     }
 
@@ -149,7 +150,7 @@ class ClaudeCodeSourceTest : FunSpec({
         }
 
         sessions.source().fetch(now, since).asks() shouldBe mapOf(
-            "closed" to listOf(Flag("ask", "Frage offen")),
+            "closed" to listOf(Flag("ask", "Frage offen", question = "Welche Variante?")),
             "answered" to emptyList(),
             "archived" to emptyList(),
         )
@@ -163,7 +164,7 @@ class ClaudeCodeSourceTest : FunSpec({
         val judge = Judge { message -> if (message.endsWith("?")) 0.9 else 0.3 }
 
         sessions.source(judge).fetch(now, since).asks() shouldBe mapOf(
-            "asks" to listOf(Flag("ask", "wartet auf dich")),
+            "asks" to listOf(Flag("ask", "wartet auf dich", prompt = "Los", question = "Soll ich den PR anlegen?")),
             "reports" to emptyList(),
         )
         sessions.source(judge = null).fetch(now, since).asks() shouldBe mapOf("asks" to emptyList(), "reports" to emptyList())
@@ -175,7 +176,7 @@ class ClaudeCodeSourceTest : FunSpec({
             session("user", status = "idle", transcript = listOf(claude("Soll ich?"), user("Ja, bitte.")))
         }
         val rated = mutableListOf<String>()
-        val source = sessions.source { message -> rated += message; 0.9 }
+        val source = sessions.source(judge = { message -> rated += message; 0.9 })
 
         source.fetch(now, since)
         source.fetch(now.plusSeconds(2), since)
@@ -183,10 +184,23 @@ class ClaudeCodeSourceTest : FunSpec({
         rated shouldBe listOf("Soll ich?")
     }
 
+    test("a waiting session carries the last input and Claude's question") {
+        val sessions = Sessions().apply {
+            session("asks", status = "idle", transcript = listOf(user("Baue den Export"), claude("Soll ich den PR anlegen?")))
+            session("long", status = "waiting", waitingFor = "input needed", transcript = listOf(user("x".repeat(400)), ask("t1")))
+        }
+        val summaries = Summaries({ _, _ -> "Kurz" }, null, ObjectMapper())
+
+        sessions.source({ 0.9 }, summaries).fetch(now, since).asks() shouldBe mapOf(
+            "asks" to listOf(Flag("ask", "wartet auf dich", prompt = "Baue den Export", question = "Soll ich den PR anlegen?")),
+            "long" to listOf(Flag("ask", "Frage offen", prompt = "Kurz")),
+        )
+    }
+
     test("a failing Jev is noted and asked again only after a minute") {
         val sessions = Sessions().apply { session("asks", status = "idle", transcript = listOf(claude("Soll ich?"))) }
         var calls = 0
-        val source = sessions.source { calls++; throw IllegalStateException("HTTP 503") }
+        val source = sessions.source(judge = { calls++; throw IllegalStateException("HTTP 503") })
 
         source.fetch(now, since).asks() shouldBe mapOf("asks" to emptyList())
         source.fetch(now.plusSeconds(30), since)

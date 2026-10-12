@@ -27,4 +27,28 @@ class TranscriptTest : FunSpec({
 
         Transcript.end(path, mapper).claudeLast shouldBe true
     }
+
+    test("the question of an open AskUserQuestion and the last input of the user") {
+        val path = Files.createTempFile("transcript", ".jsonl")
+        Files.writeString(path, listOf(
+            """{"type":"user","message":{"content":"Baue den Export"}}""",
+            """{"type":"user","message":{"content":[{"type":"text","text":"<system-reminder>x</system-reminder>"},{"type":"text","text":"Zeig mir die Frage"}]}}""",
+            """{"type":"user","isCompactSummary":true,"message":{"content":"This session is being continued"}}""",
+            claude("u1", "Zwei Varianten gibt es."),
+            """{"type":"assistant","uuid":"u2","message":{"content":[{"type":"tool_use","id":"t1","name":"AskUserQuestion",
+               "input":{"questions":[{"question":"Welcher Text soll im Tooltip stehen?","header":"Text","options":[]}]}}]}}""".replace("\n", ""),
+        ).joinToString("\n"))
+
+        val end = Transcript.end(path, mapper)
+
+        end.prompt shouldBe "Zeig mir die Frage"
+        end.question shouldBe "Welcher Text soll im Tooltip stehen?"
+    }
+
+    test("Claude's last text is the question only if the user did not answer it") {
+        val path = Files.createTempFile("transcript", ".jsonl")
+        Files.writeString(path, listOf(claude("u1", "Soll ich?"), """{"type":"user","message":{"content":"Ja"}}""").joinToString("\n"))
+
+        Transcript.end(path, mapper).question shouldBe null
+    }
 })

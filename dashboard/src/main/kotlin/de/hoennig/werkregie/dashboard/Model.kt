@@ -44,7 +44,13 @@ data class Item(
  * `merge` (the user's own PR is approved), `review` (the user's own PR waits for another human),
  * `approved` (the user approved it, the merge is still to come).
  */
-data class Flag(val kind: String, val reason: String? = null)
+data class Flag(
+    val kind: String,
+    val reason: String? = null,
+    // for `ask`: the user's last input to the session and what Claude asks, each short enough for a tooltip
+    val prompt: String? = null,
+    val question: String? = null,
+)
 
 data class SourceStatus(
     val id: String,

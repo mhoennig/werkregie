@@ -69,8 +69,10 @@ data class ClaudeConfig(
     val liveDir: String = "~/.claude/sessions",
     // one transcript per session, <dir>/<project>/<session>.jsonl
     val projectsDir: String = "~/.claude/projects",
-    // rates whether the last message of an idle session waits for the user; without it, no chat text leaves the machine
+    // rates whether the last message of an idle session waits for the user; without it, no chat text goes to Jev
     val jev: JevConfig? = null,
+    // shortens the texts in the tooltip of a waiting session; without it, a long text is cut and no chat text goes to the model
+    val summary: SummaryConfig? = null,
 )
 
 /** TypeSafe's System One API (Jev), as werkrevisor uses it. */
@@ -81,6 +83,14 @@ data class JevConfig(
     val apiKeyEnv: String? = null,
     // from this rating up, a session waits for the user; 0.75 kept every real request of the sample of PR#40
     val threshold: Double = 0.75,
+)
+
+/** A cheap chat model through OpenRouter, so that the model can be exchanged. */
+data class SummaryConfig(
+    val endpoint: String = "https://openrouter.ai/api/v1/chat/completions",
+    val model: String = "anthropic/claude-haiku-5.5",
+    val apiKey: String? = null,
+    val apiKeyEnv: String? = null,
 )
 
 data class CodexConfig(

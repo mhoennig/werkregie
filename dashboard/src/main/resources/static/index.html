@@ -210,7 +210,7 @@ const TEXT = {
         "group.stuck": "Festgefahren", "group.rework": "Nacharbeiten", "group.approve": "Freigeben", "group.merge": "Mergen", "group.answer": "Antworten",
         "hint.stuck": "der Agent kommt nicht weiter", "hint.rework": "dein eigener PR", "hint.approve": "wartet auf dein Approval",
         "hint.merge": "approved, nur noch mergen", "hint.answer": "an dich gerichtet",
-        "act.stuck": "Eingreifen", "act.rework": "Ansehen", "act.approve": "Prüfen", "act.merge": "Mergen", "act.answer": "Öffnen",
+        "act.stuck": "Eingreifen", "act.rework": "Ansehen", "act.approve": "Prüfen", "act.merge": "Mergen", "act.answer": "Öffnen", "tip.prompt": "Du", "tip.question": "Claude",
         "load.builds": "{n} von {of} Builds laufen", "load.healthy": "läuft rund", "load.pressure": "unter Druck", "load.overloaded": "überlastet", "load.unknown": "unbekannt",
         "chart.cpu": "CPU", "chart.ram": "RAM", "chart.disk": "Platte", "chart.load": "Load", "chart.swap": "Swap",
         "chart.cpuPressure": "CPU-Warten", "chart.memoryPressure": "RAM-Warten", "chart.ioPressure": "IO-Warten", "chart.day": "{label} · 24 h",
@@ -258,7 +258,7 @@ const TEXT = {
         "group.stuck": "Stuck", "group.rework": "Rework", "group.approve": "Approve", "group.merge": "Merge", "group.answer": "Reply",
         "hint.stuck": "the agent does not get on", "hint.rework": "your own PR", "hint.approve": "waits for your approval",
         "hint.merge": "approved, just merge it", "hint.answer": "addressed to you",
-        "act.stuck": "Step in", "act.rework": "Look", "act.approve": "Review", "act.merge": "Merge", "act.answer": "Open",
+        "act.stuck": "Step in", "act.rework": "Look", "act.approve": "Review", "act.merge": "Merge", "act.answer": "Open", "tip.prompt": "You", "tip.question": "Claude",
         "load.builds": "{n} of {of} builds running", "load.healthy": "healthy", "load.pressure": "under pressure", "load.overloaded": "overloaded", "load.unknown": "unknown",
         "chart.cpu": "CPU", "chart.ram": "RAM", "chart.disk": "Disk", "chart.load": "Load", "chart.swap": "Swap",
         "chart.cpuPressure": "CPU wait", "chart.memoryPressure": "Mem wait", "chart.ioPressure": "Disk wait", "chart.day": "{label} · 24 h",
@@ -712,12 +712,18 @@ const todoContent = (group, entry) => {
     return JSON.stringify([group, item.source, todoText(entry).title, item.kind === "message" ? item.title : withoutTime(flag?.reason), item.project]);
 };
 
+// what a waiting session is about: the user's last input and Claude's question
+function todoTip({ flag }) {
+    const lines = ["prompt", "question"].filter((key) => flag?.[key]).map((key) => `${t(`tip.${key}`)}: ${flag[key]}`);
+    return lines.length ? ` title="${esc(lines.join("\n"))}"` : "";
+}
+
 function todoRow(group, entry) {
     const { item } = entry;
     const { title, detail } = todoText(entry);
     const tag = href(item) ? "a" : "div";
     const flash = todoFlashes.of(entryId(item));
-    return `<${tag} class="todo-row${flash.cls}"${flash.attr}${linkAttrs(item)}>
+    return `<${tag} class="todo-row${flash.cls}"${flash.attr}${linkAttrs(item)}${todoTip(entry)}>
         ${logo(item.source)}
         <span class="todo-what"><span class="todo-title">${esc(title)}</span><span class="todo-detail">${esc(detail)}</span></span>
         <span class="todo-age" title="${esc(item.time ? new Date(item.time).toLocaleString(locale()) : "")}">${esc(item.time ? span(item.time) : "")}</span>
