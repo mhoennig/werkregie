@@ -216,6 +216,7 @@ const TEXT = {
         "short.overview": "Übersicht", "short.prs": "PRs", "short.sessions": "Sessions", "short.tasks": "Aufgaben",
         "short.messages": "Chats", "short.history": "Verlauf", "short.sources": "Quellen",
         live: "live", offline: "offline", "live.title": "Verbindung zum Backend",
+        "relay.silent": "{relay} still", "relay.none": "kein Relay", "relay.noneTitle": "Kein Relay meldet; Sessions fehlen",
         "theme.light": "Hell anzeigen", "theme.dark": "Dunkel anzeigen",
         "token.enter": "Zugriffstoken eingeben", "token.forget": "Zugriffstoken vergessen", "token.confirm": "Zugriffstoken in diesem Browser vergessen?",
         "token.title": "Zugriffstoken", "token.text": "Auf dem Server gibt <code>werkregie-dashboard token</code> es aus. Der Browser behält es als Cookie.",
@@ -274,6 +275,7 @@ const TEXT = {
         "short.overview": "Overview", "short.prs": "PRs", "short.sessions": "Sessions", "short.tasks": "Tasks",
         "short.messages": "Chats", "short.history": "History", "short.sources": "Sources",
         live: "live", offline: "offline", "live.title": "Connection to the backend",
+        "relay.silent": "{relay} silent", "relay.none": "no relay", "relay.noneTitle": "No relay reports; sessions are missing",
         "theme.light": "Show light", "theme.dark": "Show dark",
         "token.enter": "Enter access token", "token.forget": "Forget access token", "token.confirm": "Forget the access token in this browser?",
         "token.title": "Access token", "token.text": "On the server, <code>werkregie-dashboard token</code> prints it. The browser keeps it as a cookie.",
@@ -1272,20 +1274,47 @@ function renderSourceChips() {
         `<button class="chip${state.hidden.has(key) ? "" : " is-active"}" type="button" data-source="${key}" aria-pressed="${!state.hidden.has(key)}">${esc(label)}</button>`).join("");
 }
 
+/** The relays whose sessions may be missing or old: silent ones, or none at all. */
+function lateRelays(sources) {
+    return sources.flatMap((s) => {
+        if (s.id === "relays" && !s.ok) return [{ text: t("relay.none"), title: t("relay.noneTitle") }];
+        if (!s.id.startsWith("relay:") || !s.silent) return [];
+        const relay = s.id.slice("relay:".length);
+        return [{ text: t("relay.silent", { relay }), title: `Relay ${relay}: ${reason(s.message)}` }];
+    });
+}
+
 let live = null;
 function setLive(ok) {
     live = ok;
     const indicator = $("live-indicator");
-    indicator.className = ok ? "status-success" : ok === false ? "status-error" : "status-unknown";
-    indicator.textContent = ok ? t("live") : ok === false ? t("offline") : "…";
-    indicator.title = t("live.title");
+    const late = ok && state.data ? lateRelays(state.data.sources) : [];
+    indicator.className = ok ? (late.length ? "status-warn" : "status-success") : ok === false ? "status-error" : "status-unknown";
+    indicator.textContent = ok ? (late.length ? late.map((r) => r.text).join(" · ") : t("live")) : ok === false ? t("offline") : "…";
+    indicator.title = [t("live.title"), ...late.map((r) => r.title)].join(" — ");
 }
 
+// after waking up the network is often ready a moment later; the 5 s interval would keep the old state that long
+const LOAD_TIMEOUT_MS = 10000;
+const RETRY_MS = 1000;
+const RETRIES = 3;
+let loadsStarted = 0, loadShown = 0, retries = 0, retryTimer = null;
+
 async function load() {
+    const seq = ++loadsStarted;
+    clearTimeout(retryTimer);
+    retryTimer = null;
     try {
-        const response = await fetch("/api/dashboard", { cache: "no-store" });
+        // a request on a connection that died while the phone slept would hang for minutes
+        const signal = window.AbortSignal?.timeout ? AbortSignal.timeout(LOAD_TIMEOUT_MS) : undefined;
+        const response = await fetch("/api/dashboard", { cache: "no-store", signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        state.data = await response.json();
+        const data = await response.json();
+        // two loads at once, e.g. on pageshow and visibilitychange: the older answer must not replace the newer one
+        if (seq < loadShown) return;
+        loadShown = seq;
+        retries = 0;
+        state.data = data;
         if (reloadForVersion(state.data.version)) return;
         keepLast(state.data);
         setLive(true);
@@ -1293,13 +1322,26 @@ async function load() {
         renderChrome();
         render();
     } catch (e) {
+        if (seq < loadShown) return;
+        loadShown = seq;
         setLive(false);
         if (!state.data) {
             state.data = readLast();
             if (state.data) { renderChrome(); render(); }
         }
         showStale(Boolean(state.data));
+        // two loads failing at once share one retry
+        if (!retryTimer && retries < RETRIES) {
+            retries++;
+            retryTimer = setTimeout(() => { retryTimer = null; load(); }, RETRY_MS);
+        }
     }
+}
+
+/** A load with fresh retries: the ones of a failure before sleeping may be used up. */
+function loadAfterWaking() {
+    retries = 0;
+    load();
 }
 
 // ---- after a deployment an open page still runs the old code: it loads itself again ----
@@ -1602,7 +1644,10 @@ renderSourceChips();
 applyLanguage();
 load();
 setInterval(() => { if (!document.hidden) load(); }, 5000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) loadAfterWaking(); });
+// a page from the back/forward cache fires no visibilitychange; the network may come back only after waking up
+window.addEventListener("pageshow", (e) => { if (e.persisted) loadAfterWaking(); });
+window.addEventListener("online", loadAfterWaking);
 // installable and startable offline; the service worker never keeps the data
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>

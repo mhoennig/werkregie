@@ -150,6 +150,7 @@ code { font-family: var(--mono); font-size: 13px; }
 #live-indicator.status-success { color: var(--accent); border-color: var(--accent-soft-2); }
 #live-indicator.status-success::before { animation: pulse 1.6s ease-in-out infinite; }
 #live-indicator.status-error { color: var(--clay); border-color: var(--clay); }
+#live-indicator.status-warn { color: var(--amber); border-color: var(--amber); }
 .lang-switch { display: inline-flex; height: 30px; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; }
 .lang-switch button { appearance: none; padding: 0 8px; border: 0; background: var(--bg); color: var(--muted); font: 500 11.5px var(--mono); cursor: pointer; }
 .lang-switch button + button { border-left: 1px solid var(--line-2); }
@@ -558,6 +559,8 @@ a.tag:hover { color: var(--accent); border-color: var(--accent); }
     .header-tools { margin-left: auto; gap: 6px; }
     #live-indicator { padding: 0; border: 0; font-size: 0; gap: 0; }
     #live-indicator::before { width: 10px; height: 10px; }
+    /* a late relay names itself: a dot alone does not say that sessions may be missing */
+    #live-indicator.status-warn { gap: 5px; font-size: 10px; }
     #token-button, #reload-button { display: none; }
     .connection { padding: 10px 12px; gap: 8px; }
     .connection-head strong { font-size: 15px; }

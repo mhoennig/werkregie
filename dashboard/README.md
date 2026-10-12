@@ -16,6 +16,8 @@ The page follows Werkator's design (`werkregie.css` mirrors `werkator.css`: IBM 
 It opens on the overview, which answers two questions first: is every source connected, and where must the user act?
 
 - The connection bar shows each tool as its logo with a status dot, and names a source that fails or is silent.
+- The page asks the server every 5 s while it is visible, at once when it becomes visible, returns from the back/forward cache
+  or the network comes back, and after a failure again after 1 s, at most 3 times; a request that hangs fails after 10 s.
   On the desktop the Claude logo opens Claude Desktop's sessions waiting for the user (`claude://code/needs-input`),
   and a session of Claude Desktop opens there (`claude://code/continue?session=…`); a phone gets no such links.
   Codex has no such link yet: the ChatGPT app on Linux takes `codex://threads/…` but does not act on it.
@@ -69,8 +71,10 @@ One program, three ways to run it:
   The browser enters it with the key button and keeps it as the `werkregie_token` cookie;
   relays send it as `Authorization: Bearer`. The relay endpoint does not accept the cookie,
   so no other site can make a logged-in browser post to it.
-- **Silent relays:** after `server.relayStaleSeconds` (30) the relay's chip turns yellow with "zuletzt vor …";
+- **Silent relays:** after `server.relayStaleSeconds` (30) the relay's chip turns yellow with "zuletzt vor …",
+  and the indicator in the header shows e.g. "think still" in amber instead of "live", also on a phone;
   after `server.relayGoneSeconds` (120) its running and open sessions move to the history.
+  A server without any relay shows a failing source "Relays" and "kein Relay" in the header.
 - **Retired relays:** a relay that reports no more stays as stale until it is forgotten:
   `werkregie-dashboard forget-relay NAME` on the server host asks the running server (with the token from its state),
   or edits `relays.json` when no server runs. A relay still running simply reports again.

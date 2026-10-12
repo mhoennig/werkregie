@@ -157,6 +157,9 @@
         " Werkregie PR#19: localStorage, an amber banner with the age; never demo data.
       - [^] A new version of the server loads an open page again (XS)
         " Werkregie PR#36: the footer shows the page's version; at most once per version and tab.
+      - [^] Loads robustly after waking up; the header shows a late relay (XS)
+        " Werkregie PR#52: also on pageshow and online, a retry after 1 s, a timeout of 10 s;
+        " "think still" or "kein Relay" in amber.
       - [^] Installed and checked offline on Android (XS)
         " 2026-10-11: flight mode, a new start shows the last state under the banner.
       - [ ] Installed and checked on iOS and desktop (XS)

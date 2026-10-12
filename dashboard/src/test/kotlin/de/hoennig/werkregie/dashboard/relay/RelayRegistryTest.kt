@@ -49,6 +49,14 @@ class RelayRegistryTest : FunSpec({
         status.message shouldBe "Codex: state_5.sqlite nicht gefunden"
     }
 
+    test("an empty registry reports that no relay reports") {
+        val status = registry().statuses(now).single()
+
+        status.id shouldBe "relays"
+        status.ok shouldBe false
+        status.message shouldBe "kein Relay meldet"
+    }
+
     test("a silent relay turns stale, and after a while its running sessions count as ended") {
         val relays = registry().apply { accept(report(), now) }
 

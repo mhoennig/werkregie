@@ -81,7 +81,9 @@ class RelayRegistry(
 
     /** One chip per relay instead of one for the registry. */
     override fun statuses(now: Instant): List<SourceStatus> =
-        relays.values.sortedBy { it.report.relay }.map { received ->
+        // without any relay one failing chip: a lost relay state must not look like a quiet day
+        if (relays.isEmpty()) listOf(SourceStatus(id, label, ok = false, message = "kein Relay meldet", url = null, count = 0, fetchedAt = null))
+        else relays.values.sortedBy { it.report.relay }.map { received ->
             val silent = Duration.between(received.receivedAt, now)
             val failing = received.report.sources.filter { !it.ok }
             SourceStatus(
