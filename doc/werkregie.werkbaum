@@ -18,9 +18,11 @@
         " Codex' SQLite state read-only; a running turn from the tail of the rollout file.
         + [ ] A thread opens in the Codex app (XS)
           " Werkregie PR#30: the ChatGPT app on Linux takes codex://threads/<id>, but does not act on it yet.
-      - [^] #dash.werkator: Werkator builds, any number of instances (S)
-        " Running and finished builds, @ai-review builds as werkrevisor;
-        " three repositories at a time with a 30 s timeout; the control token reveals private repositories.
+      - [^] #dash.werkator: Werkator builds, any number of instances
+        - [^] Running and finished builds, @ai-review builds as werkrevisor (S)
+          " Three repositories at a time with a 30 s timeout; the control token reveals private repositories.
+        - [^] No failure that a newer build of its branch superseded (XS)
+          " Werkregie PR#46; from Werkator's build history, without a change in Werkator.
       - [^] #dash.gitea: Gitea, any number of instances
         - [^] Open pull requests, scope mine or all (S)
           " The token comes from a tea login, by name or user.

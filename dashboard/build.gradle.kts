@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "de.hoennig"
-version = "0.23.0"
+version = "0.25.0"
 
 java {
     toolchain {

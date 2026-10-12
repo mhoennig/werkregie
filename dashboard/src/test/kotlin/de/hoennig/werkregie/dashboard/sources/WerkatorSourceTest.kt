@@ -37,6 +37,24 @@ class WerkatorSourceTest : FunSpec({
         source.item("r", "r", build("b", "pending", now.minus(Duration.ofDays(2))), now, since)!!.state shouldBe "stale"
     }
 
+    test("a failure with a newer build of its branch is left out") {
+        val history = listOf(
+            build("feature", "success", now.minus(Duration.ofMinutes(10))),
+            build("feature", "failure", now.minus(Duration.ofMinutes(30))),
+            // a review run is a branch of its own, and the newest failure of a branch stays
+            build("feature@ai-review", "error", now.minus(Duration.ofMinutes(20))),
+            build("main", "failure", now.minus(Duration.ofMinutes(5))),
+            build("main", "success", now.minus(Duration.ofHours(2))),
+        )
+
+        source.current(history).map { it.text("name") to it.text("status") } shouldBe listOf(
+            "feature" to "success",
+            "feature@ai-review" to "error",
+            "main" to "failure",
+            "main" to "success",
+        )
+    }
+
     test("builds before the window are left out") {
         source.item("r", "r", build("b", "success", now.minus(Duration.ofDays(8))), now, since) shouldBe null
     }

@@ -7,7 +7,7 @@ and what happened recently — read-only, links back to the tools.
 |---|---|---|
 | Claude Code (Desktop and terminal) | `~/.config/Claude/claude-code-sessions/**.json`, `~/.claude/sessions/<pid>.json`, the end of `~/.claude/projects/*/<session>.jsonl` | busy / waiting / closed sessions, resume command, sessions waiting for the user |
 | Codex (ChatGPT Desktop, IDE, CLI) | `~/.codex/state_5.sqlite` (read-only), rollout files | threads, running turns, resume command |
-| Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history`, `/api/system`, `/api/system/history` | running and finished builds; `@ai-review` builds as werkrevisor; the host's load |
+| Werkator, any number of instances | `/api/repos`, `/api/repos/{repo}/builds/history`, `/api/system`, `/api/system/history` | running and finished builds, without failures a newer build of the branch superseded; `@ai-review` builds as werkrevisor; the host's load |
 | werkrevisor's statistics service | `/api/stats` | review costs of 24 hours and 7 days |
 | Gitea, any number of instances | `/api/v1` | open PRs with commit statuses (Werkator, werkrevisor run and verdict), own activity |
 | Matrix, with the user's own account | client-server API through Trixnity (`de.connect2x.trixnity`) | direct messages, mentions in every room, every message of configured rooms |

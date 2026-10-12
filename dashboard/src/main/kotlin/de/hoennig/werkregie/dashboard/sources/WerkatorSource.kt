@@ -179,10 +179,20 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
 
     private fun builds(repo: String, now: Instant, since: Instant): List<Item> {
         val encoded = URLEncoder.encode(repo, Charsets.UTF_8)
-        return http.get("$url/api/repos/$encoded/builds/history", headers, REQUEST_TIMEOUT)
+        return current(http.get("$url/api/repos/$encoded/builds/history", headers, REQUEST_TIMEOUT).toList())
             .mapNotNull { build -> item(repo, encoded, build, now, since) }
             .take(MAX_PER_REPO)
     }
+
+    /** The history without the failures that a newer build of the same branch superseded, in its order. */
+    internal fun current(history: List<JsonNode>): List<JsonNode> {
+        val newest = history.groupBy { it.branch() }.mapValues { (_, builds) -> builds.maxOf { it.started() } }
+        return history.filter { build -> build.text("status") !in FAILED || build.started() >= newest.getValue(build.branch()) }
+    }
+
+    private fun JsonNode.branch() = text("name") ?: text("branch") ?: "?"
+
+    private fun JsonNode.started() = text("startedAt")?.let(Instant::parse) ?: Instant.MIN
 
     internal fun item(repo: String, encodedRepo: String, build: JsonNode, now: Instant, since: Instant): Item? {
         val status = build.text("status") ?: "unknown"
@@ -193,7 +203,7 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
             ?.let { startedAt?.plusSeconds(it.asLong()) }
         val time = finishedAt ?: startedAt
         if (!running && (time == null || time.isBefore(since))) return null
-        val name = build.text("name") ?: build.text("branch") ?: "?"
+        val name = build.branch()
         val review = name.endsWith(REVIEW_SUFFIX)
         val pullRequest = build["pullRequest"]?.takeIf { it.text("number") != null }
         return Item(
@@ -224,6 +234,7 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
         private const val REVIEW_SUFFIX = "@ai-review"
         private const val MAX_PER_REPO = 40
         private val ACTIVE = setOf("running", "pending", "queued")
+        private val FAILED = setOf("failure", "failed", "error", "timed_out", "interrupted")
         private val STALE_AFTER = Duration.ofHours(12)
         private const val PARALLEL_REQUESTS = 3
         private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(30)
