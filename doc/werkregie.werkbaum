@@ -102,6 +102,8 @@
       - [^] Filters: source chips, project combobox, time window, search (S)
       - [^] Two-line pull request rows with coloured marker chips (XS)
       - [^] Werkator's design, light and dark with a toggle (S)
+      - [^] The footer links the repository and its releases (XS)
+        " Werkregie PR#35: the build takes the repository from origin, without user or token.
       - [^] Reloads every 5 s while visible; cached data served at once (XS)
     - [^] #dash.modes: Modes
       - [^] #dash.local: local: everything read on this machine, loopback only, no token (XS)

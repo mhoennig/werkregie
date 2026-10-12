@@ -174,8 +174,9 @@
 
 <footer class="site-footer">
     <span>
-        <strong>Werkregie</strong>
-        <span id="version" class="version"></span>
+        <!-- the build sets the repository it comes from; target="_blank" opens it in the browser, also from the app -->
+        <strong><a href="@repositoryUrl@" target="_blank" rel="noopener noreferrer" title="Repository">Werkregie</a></strong>
+        <a id="version" class="version" href="@repositoryUrl@/releases" target="_blank" rel="noopener noreferrer" title="Releases"></a>
         · © 2026 <a href="https://michael.hoennig.de" target="_blank" rel="noopener noreferrer">Michael Hönnig</a>
     </span>
     <span class="site-footer-links">

@@ -6,7 +6,9 @@ import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -87,6 +89,13 @@ class WebServerTest : FunSpec({
         get("/").statusCode() shouldBe 200
         get("/werkregie.css").statusCode() shouldBe 200
         get("/werkregie.properties").statusCode() shouldBe 404
+    }
+
+    test("the footer links the repository and its releases") {
+        val page = get("/").body()
+        val repository = Regex("""<a href="(https://[^"]+)" target="_blank"[^>]*>Werkregie</a>""").find(page)?.groupValues?.get(1)
+        repository.shouldNotBeNull()
+        page shouldContain """<a id="version" class="version" href="$repository/releases" target="_blank""""
     }
 
     test("serves what makes the page an installable app") {

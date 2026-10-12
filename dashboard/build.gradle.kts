@@ -1,3 +1,4 @@
+import java.net.URI
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,7 +7,7 @@ plugins {
 }
 
 group = "de.hoennig"
-version = "0.14.0"
+version = "0.16.0"
 
 java {
     toolchain {
@@ -57,11 +58,57 @@ application {
     applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
+// ---- the footer links the repository the build comes from ----
+
+/**
+ * The web page of a git remote: `git@host:owner/repo.git` or `https://user:token@host/owner/repo.git`
+ * become `https://host/owner/repo`; null for a local path or a host alias without a domain.
+ * Only these characters reach the page, so a remote can carry neither a token nor HTML into it.
+ */
+fun repositoryWebUrl(remote: String): String? {
+    val scp = Regex("""[\w.-]+@([\w-]+(?:\.[\w-]+)+):(?!/)(.+)""").matchEntire(remote.trim())
+    val uri: URI? = runCatching { URI(remote.trim()) }.getOrNull()
+    val (host, path) = when {
+        scp != null -> scp.groupValues[1] to scp.groupValues[2]
+        uri != null && uri.scheme in setOf("https", "http", "ssh") && uri.host != null -> uri.host to uri.path
+        else -> return null
+    }
+    val url = "https://$host/" + path.trim('/').removeSuffix(".git")
+    return url.takeIf { Regex("""https://[\w-]+(\.[\w-]+)+(/[\w.~-]+)+""").matches(it) }
+}
+
+val repositoryUrl: String = runCatching {
+    providers.exec {
+        commandLine("git", "remote", "get-url", "origin")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get()
+}.getOrNull()?.let(::repositoryWebUrl) ?: "https://git.javagil.de/mi/werkregie"
+
+val checkRepositoryWebUrl = tasks.register("checkRepositoryWebUrl") {
+    description = "Checks how the build turns a git remote into the repository link of the footer."
+    val wrong = mapOf(
+        "mih09-git@git.javagil.de:mi/werkregie.git" to "https://git.javagil.de/mi/werkregie",
+        "ssh://git@git.javagil.de:2222/mi/werkregie.git" to "https://git.javagil.de/mi/werkregie",
+        "https://claude-code:secret@git.javagil.de/mi/werkregie.git" to "https://git.javagil.de/mi/werkregie",
+        "https://github.com/mhoennig/werkregie/" to "https://github.com/mhoennig/werkregie",
+        "gitea:mi/werkregie.git" to null,
+        "/srv/git/werkregie.git" to null,
+        "file:///srv/git/werkregie.git" to null,
+        "https://git.javagil.de/mi/a\"b" to null,
+    ).map { (remote, expected) -> Triple(remote, expected, repositoryWebUrl(remote)) }
+        .filter { (_, expected, actual) -> actual != expected }
+        .map { (remote, expected, actual) -> "repositoryWebUrl(\"$remote\") = $actual, expected $expected" }
+    doLast { check(wrong.isEmpty()) { wrong.joinToString("\n") } }
+}
+tasks.check { dependsOn(checkRepositoryWebUrl) }
+
 tasks.processResources {
     // the footer shows the version, as Werkator's does
     val version = project.version.toString()
     inputs.property("version", version)
+    inputs.property("repositoryUrl", repositoryUrl)
     filesMatching("werkregie.properties") { expand("version" to version) }
+    filesMatching("static/index.html") { filter { it.replace("@repositoryUrl@", repositoryUrl) } }
 }
 
 // ---- the runtime bundle for a host without Java: own JRE + jars + launcher (as Werkator's, ADR 0006) ----
