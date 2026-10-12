@@ -7,6 +7,9 @@ import de.hoennig.werkregie.dashboard.RelayConfig
 import de.hoennig.werkregie.dashboard.Section
 import de.hoennig.werkregie.dashboard.Source
 import de.hoennig.werkregie.dashboard.WebServer
+import de.hoennig.werkregie.dashboard.journal.Activity
+import de.hoennig.werkregie.dashboard.journal.ActivitySource
+import de.hoennig.werkregie.dashboard.journal.Span
 import de.hoennig.werkregie.dashboard.mapper
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -39,6 +42,15 @@ class RelayClientTest : FunSpec({
         client.sendOnce() shouldBe true
         relays.fetch(Instant.now(), Instant.now().minusSeconds(60)).map { it.origin to it.title } shouldContainExactly
             listOf("laptop · Desktop" to "Working")
+    }
+
+    test("reports the active time of the local sessions along") {
+        val span = Span(Instant.parse("2026-10-12T09:00:00Z"), Instant.parse("2026-10-12T09:20:00Z"))
+        val transcripts = ActivitySource { _, _ -> listOf(Activity("claude", "s1", "cli", spans = listOf(span))) }
+        val client = RelayClient(RelayConfig(serverUrl = url, token = accessToken.token, name = "laptop"), local, mapper, transcripts) {}
+
+        client.sendOnce() shouldBe true
+        relays.activity().map { it.origin to it.spans } shouldContainExactly listOf("laptop · cli" to listOf(span))
     }
 
     test("logs a rejected token once, not on every attempt") {

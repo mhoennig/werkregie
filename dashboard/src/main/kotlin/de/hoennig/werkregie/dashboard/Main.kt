@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import de.hoennig.werkregie.dashboard.journal.ActivitySource
+import de.hoennig.werkregie.dashboard.journal.JournalArchive
+import de.hoennig.werkregie.dashboard.journal.JournalRecorder
+import de.hoennig.werkregie.dashboard.journal.TranscriptActivity
 import de.hoennig.werkregie.dashboard.relay.RelayClient
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import de.hoennig.werkregie.dashboard.sources.ClaudeCodeSource
@@ -21,6 +25,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Path
 import java.time.Duration
+import java.time.ZoneId
 import kotlin.system.exitProcess
 
 private const val USAGE = """
@@ -83,8 +88,9 @@ fun main(args: Array<String>) {
 private fun local(config: DashboardConfig, configPath: Path, mapper: ObjectMapper) {
     val http = JsonHttp(mapper)
     val dashboard = Dashboard(localSources(config, mapper) + remoteSources(config, http, mapper), config.windowHours, version())
+    val journal = journal(config, mapper, dashboard, transcripts(config, mapper))
     // loopback only: the page shows private work and the backend holds the Gitea tokens
-    val port = WebServer("127.0.0.1", config.port, dashboard, mapper).start()
+    val port = WebServer("127.0.0.1", config.port, dashboard, mapper, journal = journal).start()
     warm(dashboard)
     println("Werkregie-Dashboard (lokal): http://localhost:$port/  (Konfiguration: $configPath)")
 }
@@ -100,15 +106,29 @@ private fun server(config: DashboardConfig, configPath: Path, mapper: ObjectMapp
     )
     Runtime.getRuntime().addShutdownHook(Thread { runCatching { relays.save() } })
     val dashboard = Dashboard(remoteSources(config, JsonHttp(mapper), mapper) + relays, config.windowHours, version())
-    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays).start()
+    val journal = journal(config, mapper, dashboard) { _, _ -> relays.activity() }
+    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays, journal).start()
     warm(dashboard)
     println("Werkregie-Dashboard (Server): ${config.server.bindAddress}:$port  (Konfiguration: $configPath, Zustand: $state)")
 }
 
 private fun relay(config: DashboardConfig, mapper: ObjectMapper) {
     val local = Dashboard(localSources(config, mapper), config.windowHours, version())
-    RelayClient(config.relay, local, mapper).runForever()
+    val activity = if (config.journal.enabled) transcripts(config, mapper) else null
+    RelayClient(config.relay, local, mapper, activity, config.windowHours).runForever()
 }
+
+/** The record of each day, filled every minute; null when `journal.enabled` is false. */
+private fun journal(config: DashboardConfig, mapper: ObjectMapper, dashboard: Dashboard, activity: ActivitySource): JournalArchive? {
+    if (!config.journal.enabled) return null
+    val zone = config.journal.zone?.let(ZoneId::of) ?: ZoneId.systemDefault()
+    val archive = JournalArchive(stateDir(config.server).resolve(JournalArchive.DIR_NAME), zone, config.journal.keepDays, mapper)
+    JournalRecorder(archive, dashboard, activity, config.windowHours).start()
+    return archive
+}
+
+private fun transcripts(config: DashboardConfig, mapper: ObjectMapper) =
+    TranscriptActivity(config.claude, config.codex, Duration.ofMinutes(config.journal.gapMinutes), mapper)
 
 /** Asks the running server to drop the relay; with no server running, edits its state file. */
 private fun forgetRelay(config: DashboardConfig, mapper: ObjectMapper, name: String): String {

@@ -150,6 +150,14 @@
         " 2026-10-11: flight mode, a new start shows the last state under the banner.
       - [ ] Installed and checked on iOS and desktop (XS)
       + [?] Push notification when a pull request needs the user
+    - [~] #dash.journal: A Werkjournal import file per calendar day
+      - [^] #dash.journal.record: The work of each day recorded by the server and the local mode (S)
+        " Werkregie PR#41: active time of the sessions from their transcripts, the items of all sources;
+        " <stateDir>/journal/YYYY-MM-DD.json, kept 400 days.
+      - [ ] #dash.journal.proposal: Proposal for a picked day, to copy or download (M) :#dash.journal.record
+        " Mapping in journal: of dashboard.yml; one entry per Taiga story, else per project.
+      - [ ] AI summary as the description of an entry (S) :#dash.journal.proposal
+      - [?] Days before the deployment, read from older transcripts
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
     - [?] #dash.store: One database for Werkregie, to be discussed
   - [ ] #ops: Build and delivery
@@ -269,6 +277,19 @@
   sqlite-jdbc stays as long as Werkregie reads Codex: it only reads Codex'
   own database. Whether Werkregie gets one database of its own, H2 or
   another, and what moves into it, is to be discussed.
+
+#dash.journal
+  User request of 2026-10-12: per calendar day a proposed import JSON for
+  Werkjournal, the day picked in the page. User decisions of 2026-10-12: one
+  entry per Taiga story and day where a Taiga ID is known, else one per
+  project and day; the hours from the active time of the sessions, a pause
+  over 15 min splits it; the mapping to Werkjournal customers and projects in
+  journal: of the server's dashboard.yml, by name, since Werkjournal matches
+  them by name too; a record of each day on the server, so that a day stays
+  available after the sources forget it, recorded in the local mode too;
+  descriptions by rules, the same data giving the same text, since
+  Werkjournal adds a changed entry as a new one;
+  two PRs, the record first, so that it fills while the proposal is built.
 
 #dash.notify
   Werkregie posts what a pull request asks of whom into a Matrix room, for

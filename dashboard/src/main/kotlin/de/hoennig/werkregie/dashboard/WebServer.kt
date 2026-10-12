@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import de.hoennig.werkregie.dashboard.journal.JournalArchive
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import java.net.InetSocketAddress
 import java.time.Instant
+import java.time.LocalDate
 import java.util.concurrent.Executors
 
 /**
@@ -23,6 +25,7 @@ class WebServer(
     private val mapper: ObjectMapper,
     private val accessToken: AccessToken? = null,
     private val relays: RelayRegistry? = null,
+    private val journal: JournalArchive? = null,
 ) {
     private lateinit var server: HttpServer
 
@@ -33,6 +36,7 @@ class WebServer(
         server.createContext("/api/dashboard") { exchange -> handle(exchange) { dashboard(it) } }
         server.createContext("/api/token/verify") { exchange -> handle(exchange) { verify(it) } }
         server.createContext("/api/relay") { exchange -> handle(exchange) { relay(it) } }
+        server.createContext("/api/journal/") { exchange -> handle(exchange) { journal(it) } }
         server.createContext("/") { exchange -> handle(exchange) { StaticFiles.serve(it) } }
         server.start()
         return server.address.port
@@ -59,6 +63,19 @@ class WebServer(
             else -> Demo.snapshot(Instant.now(), dashboard.version)
         }
         exchange.respond(200, "application/json", mapper.writeValueAsBytes(snapshot))
+    }
+
+    /** `GET /api/journal/YYYY-MM-DD`: the record of a day; only with the token, since it is the user's work itself. */
+    private fun journal(exchange: HttpExchange) {
+        if (journal == null) return exchange.respond(404, "text/plain", "no journal in this mode".toByteArray())
+        if (accessToken != null && !accessToken.matches(exchange.cookie(AccessToken.COOKIE) ?: exchange.bearer())) {
+            return exchange.respond(401, "text/plain", "token required".toByteArray())
+        }
+        if (exchange.requestMethod != "GET") return exchange.respond(405, "text/plain", "GET only".toByteArray())
+        val day = exchange.requestURI.path.removePrefix("/api/journal/")
+            .takeIf { DAY.matches(it) }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: return exchange.respond(400, "text/plain", "day as YYYY-MM-DD".toByteArray())
+        exchange.respond(200, "application/json", mapper.writeValueAsBytes(journal.day(day)))
     }
 
     /** Lets the page check a token before it stores it. */
@@ -104,6 +121,7 @@ class WebServer(
     companion object {
         // a few hundred sessions of a week fit into well under a megabyte
         private const val MAX_REPORT_BYTES = 4 * 1024 * 1024
+        private val DAY = Regex("""^\d{4}-\d{2}-\d{2}$""")
     }
 }
 

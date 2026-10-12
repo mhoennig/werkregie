@@ -21,6 +21,17 @@ data class DashboardConfig(
     val taskboards: List<TaskboardConfig> = emptyList(),
     val server: ServerConfig = ServerConfig(),
     val relay: RelayConfig = RelayConfig(),
+    val journal: JournalConfig = JournalConfig(),
+)
+
+/** The record of each day's work, the base of a Werkjournal import: kept by the modes `server` and `local`. */
+data class JournalConfig(
+    val enabled: Boolean = true,
+    // the time zone of the user's calendar days, e.g. Europe/Berlin; default the zone of the machine
+    val zone: String? = null,
+    // entries of a session apart by at most this many minutes count as worked through; read by the relay
+    val gapMinutes: Long = 15,
+    val keepDays: Long = 400,
 )
 
 /** Mode `server`: the dashboard on a host, fed by relays; `port` above is the port it listens on. */

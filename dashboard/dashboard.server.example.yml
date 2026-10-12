@@ -13,6 +13,11 @@ server:
   relayStaleSeconds: 30
   relayGoneSeconds: 120
 
+# the record of each day's work in <stateDir>/journal/
+journal:
+  zone: Europe/Berlin         # where a calendar day begins; default the zone of the host
+  keepDays: 400
+
 werkators:
   - name: javagil
     url: https://werkator.example.org

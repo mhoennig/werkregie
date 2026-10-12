@@ -7,6 +7,7 @@ import de.hoennig.werkregie.dashboard.RelayReport
 import de.hoennig.werkregie.dashboard.Section
 import de.hoennig.werkregie.dashboard.MultiStatusSource
 import de.hoennig.werkregie.dashboard.SourceStatus
+import de.hoennig.werkregie.dashboard.journal.Activity
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -62,6 +63,12 @@ class RelayRegistry(
         Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         savedAt = now
     }
+
+    /** The active time of the sessions all relays reported, named after the relay as the items are. */
+    fun activity(): List<Activity> =
+        relays.values.flatMap { received ->
+            received.report.activity.map { it.copy(origin = listOfNotNull(received.report.relay, it.origin).joinToString(" · ")) }
+        }
 
     override fun fetch(now: Instant, since: Instant): List<Item> =
         relays.values.flatMap { received ->

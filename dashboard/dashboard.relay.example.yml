@@ -6,6 +6,10 @@ claude:
 codex:
   enabled: true
 
+# the active time of the sessions, from the time stamps of their transcripts
+journal:
+  gapMinutes: 15              # a longer pause between two entries splits the active time
+
 # Matrix with your own account (modes local and relay); sign in once with `werkregie-dashboard matrix login`
 # matrix:
 #   homeserver: example.org       # server name or base URL; no default

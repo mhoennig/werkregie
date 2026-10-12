@@ -75,6 +75,13 @@ One program, three ways to run it:
   or edits `relays.json` when no server runs. A relay still running simply reports again.
 - **State:** the last report of every relay is kept in `<stateDir>/relays.json`, so a restarted server is filled at once.
   `stateDir` defaults to `${XDG_STATE_HOME:-~/.local/state}/werkregie`.
+- **Journal:** every minute the server, or the local mode, records the work of each day in `<stateDir>/journal/YYYY-MM-DD.json`:
+  the active time of each Claude Code session and Codex thread, and the items of all sources, sessions apart.
+  A recorded span or item stays when its source forgets it; days older than `journal.keepDays` (400) are deleted.
+  The relay reads the active time from the time stamps in the transcripts, `claude.projectsDir` and Codex' rollout files;
+  entries apart by at most `journal.gapMinutes` (15) count as one span, a longer pause splits it.
+  `journal.zone` (default the machine's zone) sets where a day begins.
+  `GET /api/journal/YYYY-MM-DD` returns a day, on a server only with the access token.
 
 ## Run locally
 

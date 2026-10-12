@@ -5,6 +5,7 @@ import de.hoennig.werkregie.dashboard.Dashboard
 import de.hoennig.werkregie.dashboard.RelayConfig
 import de.hoennig.werkregie.dashboard.RelayReport
 import de.hoennig.werkregie.dashboard.expandHome
+import de.hoennig.werkregie.dashboard.journal.ActivitySource
 import java.net.InetAddress
 import java.net.URI
 import java.net.http.HttpClient
@@ -24,6 +25,8 @@ class RelayClient(
     private val config: RelayConfig,
     private val local: Dashboard,
     private val mapper: ObjectMapper,
+    private val activity: ActivitySource? = null,
+    private val windowHours: Long = 168,
     private val log: (String) -> Unit = { println("${Instant.now()} $it") },
 ) {
     val name: String = config.name ?: InetAddress.getLocalHost().hostName.substringBefore('.')
@@ -58,7 +61,10 @@ class RelayClient(
 
     private fun post(now: Instant): String? {
         val snapshot = local.snapshot(now)
-        val report = RelayReport(name, local.version, now, snapshot.items, snapshot.sources)
+        val since = now.minus(Duration.ofHours(windowHours))
+        // a failing transcript must not keep the sessions from the dashboard
+        val sessions = activity?.let { runCatching { it.activity(now, since) }.getOrNull() }.orEmpty()
+        val report = RelayReport(name, local.version, now, snapshot.items, snapshot.sources, sessions)
         val request = HttpRequest.newBuilder(endpoint)
             .timeout(Duration.ofSeconds(20))
             .header("Content-Type", "application/json")

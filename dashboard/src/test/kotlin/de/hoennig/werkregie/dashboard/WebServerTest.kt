@@ -1,6 +1,8 @@
 package de.hoennig.werkregie.dashboard
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import de.hoennig.werkregie.dashboard.journal.JournalArchive
+import de.hoennig.werkregie.dashboard.journal.JournalDay
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
@@ -17,6 +19,8 @@ import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 class WebServerTest : FunSpec({
     val mapper = mapper()
@@ -24,7 +28,8 @@ class WebServerTest : FunSpec({
     val state = Files.createTempDirectory("state")
     val accessToken = AccessToken(state.resolve("access-token"))
     val relays = RelayRegistry(state.resolve("relays.json"), mapper, Duration.ofSeconds(30), Duration.ofSeconds(120))
-    val server = WebServer("127.0.0.1", 0, Dashboard(listOf(relays), windowHours = 24), mapper, accessToken, relays)
+    val journal = JournalArchive(state.resolve("journal"), ZoneId.of("Europe/Berlin"), 400, mapper)
+    val server = WebServer("127.0.0.1", 0, Dashboard(listOf(relays), windowHours = 24), mapper, accessToken, relays, journal)
     val base = "http://127.0.0.1:${server.start()}"
     afterSpec { server.stop() }
 
@@ -62,6 +67,20 @@ class WebServerTest : FunSpec({
         snapshot.access shouldBe Access.GRANTED
         snapshot.items.map { it.origin } shouldContain "laptop · Desktop"
         snapshot.sources.map { it.id } shouldContain "relay:laptop"
+    }
+
+    test("gives the record of a day only with the token") {
+        val time = Instant.parse("2026-10-12T08:00:00Z")
+        journal.record(time, listOf(Item("gitea", "javagil", "activity", Section.RECENT, "merge PR #41", "merge_pull_request", time)), emptyList())
+
+        get("/api/journal/2026-10-12").statusCode() shouldBe 401
+        get("/api/journal/2026-10-12", "Authorization", "Bearer wrong").statusCode() shouldBe 401
+        val day = get("/api/journal/2026-10-12", "Cookie", "${AccessToken.COOKIE}=${accessToken.token}")
+        day.statusCode() shouldBe 200
+        mapper.readValue<JournalDay>(day.body()).let { it.day to it.items.map { item -> item.title } } shouldBe
+            (LocalDate.parse("2026-10-12") to listOf("merge PR #41"))
+        get("/api/journal/2026-10-12", "Authorization", "Bearer ${accessToken.token}").statusCode() shouldBe 200
+        get("/api/journal/../relays.json", "Authorization", "Bearer ${accessToken.token}").statusCode() shouldBe 400
     }
 
     test("verifies a token for the page before it keeps it") {

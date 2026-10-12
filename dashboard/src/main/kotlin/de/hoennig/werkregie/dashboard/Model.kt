@@ -1,5 +1,6 @@
 package de.hoennig.werkregie.dashboard
 
+import de.hoennig.werkregie.dashboard.journal.Activity
 import java.time.Instant
 
 enum class Section { RUNNING, OPEN, RECENT }
@@ -124,4 +125,6 @@ data class RelayReport(
     val sentAt: Instant,
     val items: List<Item>,
     val sources: List<SourceStatus>,
+    // the active time of the local sessions within the window; a relay older than 0.22.0 sends none
+    val activity: List<Activity> = emptyList(),
 )
