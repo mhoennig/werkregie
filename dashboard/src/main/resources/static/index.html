@@ -211,7 +211,7 @@ const TEXT = {
         "hint.stuck": "Agent und werkrevisor kommen nicht weiter", "hint.rework": "dein eigener PR", "hint.approve": "wartet auf dein Approval",
         "hint.merge": "approved, nur noch mergen", "hint.answer": "an dich gerichtet",
         "act.stuck": "Eingreifen", "act.rework": "Ansehen", "act.approve": "Prüfen", "act.merge": "Mergen", "act.answer": "Öffnen",
-        "load.healthy": "läuft rund", "load.pressure": "unter Druck", "load.overloaded": "überlastet", "load.unknown": "unbekannt",
+        "load.builds": "{n} von {of} Builds laufen", "load.healthy": "läuft rund", "load.pressure": "unter Druck", "load.overloaded": "überlastet", "load.unknown": "unbekannt",
         "chart.cpu": "CPU", "chart.ram": "RAM", "chart.disk": "Platte", "chart.load": "Load", "chart.swap": "Swap",
         "chart.cpuPressure": "CPU-Warten", "chart.memoryPressure": "RAM-Warten", "chart.ioPressure": "IO-Warten", "chart.day": "{label} · 24 h",
         "builds.title": "Werkator · Builds 24 h", "builds.running": "{n} läuft", "builds.failed": "{n} rot", "builds.ok": "{n} grün",
@@ -258,7 +258,7 @@ const TEXT = {
         "hint.stuck": "agent and werkrevisor do not get on", "hint.rework": "your own PR", "hint.approve": "waits for your approval",
         "hint.merge": "approved, just merge it", "hint.answer": "addressed to you",
         "act.stuck": "Step in", "act.rework": "Look", "act.approve": "Review", "act.merge": "Merge", "act.answer": "Open",
-        "load.healthy": "healthy", "load.pressure": "under pressure", "load.overloaded": "overloaded", "load.unknown": "unknown",
+        "load.builds": "{n} of {of} builds running", "load.healthy": "healthy", "load.pressure": "under pressure", "load.overloaded": "overloaded", "load.unknown": "unknown",
         "chart.cpu": "CPU", "chart.ram": "RAM", "chart.disk": "Disk", "chart.load": "Load", "chart.swap": "Swap",
         "chart.cpuPressure": "CPU wait", "chart.memoryPressure": "Mem wait", "chart.ioPressure": "Disk wait", "chart.day": "{label} · 24 h",
         "builds.title": "Werkator · builds 24 h", "builds.running": "{n} running", "builds.failed": "{n} red", "builds.ok": "{n} green",
@@ -756,11 +756,19 @@ function chartTile(chart) {
     </div>`;
 }
 
+// as on Werkator's tile "Builds": amber with one slot free, red with none
+function buildsBadge(load) {
+    const level = ["ok", "warn", "bad"].includes(load.buildsLevel) ? load.buildsLevel : "ok";
+    const text = t("load.builds", { n: load.builds ?? 0, of: load.buildSlots });
+    return `<em class="load-builds load-builds-${level}" title="${esc(text)}" aria-label="${esc(text)}">${esc(`${load.builds ?? 0}/${load.buildSlots}`)}</em>`;
+}
+
 function loadPanel(load) {
     const level = ["healthy", "pressure", "overloaded"].includes(load.level) ? load.level : "unknown";
     const title = load.url ? `<a href="${esc(load.url)}/system" target="_blank" rel="noopener">${esc(load.label)}</a>` : esc(load.label);
     return `<section class="panel load-panel load-${level}">
-        <h2><span class="panel-title">${logo("werkator")}${title}</span><em class="load-level">${esc(t(`load.${level}`))}</em></h2>
+        <h2><span class="panel-title">${logo("werkator")}${title}</span>
+            <span class="load-state">${load.buildSlots ? buildsBadge(load) : ""}<em class="load-level">${esc(t(`load.${level}`))}</em></span></h2>
         ${load.reasons?.length ? `<div class="load-reasons">${esc(load.reasons.join(" · "))}</div>` : ""}
         <div class="charts">${(load.charts || []).map(chartTile).join("")}</div>
     </section>`;

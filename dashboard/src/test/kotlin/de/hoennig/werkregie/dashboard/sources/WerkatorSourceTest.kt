@@ -84,6 +84,18 @@ class WerkatorSourceTest : FunSpec({
         charts[2].history shouldBe listOf(0.25, 0.5)
     }
 
+    test("the running builds and their level as on Werkator's tile") {
+        fun builds(running: Int) = ((1..running).map { """{"name":"b$it","pullRequestTarget":false}""" } +
+            """{"name":"pr","pullRequestTarget":true}""").joinToString(",")
+        fun load(running: Int) = source.load(system(""","maxConcurrent":2,"runningBuilds":[${builds(running)}]"""), emptyMap())
+
+        load(0).let { Triple(it.builds, it.buildSlots, it.buildsLevel) } shouldBe Triple(0, 2, "ok")
+        load(1).let { Triple(it.builds, it.buildSlots, it.buildsLevel) } shouldBe Triple(1, 2, "warn")
+        load(2).let { Triple(it.builds, it.buildSlots, it.buildsLevel) } shouldBe Triple(2, 2, "bad")
+        // an older Werkator without slots says nothing
+        source.load(system(), emptyMap()).buildsLevel shouldBe null
+    }
+
     test("a failed history is read again at the next fetch") {
         var historyStatus = 503
         val werkator = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {

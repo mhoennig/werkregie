@@ -23,6 +23,7 @@ It opens on the overview, which answers two questions first: is every source con
 - Beside it: the load of each Werkator host, Werkator's builds of 24 hours, werkrevisor's costs.
   A Werkator panel charts 24 hours of its 3 most critical metrics,
   out of CPU, RAM, each disk, load, swap, CPU wait, memory wait and disk wait.
+  Before its verdict it shows the running builds of its slots, e.g. `1/2`, coloured as on Werkator's tile "Builds".
 - Below it: what runs and which sessions wait, as cards; the history of 24 hours as a lane per tool.
 
 The tabs *Pull Requests*, *Sessions*, *Aufgaben*, *Nachrichten*, *Verlauf* and *Quellen* hold the full lists, with the filters;

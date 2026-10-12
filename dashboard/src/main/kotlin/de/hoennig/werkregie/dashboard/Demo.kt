@@ -66,7 +66,7 @@ object Demo {
                 LoadChart("cpu", value = 0.62, level = "ok", history = busy.map { 0.15 + 0.6 * it }),
                 LoadChart("ram", value = 0.88, level = "warn", history = busy.map { 0.55 + 0.33 * it }),
                 LoadChart("cpuPressure", value = 0.245, level = "warn", history = busy.map { 0.02 + 0.25 * it }),
-            ), at = now))
+            ), at = now, builds = 1, buildSlots = 2, buildsLevel = "warn"))
         val costs = listOf(Costs("werkrevisor:acme", "werkrevisor acme", null, day = 1.84, week = 11.20, reviews = 31, pullRequests = 14,
             perDay = listOf(1.12, 2.40, 0.65, 1.95, 1.70, 1.54, 1.84)))
         return Snapshot(version, now, 24, items, sources, Access.DEMO, loads, costs)

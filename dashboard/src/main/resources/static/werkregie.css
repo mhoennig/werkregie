@@ -257,6 +257,10 @@ a.tile:hover { border-color: var(--accent); }
 
 /* Werkator's load: the verdict in the heading, then a tile per metric with its line of 24 hours */
 .load-level { font-weight: 500 !important; color: var(--accent); }
+.load-state { display: inline-flex; align-items: baseline; gap: 10px; flex: none; }
+.load-builds { font: 600 12px var(--mono) !important; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.load-builds-warn { color: var(--amber); }
+.load-builds-bad { color: var(--clay); }
 .load-pressure .load-level { color: var(--amber); }
 .load-overloaded .load-level { color: var(--clay); }
 .load-pressure { border-top: 3px solid var(--amber); }

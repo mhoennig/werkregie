@@ -101,6 +101,9 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
             // Werkator gives disk wait no level; for the ranking it counts like CPU wait
             Metric("ioPressure", "ioPressure", system.number("ioPressure"), PERCENT, warn = null, reference = CPU_PRESSURE_PERCENT),
         )
+        // Werkator's tile "Builds" counts the CI builds; the PR targets have slots of their own
+        val builds = system["runningBuilds"]?.count { it["pullRequestTarget"]?.asBoolean() != true }
+        val slots = system.number("maxConcurrent")?.toInt()?.takeIf { it > 0 }
         val critical = metrics.filter { it.used != null }
             .sortedWith(compareByDescending<Metric> { LEVELS.indexOf(it.level) }.thenByDescending { it.weight })
             .take(CHARTS).toSet()
@@ -112,7 +115,17 @@ class WerkatorSource(private val config: WerkatorConfig, private val http: JsonH
             reasons = system["health"]?.get("reasons")?.mapNotNull { it.asText(null) }.orEmpty(),
             charts = metrics.filter { it in critical }.map { it.chart(steps[it.series].orEmpty()) },
             at = system.text("timestamp")?.let(Instant::parse),
+            builds = builds,
+            buildSlots = slots,
+            buildsLevel = slots?.let { buildsLevel(builds ?: 0, it) },
         )
+    }
+
+    // Werkator's UiFormats.buildSlotsLevel
+    private fun buildsLevel(running: Int, slots: Int) = when (slots - running) {
+        in Int.MIN_VALUE..0 -> "bad"
+        1 -> "warn"
+        else -> "ok"
     }
 
     /** Each series of the 24 hours in [HISTORY_STEPS] equal steps, each the mean of its samples; a step without any is null. */

@@ -50,6 +50,8 @@
           " Werkregie PR#34: by level, then by the value against its threshold.
         - [^] A failed history is read again after 30 s, not after 5 min (XS)
           " Werkregie PR#34: the charts no longer stay empty after a restart.
+        - [^] Running builds of the slots, e.g. 1/2, before the verdict (XS)
+          " Werkregie PR#39: coloured as on Werkator's tile "Builds".
       - [^] #dash.costs: werkrevisor's review costs of 24 hours and 7 days (XS)
         " Werkregie PR#27: /api/stats of the statistics service.
       - [^] #dash.taiga: Taiga, any number of instances and projects

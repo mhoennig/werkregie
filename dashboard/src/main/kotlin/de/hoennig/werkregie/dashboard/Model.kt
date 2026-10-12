@@ -74,6 +74,10 @@ data class HostLoad(
     val reasons: List<String>,
     val charts: List<LoadChart> = emptyList(),
     val at: Instant?,
+    // the running builds of its slots; ok, warn with one slot free, bad with none
+    val builds: Int? = null,
+    val buildSlots: Int? = null,
+    val buildsLevel: String? = null,
 )
 
 /**
