@@ -17,6 +17,15 @@ server:
 journal:
   zone: Europe/Berlin         # where a calendar day begins; default the zone of the host
   keepDays: 400
+  # the Werkjournal customers and projects a day is booked to, by name
+  customers:
+    - name: Example Customer
+      projects:
+        - name: Example Project
+          repositories: [example-backend, example-ui]   # without owner
+          taiga: [example-project]                        # Taiga project slugs; the first resolves Taiga IDs
+          rooms: ["!roomid:example.org"]                  # Matrix rooms by ID or name
+  fallback: { customer: Intern, project: Sonstiges }      # work that no project names
 
 werkators:
   - name: javagil

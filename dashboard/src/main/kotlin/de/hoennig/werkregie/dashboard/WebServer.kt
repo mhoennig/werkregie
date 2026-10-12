@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import de.hoennig.werkregie.dashboard.journal.JournalArchive
+import de.hoennig.werkregie.dashboard.journal.JournalProposer
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -27,6 +28,7 @@ class WebServer(
     private val relays: RelayRegistry? = null,
     private val journal: JournalArchive? = null,
     private val dismissals: Dismissals? = null,
+    private val proposer: JournalProposer? = null,
 ) {
     private lateinit var server: HttpServer
 
@@ -67,17 +69,25 @@ class WebServer(
         exchange.respond(200, "application/json", mapper.writeValueAsBytes(snapshot))
     }
 
-    /** `GET /api/journal/YYYY-MM-DD`: the record of a day; only with the token, since it is the user's work itself. */
+    /**
+     * `GET /api/journal/YYYY-MM-DD`: the record of a day; `…/proposal`: the Werkjournal entries proposed for it.
+     * Only with the token, since it is the user's work itself.
+     */
     private fun journal(exchange: HttpExchange) {
         if (journal == null) return exchange.respond(404, "text/plain", "no journal in this mode".toByteArray())
         if (accessToken != null && !accessToken.matches(exchange.cookie(AccessToken.COOKIE) ?: exchange.bearer())) {
             return exchange.respond(401, "text/plain", "token required".toByteArray())
         }
         if (exchange.requestMethod != "GET") return exchange.respond(405, "text/plain", "GET only".toByteArray())
-        val day = exchange.requestURI.path.removePrefix("/api/journal/")
+        val path = exchange.requestURI.path.removePrefix("/api/journal/")
+        val proposal = path.endsWith(PROPOSAL)
+        val day = path.removeSuffix(PROPOSAL)
             .takeIf { DAY.matches(it) }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?: return exchange.respond(400, "text/plain", "day as YYYY-MM-DD".toByteArray())
-        exchange.respond(200, "application/json", mapper.writeValueAsBytes(journal.day(day)))
+        val record = journal.day(day)
+        val body = if (proposal && proposer != null) proposer.propose(record) else if (proposal) null else record
+        if (body == null) return exchange.respond(404, "text/plain", "no proposal in this mode".toByteArray())
+        exchange.respond(200, "application/json", mapper.writeValueAsBytes(body))
     }
 
     /** Lets the page check a token before it stores it. */
@@ -152,6 +162,7 @@ class WebServer(
         private const val MAX_REPORT_BYTES = 4 * 1024 * 1024
         private val DAY = Regex("""^\d{4}-\d{2}-\d{2}$""")
         private const val MAX_DISMISS_BYTES = 4 * 1024
+        private const val PROPOSAL = "/proposal"
     }
 }
 

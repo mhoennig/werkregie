@@ -3,6 +3,7 @@ package de.hoennig.werkregie.dashboard
 import com.fasterxml.jackson.module.kotlin.readValue
 import de.hoennig.werkregie.dashboard.journal.JournalArchive
 import de.hoennig.werkregie.dashboard.journal.JournalDay
+import de.hoennig.werkregie.dashboard.journal.JournalProposer
 import de.hoennig.werkregie.dashboard.relay.RelayRegistry
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
@@ -29,7 +30,10 @@ class WebServerTest : FunSpec({
     val accessToken = AccessToken(state.resolve("access-token"))
     val relays = RelayRegistry(state.resolve("relays.json"), mapper, Duration.ofSeconds(30), Duration.ofSeconds(120))
     val journal = JournalArchive(state.resolve("journal"), ZoneId.of("Europe/Berlin"), 400, mapper)
-    val server = WebServer("127.0.0.1", 0, Dashboard(listOf(relays), windowHours = 24), mapper, accessToken, relays, journal)
+    val proposer = JournalProposer(
+        JournalConfig(customers = listOf(JournalCustomer("Intern", listOf(JournalProject("Werkregie", repositories = listOf("werkregie")))))),
+    ) { _, _ -> null }
+    val server = WebServer("127.0.0.1", 0, Dashboard(listOf(relays), windowHours = 24), mapper, accessToken, relays, journal, proposer = proposer)
     val base = "http://127.0.0.1:${server.start()}"
     afterSpec { server.stop() }
 
@@ -117,6 +121,18 @@ class WebServerTest : FunSpec({
         } finally {
             ownServer.stop()
         }
+    }
+
+    test("proposes the Werkjournal entries of a day only with the token") {
+        val time = Instant.parse("2026-10-11T08:00:00Z")
+        journal.record(time, listOf(Item("gitea", "javagil", "activity", Section.RECENT, "merge PR #41 Journal", "merge_pull_request", time,
+            project = "mi/werkregie")), emptyList())
+
+        get("/api/journal/2026-10-11/proposal").statusCode() shouldBe 401
+        val proposal = mapper.readTree(get("/api/journal/2026-10-11/proposal", "Authorization", "Bearer ${accessToken.token}").body())
+        proposal["entries"].single().let { it["project"].asText() to it["minutes"].asLong() } shouldBe ("Werkregie" to 15L)
+        proposal["file"]["schemaVersion"].asInt() shouldBe 1
+        get("/api/journal/2026-10-11/other", "Authorization", "Bearer ${accessToken.token}").statusCode() shouldBe 400
     }
 
     test("verifies a token for the page before it keeps it") {

@@ -82,6 +82,19 @@ One program, three ways to run it:
   entries apart by at most `journal.gapMinutes` (15) count as one span, a longer pause splits it.
   `journal.zone` (default the machine's zone) sets where a day begins.
   `GET /api/journal/YYYY-MM-DD` returns a day, on a server only with the access token.
+- **Werkjournal proposal:** the tab *Journal* proposes the Werkjournal entries of a picked day, to correct, copy or download
+  as `werkjournal-YYYY-MM-DD.json`, Werkjournal's import file of schema version 1.
+  `journal.customers` names the Werkjournal customers and their projects, each with its `repositories` (without owner),
+  `taiga` project slugs, Matrix `rooms` (ID or name) and `paths` of working directories without a repository;
+  work that no project names goes to `journal.fallback`, else it stays a hint.
+  There is one entry per Taiga story and day where a branch, a title or a commit message names a Taiga ID
+  (`Taiga#US-591`, `Taiga#591`, `Taiga591`, `US-591`, `TG-591`); Taiga resolves it, a task to its story.
+  Else there is one entry per project and day.
+  The minutes are the union of the sessions' active spans and of 15 min before each action in Gitea, Taiga and Matrix;
+  builds, reviews and pull requests are evidence only.
+  They are rounded half up to whole hours; less than 30 min is a hint, and a day over 12 h gives from its largest entry.
+  Ids and descriptions derive from the day's data, so importing the same file twice adds nothing in Werkjournal.
+  `GET /api/journal/YYYY-MM-DD/proposal` returns the proposal, on a server only with the access token.
 
 ## Run locally
 

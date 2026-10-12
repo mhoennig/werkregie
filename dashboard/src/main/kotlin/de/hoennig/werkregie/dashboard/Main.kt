@@ -7,6 +7,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import de.hoennig.werkregie.dashboard.journal.ActivitySource
 import de.hoennig.werkregie.dashboard.journal.JournalArchive
+import de.hoennig.werkregie.dashboard.journal.JournalProposer
 import de.hoennig.werkregie.dashboard.journal.JournalRecorder
 import de.hoennig.werkregie.dashboard.journal.TranscriptActivity
 import de.hoennig.werkregie.dashboard.relay.RelayClient
@@ -90,11 +91,12 @@ fun main(args: Array<String>) {
 private fun local(config: DashboardConfig, configPath: Path, mapper: ObjectMapper) {
     val http = JsonHttp(mapper)
     val dismissals = Dismissals(stateDir(config.server).resolve(Dismissals.FILE_NAME), mapper)
-    val dashboard = Dashboard(localSources(config, mapper) + remoteSources(config, http, mapper), config.windowHours, version(),
-        dismissals = dismissals)
+    val dashboardSources = localSources(config, mapper) + remoteSources(config, http, mapper)
+    val dashboard = Dashboard(dashboardSources, config.windowHours, version(), dismissals = dismissals)
     val journal = journal(config, mapper, dashboard, transcripts(config, mapper))
     // loopback only: the page shows private work and the backend holds the Gitea tokens
-    val port = WebServer("127.0.0.1", config.port, dashboard, mapper, journal = journal, dismissals = dismissals).start()
+    val port = WebServer("127.0.0.1", config.port, dashboard, mapper, journal = journal, dismissals = dismissals,
+        proposer = proposer(config, dashboardSources)).start()
     warm(dashboard)
     println("Werkregie-Dashboard (lokal): http://localhost:$port/  (Konfiguration: $configPath)")
 }
@@ -110,10 +112,11 @@ private fun server(config: DashboardConfig, configPath: Path, mapper: ObjectMapp
     )
     Runtime.getRuntime().addShutdownHook(Thread { runCatching { relays.save() } })
     val dismissals = Dismissals(state.resolve(Dismissals.FILE_NAME), mapper)
-    val dashboard = Dashboard(remoteSources(config, JsonHttp(mapper), mapper) + relays, config.windowHours, version(),
-        dismissals = dismissals)
+    val remote = remoteSources(config, JsonHttp(mapper), mapper)
+    val dashboard = Dashboard(remote + relays, config.windowHours, version(), dismissals = dismissals)
     val journal = journal(config, mapper, dashboard) { _, _ -> relays.activity() }
-    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays, journal, dismissals).start()
+    val port = WebServer(config.server.bindAddress, config.port, dashboard, mapper, accessToken, relays, journal, dismissals,
+        proposer(config, remote)).start()
     warm(dashboard)
     println("Werkregie-Dashboard (Server): ${config.server.bindAddress}:$port  (Konfiguration: $configPath, Zustand: $state)")
 }
@@ -131,6 +134,15 @@ private fun journal(config: DashboardConfig, mapper: ObjectMapper, dashboard: Da
     val archive = JournalArchive(stateDir(config.server).resolve(JournalArchive.DIR_NAME), zone, config.journal.keepDays, mapper)
     JournalRecorder(archive, dashboard, activity, config.windowHours).start()
     return archive
+}
+
+/** The proposal of a day's Werkjournal entries; Taiga IDs are resolved by the Taiga boards that hold the project. */
+private fun proposer(config: DashboardConfig, sources: List<Source>): JournalProposer? {
+    if (!config.journal.enabled) return null
+    val boards = sources.filterIsInstance<TaigaSource>()
+    return JournalProposer(config.journal) { slug, ref ->
+        boards.firstNotNullOfOrNull { board -> board.takeIf { it.holds(slug) }?.story(slug, ref) }
+    }
 }
 
 private fun transcripts(config: DashboardConfig, mapper: ObjectMapper) =

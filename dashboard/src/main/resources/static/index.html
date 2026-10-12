@@ -31,6 +31,7 @@
             <a class="tab" href="#tasks" data-tab="tasks" data-i18n-label="tab.tasks" hidden><span class="icon icon-board"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.tasks">Aufgaben</span><span class="tab-short" aria-hidden="true" data-i18n="short.tasks">Aufgaben</span><span class="tab-badge" id="badge-tasks"></span></a>
             <a class="tab" href="#messages" data-tab="messages" data-i18n-label="tab.messages" hidden><span class="icon icon-chat"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.messages">Nachrichten</span><span class="tab-short" aria-hidden="true" data-i18n="short.messages">Chats</span><span class="tab-badge" id="badge-messages"></span></a>
             <a class="tab" href="#history" data-tab="history" data-i18n-label="tab.history"><span class="icon icon-history"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.history">Verlauf</span><span class="tab-short" aria-hidden="true" data-i18n="short.history">Verlauf</span><span class="tab-badge" id="badge-history"></span></a>
+            <a class="tab" href="#journal" data-tab="journal" data-i18n-label="tab.journal"><span class="icon icon-book"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.journal">Journal</span><span class="tab-short" aria-hidden="true" data-i18n="short.journal">Journal</span><span class="tab-badge" id="badge-journal"></span></a>
             <a class="tab" href="#sources" data-tab="sources" data-i18n-label="tab.sources"><span class="icon icon-pulse"></span><span class="tab-label" aria-hidden="true" data-i18n="tab.sources">Quellen</span><span class="tab-short" aria-hidden="true" data-i18n="short.sources">Quellen</span><span class="tab-badge" id="badge-sources"></span></a>
         </nav>
         <div class="header-tools">
@@ -148,6 +149,25 @@
         </section>
     </section>
 
+    <!-- ===== a proposed Werkjournal import file for a picked day, to correct, copy and download ===== -->
+    <section class="view" data-view="journal" hidden>
+        <section class="panel">
+            <h2><span class="panel-title" data-i18n="journal.title">Werkjournal-Vorschlag</span><em id="journal-total"></em></h2>
+            <div class="journal-tools">
+                <button id="journal-prev" class="icon-button" type="button" data-i18n-label="journal.prev">‹</button>
+                <input id="journal-day" class="control journal-day" type="date" data-i18n-label="journal.day">
+                <button id="journal-next" class="icon-button" type="button" data-i18n-label="journal.next">›</button>
+                <button id="journal-reload" class="icon-button" type="button" data-i18n-label="journal.reload"><span class="icon icon-restart"></span></button>
+                <span class="journal-actions">
+                    <button id="journal-copy" class="chip" type="button" data-i18n="journal.copy">Kopieren</button>
+                    <button id="journal-download" class="chip is-active" type="button" data-i18n="journal.download">Herunterladen</button>
+                </span>
+            </div>
+            <p id="journal-warning" class="journal-warning" hidden></p>
+            <div id="journal" class="panel-body"></div>
+        </section>
+    </section>
+
     <section class="view" data-view="sources" hidden>
         <div class="board">
             <section class="panel">
@@ -236,6 +256,16 @@ const TEXT = {
         "copy.title": "Resume-Befehl kopieren", "copy.failed": "Kopieren fehlgeschlagen",
         "dismiss.title": "Ausblenden, bis die Sitzung etwas Neues schreibt", "dismiss.failed": "Ausblenden fehlgeschlagen", repository: "Repository {name}",
         "sources.title": "Quellen", "sources.connected": "verbunden", "sources.count": "{ok} von {n} verbunden",
+        "tab.journal": "Journal", "short.journal": "Journal", "journal.title": "Werkjournal-Vorschlag",
+        "journal.day": "Tag", "journal.prev": "Vortag", "journal.next": "Folgetag", "journal.reload": "Neu berechnen",
+        "journal.copy": "Kopieren", "journal.copied": "Kopiert", "journal.download": "Herunterladen",
+        "journal.total": "{hours} h in {n} Einträgen", "journal.limit": "Mehr als 12 h: Werkjournal lehnt den Tag ab.",
+        "journal.hours": "Stunden", "journal.minutes": "{minutes} min aktiv", "journal.evidence": "{n} Belege",
+        "journal.hints": "Hinweise – nicht in der Datei, außer du gibst Stunden ein",
+        "journal.unmapped": "keinem Werkjournal-Projekt zugeordnet; journal.customers oder journal.fallback ergänzen",
+        "journal.empty": "Für diesen Tag hat Werkregie nichts aufgezeichnet.", "journal.loading": "Wird berechnet …",
+        "journal.locked": "Der Vorschlag braucht das Zugriffstoken.", "journal.off": "Diese Installation führt kein Journal.",
+        "journal.failed": "Vorschlag nicht verfügbar: {error}",
     },
     en: {
         "nav.views": "Views", "lang.group": "Language", reload: "Reload",
@@ -284,6 +314,16 @@ const TEXT = {
         "copy.title": "Copy resume command", "copy.failed": "Copy failed",
         "dismiss.title": "Dismiss until the session writes something new", "dismiss.failed": "Dismiss failed", repository: "Repository {name}",
         "sources.title": "Sources", "sources.connected": "connected", "sources.count": "{ok} of {n} connected",
+        "tab.journal": "Journal", "short.journal": "Journal", "journal.title": "Werkjournal proposal",
+        "journal.day": "Day", "journal.prev": "Previous day", "journal.next": "Next day", "journal.reload": "Compute again",
+        "journal.copy": "Copy", "journal.copied": "Copied", "journal.download": "Download",
+        "journal.total": "{hours} h in {n} entries", "journal.limit": "More than 12 h: Werkjournal refuses the day.",
+        "journal.hours": "Hours", "journal.minutes": "{minutes} min active", "journal.evidence": "{n} items of evidence",
+        "journal.hints": "Hints – not in the file unless you enter hours",
+        "journal.unmapped": "mapped to no Werkjournal project; add it to journal.customers or journal.fallback",
+        "journal.empty": "Werkregie recorded nothing for this day.", "journal.loading": "Computing …",
+        "journal.locked": "The proposal needs the access token.", "journal.off": "This installation keeps no journal.",
+        "journal.failed": "Proposal not available: {error}",
     },
 };
 // the words of statuses and markers, German and English
@@ -1031,8 +1071,129 @@ function renderSources() {
     $("source-loads").innerHTML = [...(state.data.loads || []).map(loadPanel), ...(state.data.costs || []).map(costsTile)].join("");
 }
 
+// ---- the Werkjournal proposal of a day: fetched on demand, never by the polling, so corrections stay ----
+const journal = { day: null, proposal: null, edits: new Map(), error: null };
+const isoDay = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const today = () => isoDay(new Date());
+
+function shiftDay(day, days) {
+    const date = new Date(`${day}T12:00:00`);
+    date.setDate(date.getDate() + days);
+    return isoDay(date);
+}
+
+async function loadJournal(day) {
+    journal.day = day;
+    journal.proposal = null;
+    journal.edits = new Map();
+    journal.error = "loading";
+    renderJournal();
+    try {
+        const response = await fetch(`/api/journal/${day}/proposal`, { cache: "no-store" });
+        if (journal.day !== day) return;
+        if (response.status === 401) journal.error = "locked";
+        else if (response.status === 404) journal.error = "off";
+        else if (!response.ok) journal.error = `HTTP ${response.status}`;
+        else { journal.proposal = await response.json(); journal.error = null; }
+    } catch (e) {
+        if (journal.day === day) journal.error = e.message;
+    }
+    renderJournal();
+}
+
+// an entry as the user corrected it; hours outside 0 to 12 are clamped, since Werkjournal refuses them
+function journalEntry(entry) {
+    const edit = journal.edits.get(entry.id) || {};
+    const hours = Math.max(0, Math.min(12, Math.round(Number(edit.hours ?? entry.hours) || 0)));
+    return { ...entry, hours, description: edit.description ?? entry.description };
+}
+
+/** Werkjournal's import file from the corrected entries; an entry of 0 hours or without project stays out. */
+function journalFile() {
+    const booked = journal.proposal.entries.map(journalEntry).filter((e) => e.mapped && e.hours > 0);
+    const unique = (list) => [...new Map(list.map((x) => [x.id, x])).values()];
+    return {
+        schemaVersion: 1,
+        customers: unique(booked.map((e) => ({ id: e.customerId, name: e.customer }))),
+        projects: unique(booked.map((e) => ({ id: e.projectId, customerId: e.customerId, name: e.project }))),
+        workEntries: booked.map((e) => ({ id: e.id, date: journal.day, customerId: e.customerId, projectId: e.projectId, hours: e.hours, description: e.description.trim() })),
+    };
+}
+
+function journalRow(entry) {
+    const e = journalEntry(entry);
+    const story = e.story ? (e.story.url ? `<a href="${esc(e.story.url)}" target="_blank" rel="noopener noreferrer">${esc(`${e.story.kind}-${e.story.ref}`)}</a>` : esc(`${e.story.kind}-${e.story.ref}`)) : "";
+    const evidence = e.evidence.map((x) => `<li>${x.time ? `<span class="journal-time">${esc(clock(x.time))}</span> ` : ""}${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}</li>`).join("");
+    return `<div class="journal-entry${e.mapped ? "" : " is-unmapped"}" data-entry="${esc(e.id)}">
+        <div class="journal-head"><strong>${esc(e.customer)} · ${esc(e.project)}</strong> ${story}
+            <span class="journal-minutes">${esc(t("journal.minutes", { minutes: e.minutes }))}</span></div>
+        ${e.mapped ? `<label class="journal-hours"><span>${esc(t("journal.hours"))}</span><input class="control" type="number" min="0" max="12" step="1" value="${e.hours}" data-field="hours"></label>
+        <textarea class="control journal-text" rows="2" maxlength="2000" data-field="description">${esc(e.description)}</textarea>`
+        : `<p class="journal-note">${esc(t("journal.unmapped"))}</p>`}
+        <details><summary>${esc(t("journal.evidence", { n: e.evidence.length }))}</summary><ul class="journal-evidence">${evidence}</ul></details>
+    </div>`;
+}
+
+function renderJournalTotal() {
+    const file = journal.proposal ? journalFile() : null;
+    const hours = file ? file.workEntries.reduce((sum, e) => sum + e.hours, 0) : 0;
+    $("journal-total").textContent = file ? t("journal.total", { hours, n: file.workEntries.length }) : "";
+    $("journal-warning").hidden = hours <= 12;
+    $("journal-warning").textContent = t("journal.limit");
+    $("journal-copy").disabled = $("journal-download").disabled = !file || file.workEntries.length === 0;
+}
+
+function renderJournal() {
+    $("journal-day").value = journal.day || today();
+    $("journal-day").max = today();
+    $("journal-next").disabled = (journal.day || today()) >= today();
+    const body = $("journal");
+    if (journal.error) {
+        const key = { loading: "journal.loading", locked: "journal.locked", off: "journal.off" }[journal.error];
+        body.innerHTML = `<div class="empty">${esc(key ? t(key) : t("journal.failed", { error: journal.error }))}</div>`;
+    } else if (!journal.proposal || journal.proposal.entries.length === 0) {
+        body.innerHTML = `<div class="empty">${esc(t("journal.empty"))}</div>`;
+    } else {
+        // entries the server proposes with hours first; the ones below half an hour or without project as hints
+        const [booked, hints] = journal.proposal.entries.reduce(([a, b], e) => (e.mapped && e.hours > 0 ? [[...a, e], b] : [a, [...b, e]]), [[], []]);
+        body.innerHTML = booked.map(journalRow).join("") +
+            (hints.length ? `<div class="day">${esc(t("journal.hints"))}</div>${hints.map(journalRow).join("")}` : "");
+    }
+    renderJournalTotal();
+}
+
+$("journal").addEventListener("input", (e) => {
+    const field = e.target.dataset.field;
+    const id = e.target.closest("[data-entry]")?.dataset.entry;
+    if (!field || !id) return;
+    journal.edits.set(id, { ...journal.edits.get(id), [field]: e.target.value });
+    renderJournalTotal();
+});
+$("journal-day").addEventListener("change", (e) => { if (e.target.value) loadJournal(e.target.value > today() ? today() : e.target.value); });
+$("journal-prev").addEventListener("click", () => loadJournal(shiftDay(journal.day || today(), -1)));
+$("journal-next").addEventListener("click", () => { const next = shiftDay(journal.day || today(), 1); if (next <= today()) loadJournal(next); });
+$("journal-reload").addEventListener("click", () => loadJournal(journal.day || today()));
+$("journal-copy").addEventListener("click", async (e) => {
+    const button = e.currentTarget;
+    try {
+        await navigator.clipboard.writeText(JSON.stringify(journalFile(), null, 2));
+        button.textContent = t("journal.copied");
+        setTimeout(() => { button.textContent = t("journal.copy"); }, 1500);
+    } catch (error) {
+        button.title = t("copy.failed");
+    }
+});
+$("journal-download").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(journalFile(), null, 2)], { type: "application/json" });
+    const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `werkjournal-${journal.day}.json` });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+
 // ---- the tabs: a view per kind of item, the address keeps it ----
-const VIEWS = ["overview", "prs", "sessions", "tasks", "messages", "history", "sources"];
+const VIEWS = ["overview", "prs", "sessions", "tasks", "messages", "history", "journal", "sources"];
 const LIST_VIEWS = new Set(["prs", "sessions", "tasks", "messages", "history"]);
 const currentView = () => (VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview");
 
@@ -1045,6 +1206,7 @@ function showView() {
         if (active) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
     });
     $("filters").hidden = !LIST_VIEWS.has(view);
+    if (view === "journal" && journal.day !== $("journal-day").value) loadJournal($("journal-day").value);
     document.title = `${t(`tab.${view}`)} — Werkregie`;
 }
 
@@ -1350,6 +1512,7 @@ function applyLanguage() {
     describeTokenButton();
     setLive(live);
     if (state.data) { renderChrome(); render(); showStale(stale); } else showView();
+    if (journal.day) renderJournal();
 }
 document.querySelectorAll("[data-lang]").forEach((button) => button.addEventListener("click", () => {
     state.lang = button.dataset.lang;

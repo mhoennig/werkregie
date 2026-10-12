@@ -9,17 +9,20 @@ import de.hoennig.werkregie.dashboard.JsonHttp
 import de.hoennig.werkregie.dashboard.Section
 import de.hoennig.werkregie.dashboard.Source
 import de.hoennig.werkregie.dashboard.TaskboardConfig
+import de.hoennig.werkregie.dashboard.journal.Story
+import de.hoennig.werkregie.dashboard.journal.TaigaStories
 import java.net.URLEncoder
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.util.Optional
 
 /** The open user stories, tasks and issues of the configured Taiga projects that are assigned to the user. */
 class TaigaSource(
     private val config: TaskboardConfig,
     private val http: JsonHttp,
     private val env: (String) -> String? = System::getenv,
-) : Source {
+) : Source, TaigaStories {
     override val id = "taiga:${config.name}"
     override val label = "Taiga ${config.name}"
     override val url = config.url.trimEnd('/')
@@ -43,22 +46,63 @@ class TaigaSource(
         ISSUE("issues", "assigned_to", "Issue", "issue"),
     }
 
+    // a ref and its story do not change; a story's subject rarely does, and the proposal of a day may name the old one
+    private val stories = java.util.concurrent.ConcurrentHashMap<Pair<String, Long>, Optional<Story>>()
+
     @Synchronized
     override fun fetch(now: Instant, since: Instant): List<Item> {
         if (config.projects.isEmpty()) throw IllegalStateException("keine Projekte konfiguriert (projects)")
+        return authorized { api, session -> read(api, session) }
+    }
+
+    /**
+     * The story a ref of project [slug] belongs to: a story itself, the story of a task, or an issue or a task without story.
+     * Null when Taiga does not know the ref; an unreachable Taiga is asked again next time.
+     */
+    override fun story(slug: String, ref: Long): Story? {
+        stories[slug to ref]?.let { return it.orElse(null) }
+        val story = synchronized(this) { authorized { api, session -> resolve(api, session, slug, ref) } }
+        stories[slug to ref] = Optional.ofNullable(story)
+        return story
+    }
+
+    fun holds(slug: String) = config.projects.any { it.equals(slug, ignoreCase = true) }
+
+    private fun <T> authorized(call: (String, Session) -> T): T {
         val user = config.username ?: config.usernameEnv?.let(env)
             ?: throw IllegalStateException("kein Benutzer konfiguriert (username oder usernameEnv)")
         val password = config.passwordEnv?.let(env)
             ?: throw IllegalStateException("kein Passwort konfiguriert (passwordEnv)")
         val api = api ?: discoverApi().also { api = it }
         return try {
-            read(api, session ?: login(api, user, password))
+            call(api, session ?: login(api, user, password))
         } catch (e: HttpStatusException) {
             // an expired token: log in once more
             if (e.status != 401 || session == null) throw e
             session = null
-            read(api, login(api, user, password))
+            call(api, login(api, user, password))
         }
+    }
+
+    private fun resolve(api: String, session: Session, slug: String, ref: Long): Story? {
+        val headers = mapOf("Authorization" to "Bearer ${session.token}")
+        val resolved = try {
+            http.get("$api/resolver?project=${URLEncoder.encode(slug, Charsets.UTF_8)}&ref=$ref", headers)
+        } catch (e: HttpStatusException) {
+            if (e.status == 404) return null else throw e
+        }
+        fun story(kind: Kind, node: JsonNode) = Story(
+            slug = slug,
+            ref = node["ref"]?.asLong() ?: ref,
+            kind = kind.label,
+            subject = node.text("subject") ?: "?",
+            url = "$url/project/$slug/${kind.page}/${node["ref"]?.asLong() ?: ref}",
+        )
+        resolved["us"]?.asLong()?.let { return story(Kind.STORY, http.get("$api/userstories/$it", headers)) }
+        resolved["issue"]?.asLong()?.let { return story(Kind.ISSUE, http.get("$api/issues/$it", headers)) }
+        val task = resolved["task"]?.asLong()?.let { http.get("$api/tasks/$it", headers) } ?: return null
+        // a task counts for its story, so that the work on a story is one entry whichever task it was
+        return task["user_story_extra_info"]?.takeIf { it.isObject }?.let { story(Kind.STORY, it) } ?: story(Kind.TASK, task)
     }
 
     /**

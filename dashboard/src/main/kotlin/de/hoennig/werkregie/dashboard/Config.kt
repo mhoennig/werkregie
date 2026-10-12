@@ -32,7 +32,27 @@ data class JournalConfig(
     // entries of a session apart by at most this many minutes count as worked through; read by the relay
     val gapMinutes: Long = 15,
     val keepDays: Long = 400,
+    // the Werkjournal customers and projects the work of a day is booked to, by name, as Werkjournal matches them
+    val customers: List<JournalCustomer> = emptyList(),
+    // where work goes that no project names, e.g. { customer: Intern, project: Sonstiges }
+    val fallback: JournalTarget? = null,
 )
+
+data class JournalCustomer(val name: String, val projects: List<JournalProject> = emptyList())
+
+/** A Werkjournal project and what belongs to it; a repository is named without its owner, e.g. hs.hsadmin.ng. */
+data class JournalProject(
+    val name: String,
+    val repositories: List<String> = emptyList(),
+    // Taiga project slugs; the first one resolves a Taiga ID found in a branch or a title
+    val taiga: List<String> = emptyList(),
+    // Matrix rooms by ID or name
+    val rooms: List<String> = emptyList(),
+    // working directories without a repository, e.g. ~/Documents/Hostsharing
+    val paths: List<String> = emptyList(),
+)
+
+data class JournalTarget(val customer: String, val project: String)
 
 /** Mode `server`: the dashboard on a host, fed by relays; `port` above is the port it listens on. */
 data class ServerConfig(

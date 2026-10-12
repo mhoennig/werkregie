@@ -162,8 +162,8 @@
       - [^] #dash.journal.record: The work of each day recorded by the server and the local mode (S)
         " Werkregie PR#41: active time of the sessions from their transcripts, the items of all sources;
         " <stateDir>/journal/YYYY-MM-DD.json, kept 400 days.
-      - [ ] #dash.journal.proposal: Proposal for a picked day, to copy or download (M) :#dash.journal.record
-        " Mapping in journal: of dashboard.yml; one entry per Taiga story, else per project.
+      - [^] #dash.journal.proposal: Proposal for a picked day, to copy or download (M) :#dash.journal.record
+        " Werkregie PR#45: tab Journal; mapping in journal: of dashboard.yml; one entry per Taiga story, else per project.
       - [ ] AI summary as the description of an entry (S) :#dash.journal.proposal
       - [?] Days before the deployment, read from older transcripts
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
