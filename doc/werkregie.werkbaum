@@ -32,9 +32,13 @@
           " Werkregie PR#17; not while Gitea's automerge is scheduled.
         - [^] #dash.order: Pull requests sorted by the user's next step, the longest waiting first (XS)
           " Werkregie PR#17; ORANGE before YELLOW.
-        - [^] #dash.requested: Dein Approval for a requested review, no false alarm right after a push (XS)
-          " Werkregie PR#37: a pending REQUEST_REVIEW counts, also while werkrevisor runs;
-          " werkrevisor's first status is awaited for 2 min after the last change.
+        - [^] #dash.requested: Dein Approval for a requested review, no false alarm right after a push
+          - [^] A pending REQUEST_REVIEW counts once werkrevisor's result is there (XS)
+            " Werkregie PR#37; PR#42: not while werkrevisor reviews.
+          - [-] A requested review counts also while werkrevisor reviews (XS)
+            " Werkregie PR#37; dropped by PR#42: the user cannot approve before werkrevisor's result.
+          - [^] werkrevisor's first status is awaited for 2 min after the last change (XS)
+            " Werkregie PR#37.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
       - [^] #dash.load: Werkator's host load
@@ -179,8 +183,8 @@
 #dash.flags
   Most urgent first: Festgefahren (werkrevisor escalated, RED for an hour
   without a new commit, ERROR, or a run without verdict), Dein Approval (a
-  foreign pull request with a final ORANGE or YELLOW, without werkrevisor
-  2 min after its last change, or with a review requested from the user),
+  foreign pull request with a final ORANGE or YELLOW, even if the user approved
+  before that result, or without werkrevisor 2 min after its last change),
   Mergen (the user's own pull request approved by another human, or a foreign
   one approved by anyone but its author, all checks green, no automerge),
   Nacharbeit (conflict or red build on the user's own pull request), Wartet auf

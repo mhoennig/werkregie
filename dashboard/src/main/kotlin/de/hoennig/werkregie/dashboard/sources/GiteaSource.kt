@@ -157,11 +157,7 @@ class GiteaSource(
         // werkrevisor requests the review again when an approval came before its result; Gitea keeps that approval
         val askedForReview = login in pr.requested
         val approved = login in pr.approvers && !askedForReview
-        val werkrevisor = when {
-            running && askedForReview -> "Review angefragt"
-            reviewed -> "werkrevisor $verdict"
-            else -> "kein werkrevisor"
-        }
+        val werkrevisor = if (reviewed) "werkrevisor $verdict" else "kein werkrevisor"
         val failedBuilds = pr.statuses
             .filter { it.text("context")?.startsWith(REVIEW_PREFIX) == false && it.text("status") in setOf("failure", "error") }
             .mapNotNull { it.text("context") }
@@ -173,7 +169,8 @@ class GiteaSource(
             if (reviewed && !running) stuckReason(verdict, assessment, now)?.let { add(Flag("stuck", it)) }
             if (pr.own && pr.conflict) add(Flag("rework", "Konflikt"))
             if (pr.own && failedBuilds.isNotEmpty()) add(Flag("rework", "Build rot: ${failedBuilds.joinToString(", ")}"))
-            if (!pr.own && !approved && (humanNeeded || running && askedForReview)) add(Flag("approve", werkrevisor))
+            // a requested review waits for werkrevisor's result too: only then can the user approve the head
+            if (!pr.own && !approved && humanNeeded) add(Flag("approve", werkrevisor))
             if (mergeable && isEmpty()) add(Flag("merge", "approved von ${approvedBy.joinToString(", ")}"))
             val others = humans.filter { it != login }
             if (pr.own && others.isNotEmpty()) add(Flag("merge", "approved von ${others.joinToString(", ")}"))

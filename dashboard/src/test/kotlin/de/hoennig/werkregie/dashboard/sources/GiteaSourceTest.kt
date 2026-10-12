@@ -70,10 +70,11 @@ class GiteaSourceTest : FunSpec({
         flags(foreign(gateDone, status("ai-review/assessment", "success", "AI review passed"))) shouldBe emptyList()
     }
 
-    test("a review requested from the user asks for the approval, also while werkrevisor runs") {
+    test("a review requested from the user waits for werkrevisor's result") {
         val running = status("ai-review/gate", "pending", "build running")
-        flags(foreign(running, requested = listOf("mi"))) shouldBe listOf(Flag("approve", "Review angefragt"))
-        flags(foreign(running, requested = listOf("anna"))) shouldBe emptyList()
+        // the request of the last result stays while werkrevisor reviews the next head
+        flags(foreign(running, status("ai-review/assessment", "pending", "human review required"), requested = listOf("mi"))) shouldBe emptyList()
+        flags(foreign(running, requested = listOf("mi"))) shouldBe emptyList()
         // werkrevisor requests again when the approval came before its result; Gitea keeps the approval
         flags(foreign(gateDone, status("ai-review/assessment", "pending", "human review required"), approvers = listOf("mi"), requested = listOf("mi"))) shouldBe
             listOf(Flag("approve", "werkrevisor YELLOW"))
