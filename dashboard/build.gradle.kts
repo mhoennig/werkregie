@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "de.hoennig"
-version = "0.16.0"
+version = "0.17.0"
 
 java {
     toolchain {
@@ -103,12 +103,13 @@ val checkRepositoryWebUrl = tasks.register("checkRepositoryWebUrl") {
 tasks.check { dependsOn(checkRepositoryWebUrl) }
 
 tasks.processResources {
-    // the footer shows the version, as Werkator's does
+    // the server reports the version, the page's footer shows it, as Werkator's does
     val version = project.version.toString()
     inputs.property("version", version)
     inputs.property("repositoryUrl", repositoryUrl)
     filesMatching("werkregie.properties") { expand("version" to version) }
-    filesMatching("static/index.html") { filter { it.replace("@repositoryUrl@", repositoryUrl) } }
+    // the page compares its own version with the server's and loads itself again when they differ
+    filesMatching("static/index.html") { filter { it.replace("@repositoryUrl@", repositoryUrl).replace("@version@", version) } }
 }
 
 // ---- the runtime bundle for a host without Java: own JRE + jars + launcher (as Werkator's, ADR 0006) ----

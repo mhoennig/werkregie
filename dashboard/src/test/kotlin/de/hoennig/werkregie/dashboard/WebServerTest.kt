@@ -8,6 +8,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import java.net.URI
 import java.net.http.HttpClient
@@ -89,6 +90,11 @@ class WebServerTest : FunSpec({
         get("/").statusCode() shouldBe 200
         get("/werkregie.css").statusCode() shouldBe 200
         get("/werkregie.properties").statusCode() shouldBe 404
+    }
+
+    test("the page carries the version of the build") {
+        version() shouldNotBe "dev"
+        get("/").body() shouldContain """<meta name="werkregie-version" content="${version()}">"""
     }
 
     test("the footer links the repository and its releases") {

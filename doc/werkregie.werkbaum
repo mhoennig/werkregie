@@ -92,8 +92,8 @@
         - [^] Du bist dran, grouped by action, with the tool's logo and a link (S)
         - [^] Werkator's load and builds, werkrevisor's costs beside it (S)
         - [^] Running work and waiting sessions as cards (XS)
-        - [^] A card with new content shows inverted for 7 s (XS)
-          " Werkregie PR#33: age and durations alone are no change; opening the page flashes nothing.
+        - [^] A card with new content shows inverted for 12 s (XS)
+          " Werkregie PR#33: age and durations alone are no change; PR#36: 12 s instead of 7 s.
         - [^] The history of 24 hours as a lane per tool (S)
         - [^] Tabs for the lists, a bar at the bottom on phones (S)
         - [^] #dash.lang: German and English, switched in the header (S)
@@ -125,6 +125,8 @@
         " Werkregie PR#2: network first; Chrome finds no installability errors.
       - [^] Last state shown offline, marked as stale (S)
         " Werkregie PR#19: localStorage, an amber banner with the age; never demo data.
+      - [^] A new version of the server loads an open page again (XS)
+        " Werkregie PR#36: the footer shows the page's version; at most once per version and tab.
       - [^] Installed and checked offline on Android (XS)
         " 2026-10-11: flight mode, a new start shows the last state under the banner.
       - [ ] Installed and checked on iOS and desktop (XS)

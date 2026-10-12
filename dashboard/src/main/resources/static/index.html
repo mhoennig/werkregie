@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Werkregie">
 <meta id="theme-color" name="theme-color" content="#ffffff">
+<meta name="werkregie-version" content="@version@">
 <link rel="stylesheet" href="/werkregie.css">
 <!-- The reader's light/dark choice, applied before the first paint, as in Werkator (RFC 0003). -->
 <script>try{var t=localStorage.getItem("werkregie-theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}}catch(e){}</script>
@@ -767,8 +768,8 @@ const MAX_CARDS = 8;
 
 const cardWhat = (item) => [item.project, item.kind === "session" ? item.origin : item.detail].filter(Boolean).join(" · ");
 
-// ---- a card whose content changed, or a new one, shows inverted for 7 s ----
-const FLASH_MS = 7000;
+// ---- a card whose content changed, or a new one, shows inverted for 12 s ----
+const FLASH_MS = 12000;
 // e.g. a build's "3 min" in its detail, which grows with time alone
 const DURATION = /^\d+ (s|min|h|d)$/;
 // what each card showed at the last render; the first render is the baseline, so opening the page flashes nothing
@@ -1003,7 +1004,6 @@ function render() {
 function renderChrome() {
     const data = state.data;
     $("generated-at").textContent = t("generatedAt", { time: clock(data.generatedAt, true) });
-    $("version").textContent = data.version ? `v${data.version}` : "";
     $("demo-banner").hidden = data.access !== "DEMO";
     describeTokenButton();
     const counts = new Map();
@@ -1030,6 +1030,7 @@ async function load() {
         const response = await fetch("/api/dashboard", { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         state.data = await response.json();
+        if (reloadForVersion(state.data.version)) return;
         keepLast(state.data);
         setLive(true);
         showStale(false);
@@ -1043,6 +1044,23 @@ async function load() {
         }
         showStale(Boolean(state.data));
     }
+}
+
+// ---- after a deployment an open page still runs the old code: it loads itself again ----
+const PAGE_VERSION = document.querySelector('meta[name="werkregie-version"]').content;
+const RELOADED_KEY = "werkregie-reloaded-for";
+
+function reloadForVersion(version) {
+    if (!version || version === PAGE_VERSION) return false;
+    // once per version and tab: a page that gets the old code again, e.g. from the offline cache, keeps running
+    try {
+        if (sessionStorage.getItem(RELOADED_KEY) === version) return false;
+        sessionStorage.setItem(RELOADED_KEY, version);
+    } catch (e) {
+        return false;
+    }
+    location.reload();
+    return true;
 }
 
 // ---- the last state for the offline view, in this browser only; never demo data ----
@@ -1305,6 +1323,7 @@ document.addEventListener("click", async (e) => {
 });
 window.addEventListener("hashchange", () => { showView(); window.scrollTo(0, 0); });
 
+$("version").textContent = `v${PAGE_VERSION}`;
 renderSourceChips();
 applyLanguage();
 load();

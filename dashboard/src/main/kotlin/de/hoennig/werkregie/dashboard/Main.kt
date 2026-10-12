@@ -189,7 +189,7 @@ fun mapper(): ObjectMapper = ObjectMapper()
     .registerModule(JavaTimeModule())
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
-private fun version(): String =
+internal fun version(): String =
     Deployment::class.java.getResourceAsStream("/werkregie.properties")
         ?.use { stream -> java.util.Properties().apply { load(stream) }.getProperty("version") }
         ?: "dev"
