@@ -46,9 +46,10 @@ class GiteaSourceTest : FunSpec({
         conflict: Boolean = false,
         automerge: Boolean = false,
         updated: Instant? = null,
+        conflictSince: Instant? = null,
     ) = GiteaSource.PullRequest(
         own = false, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers,
-        requested = requested, author = "claude-code", automerge = automerge, updated = updated,
+        requested = requested, author = "claude-code", automerge = automerge, updated = updated, conflictSince = conflictSince,
     )
     fun own(vararg statuses: JsonNode, conflict: Boolean = false, approvers: List<String> = emptyList(), requested: List<String> = emptyList()) =
         GiteaSource.PullRequest(own = true, draft = false, conflict = conflict, statuses = statuses.toList(), approvers = approvers, requested = requested)
@@ -170,8 +171,41 @@ class GiteaSourceTest : FunSpec({
         source.automergeScheduled(listOf(event("review"))) shouldBe false
     }
 
-    test("a foreign conflict is the agent's, a draft asks nothing") {
-        flags(GiteaSource.PullRequest(own = false, draft = false, conflict = true, statuses = listOf(gateDone, status("ai-review/assessment", "success", "AI review passed")))) shouldBe emptyList()
+    test("a fresh foreign conflict is the agent's, a draft asks nothing") {
+        flags(foreign(gateDone, green, conflict = true)) shouldBe emptyList()
+        flags(foreign(gateDone, green, conflict = true, conflictSince = now.minusSeconds(20 * 60))) shouldBe emptyList()
         flags(GiteaSource.PullRequest(own = true, draft = true, conflict = true, statuses = emptyList())) shouldBe emptyList()
+        flags(GiteaSource.PullRequest(own = false, draft = true, conflict = true, statuses = emptyList(), conflictSince = now.minusSeconds(3 * 3600))) shouldBe
+            emptyList()
+    }
+
+    test("a foreign conflict without a new commit for 30 minutes is stuck") {
+        flags(foreign(gateDone, green, conflict = true, conflictSince = now.minusSeconds(30 * 60))) shouldBe
+            listOf(Flag("stuck", "Konflikt seit 30 min ohne neuen Commit"))
+        // besides the approval that werkrevisor's YELLOW asks for
+        flags(foreign(gateDone, status("ai-review/assessment", "pending", "human review required"), conflict = true, conflictSince = now.minusSeconds(3 * 3600))) shouldBe
+            listOf(Flag("stuck", "Konflikt seit 3 h ohne neuen Commit"), Flag("approve", "werkrevisor YELLOW"))
+    }
+
+    test("a pull request that Gitea cannot merge conflicts, unless it is a work in progress") {
+        source.conflictOf(mapper.readTree("""{"mergeable":false}"""), draft = false) shouldBe true
+        source.conflictOf(mapper.readTree("""{"mergeable":true}"""), draft = false) shouldBe false
+        source.conflictOf(mapper.readTree("""{"mergeable":false}"""), draft = true) shouldBe false
+        source.conflictOf(null, draft = false) shouldBe false
+    }
+
+    fun commit(time: String) = mapper.readTree("""{"commit":{"committer":{"date":"$time"}}}""")
+
+    test("a conflict counts from the later of the head commit and main leaving its base") {
+        // compare lists main's commits since the base of the head, the newest first
+        val main = listOf(commit("2026-10-12T13:46:19+02:00"), commit("2026-10-12T13:34:06+02:00"))
+        val since = source.conflictSince(Instant.parse("2026-10-12T11:28:35Z"), main)
+        since shouldBe Instant.parse("2026-10-12T11:34:06Z")
+        source.flags(foreign(gateDone, green, conflict = true, conflictSince = since), "mi", Instant.parse("2026-10-12T12:04:06Z")) shouldBe
+            listOf(Flag("stuck", "Konflikt seit 30 min ohne neuen Commit"))
+        source.conflictSince(Instant.parse("2026-10-12T11:40:00Z"), main) shouldBe Instant.parse("2026-10-12T11:40:00Z")
+        source.conflictSince(null, main) shouldBe Instant.parse("2026-10-12T11:34:06Z")
+        // without a commit on main since the base, nothing tells when the conflict came
+        source.conflictSince(Instant.parse("2026-10-12T11:40:00Z"), emptyList()) shouldBe null
     }
 })

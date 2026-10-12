@@ -39,6 +39,8 @@
             " Werkregie PR#37; dropped by PR#42: the user cannot approve before werkrevisor's result.
           - [^] werkrevisor's first status is awaited for 2 min after the last change (XS)
             " Werkregie PR#37.
+        - [^] #dash.conflict: Festgefahren for an agent's conflict left for 30 min (XS)
+          " Werkregie PR#43; measured from the later of the head commit and main leaving its base.
         - [^] Own activity in the history (XS)
       - [^] #dash.projects: Projects matched by repository name across sources (XS)
       - [^] #dash.load: Werkator's host load
@@ -190,7 +192,9 @@
 
 #dash.flags
   Most urgent first: Festgefahren (werkrevisor escalated, RED for an hour
-  without a new commit, ERROR, or a run without verdict), Dein Approval (a
+  without a new commit, ERROR, a run without verdict, or a foreign pull
+  request in conflict for 30 min without a new commit since main left its
+  base), Dein Approval (a
   foreign pull request with a final ORANGE or YELLOW, even if the user approved
   before that result, or without werkrevisor 2 min after its last change),
   Mergen (the user's own pull request approved by another human, or a foreign

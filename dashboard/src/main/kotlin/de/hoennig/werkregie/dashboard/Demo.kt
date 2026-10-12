@@ -35,6 +35,10 @@ object Demo {
                 Badge("werkrevisor Lauf", "failure", title = "build failed after 01:10"),
                 Badge("werkrevisor Urteil RED", "red", title = "rule violated; a new commit that fixes it is required"),
             ), flags = listOf(Flag("stuck", "RED seit 1 h ohne neuen Commit"))),
+            pullRequest("#215 Versand per Paketstation", "success", ago(50), "acme/shop-backend", listOf(
+                Badge("werkator", "success", title = "build succeeded after 03:52"),
+                Badge("werkrevisor Urteil GREEN", "green", title = "AI review passed"),
+            ), flags = listOf(Flag("stuck", "Konflikt seit 45 min ohne neuen Commit"))),
             build("werkrevisor", "review", Section.RECENT, "feature/offline-wishlist", "success", ago(34), "mobile-app", "c03e11d2 · 96 s"),
             build("werkator", "build", Section.RECENT, "feature/offline-wishlist", "success", ago(37), "mobile-app", "c03e11d2 · 4 min"),
             Item("gitea", "acme", "activity", Section.RECENT, "3 Commits auf feature/checkout-events", "push", ago(5), "acme/shop-backend", "Order events carry the payment reference"),

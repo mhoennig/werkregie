@@ -39,7 +39,7 @@ data class Item(
 )
 
 /**
- * A marker on a pull request, by urgency: `stuck` (agent and werkrevisor do not get on), `rework`
+ * A marker on a pull request, by urgency: `stuck` (the agent does not get on with werkrevisor or `main`), `rework`
  * (the user's own PR has a conflict or a red build), `approve` (waits for the user's approval),
  * `merge` (the user's own PR is approved), `review` (the user's own PR waits for another human),
  * `approved` (the user approved it, the merge is still to come).

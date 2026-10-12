@@ -74,7 +74,7 @@ class GiteaSource(
             issue.text("title")?.let { DRAFT_PREFIX.containsMatchIn(it) } == true
         val combined = statuses.map { it.text("status") ?: "" }.let(::combine)
         val author = issue["user"]?.text("login")
-        val conflict = pull?.get("mergeable")?.asBoolean()?.not() == true
+        val conflict = conflictOf(pull, draft)
         val reviews = if (draft || sha == null) emptyList() else
             runCatching { http.get("$api/repos/$repo/pulls/$number/reviews", headers).toList() }.getOrDefault(emptyList())
         val approvers = reviews.filter { it.isApprovalOf(sha) }.mapNotNull { it["user"]?.text("login") }
@@ -82,6 +82,7 @@ class GiteaSource(
         val automerge = approvers.isNotEmpty() && combined == "success" && !conflict &&
             runCatching { automergeScheduled(http.get("$api/repos/$repo/issues/$number/timeline?limit=100", headers).toList()) }
                 .getOrDefault(false)
+        val conflictSince = if (conflict && author != login) pull?.let { conflictSince(repo, it, headers) } else null
         val pullRequest = PullRequest(
             own = author == login,
             draft = draft,
@@ -92,6 +93,7 @@ class GiteaSource(
             author = author,
             automerge = automerge,
             updated = issue.text("updated_at")?.let(::instant),
+            conflictSince = conflictSince,
         )
         return Item(
             source = "gitea",
@@ -116,7 +118,7 @@ class GiteaSource(
     /**
      * What [flags] needs to know of a pull request; [approvers] approved its head commit,
      * [requested] are asked for their review, [automerge] tells that Gitea merges it once its checks pass,
-     * and [updated] is its last push or other change.
+     * [updated] is its last push or other change, and [conflictSince] tells since when a conflict waits for the agent.
      */
     internal data class PullRequest(
         val own: Boolean,
@@ -128,6 +130,7 @@ class GiteaSource(
         val author: String? = null,
         val automerge: Boolean = false,
         val updated: Instant? = null,
+        val conflictSince: Instant? = null,
     )
 
     /**
@@ -136,6 +139,29 @@ class GiteaSource(
      */
     internal fun requestedReviewers(reviews: List<JsonNode>): List<String> =
         reviews.filter { it.text("state") == "REQUEST_REVIEW" }.mapNotNull { it["user"]?.text("login") }.distinct()
+
+    /** Gitea's `mergeable` is false for each work in progress too; only for a ready pull request it tells a conflict. */
+    internal fun conflictOf(pull: JsonNode?, draft: Boolean) = !draft && pull?.get("mergeable")?.asBoolean() == false
+
+    /**
+     * Since when a conflict waits for the agent: the later of its [head] commit and the first of the [mainCommits]
+     * since the base of that head; Gitea tells only that a pull request conflicts, not since when.
+     */
+    internal fun conflictSince(head: Instant?, mainCommits: List<JsonNode>): Instant? {
+        val mainLeft = mainCommits.mapNotNull { it.commitTime() }.minOrNull() ?: return null
+        return listOfNotNull(head, mainLeft).max()
+    }
+
+    /** [conflictSince] of an agent's pull request; two requests, so only for one that conflicts. */
+    private fun conflictSince(repo: String, pull: JsonNode, headers: Map<String, String>): Instant? = runCatching {
+        val head = pull["head"]?.text("sha") ?: return null
+        val base = pull["base"]?.text("sha") ?: return null
+        val headTime = http.get("$api/repos/$repo/git/commits/$head?stat=false&files=false&verification=false", headers).commitTime()
+        conflictSince(headTime, http.get("$api/repos/$repo/compare/$head...$base", headers)["commits"]?.toList().orEmpty())
+    }.getOrNull()
+
+    private fun JsonNode.commitTime(): Instant? =
+        (get("commit")?.get("committer")?.text("date") ?: text("created"))?.let(::instant)
 
     /** The last word on a scheduled merge in the timeline of a pull request, oldest event first. */
     internal fun automergeScheduled(timeline: List<JsonNode>): Boolean =
@@ -167,6 +193,8 @@ class GiteaSource(
             pr.statuses.isNotEmpty() && pr.statuses.all { it.text("status") == "success" }
         return buildList {
             if (reviewed && !running) stuckReason(verdict, assessment, now)?.let { add(Flag("stuck", it)) }
+            val conflicting = pr.conflictSince?.let { Duration.between(it, now) }?.takeIf { !pr.own && pr.conflict && it >= CONFLICT_AFTER }
+            if (conflicting != null) add(Flag("stuck", "Konflikt seit ${duration(conflicting)} ohne neuen Commit"))
             if (pr.own && pr.conflict) add(Flag("rework", "Konflikt"))
             if (pr.own && failedBuilds.isNotEmpty()) add(Flag("rework", "Build rot: ${failedBuilds.joinToString(", ")}"))
             // a requested review waits for werkrevisor's result too: only then can the user approve the head
@@ -328,6 +356,8 @@ class GiteaSource(
         private const val ASSESSMENT = "ai-review/assessment"
         // in the agents' ping-pong a fix for RED never takes longer
         private val STUCK_AFTER: Duration = Duration.ofHours(1)
+        // an agent that watches its pull request rebases it within this time
+        private val CONFLICT_AFTER: Duration = Duration.ofMinutes(30)
         // werkrevisor's first status came 6 to 10 s after a push or the end of WIP
         private val REVIEW_START: Duration = Duration.ofMinutes(2)
         // werkrevisor's report.STATUS_TEXTS and STATUS_STATES

@@ -208,7 +208,7 @@ const TEXT = {
         "conn.entries": "{n} Einträge", "conn.via": "über {relay}", "conn.error": "Fehler", "conn.silent": "still",
         "todo.title": "Du bist dran", "todo.count": "{n} · dringendste zuerst", "todo.empty": "Nichts zu tun – alles läuft.",
         "group.stuck": "Festgefahren", "group.rework": "Nacharbeiten", "group.approve": "Freigeben", "group.merge": "Mergen", "group.answer": "Antworten",
-        "hint.stuck": "Agent und werkrevisor kommen nicht weiter", "hint.rework": "dein eigener PR", "hint.approve": "wartet auf dein Approval",
+        "hint.stuck": "der Agent kommt nicht weiter", "hint.rework": "dein eigener PR", "hint.approve": "wartet auf dein Approval",
         "hint.merge": "approved, nur noch mergen", "hint.answer": "an dich gerichtet",
         "act.stuck": "Eingreifen", "act.rework": "Ansehen", "act.approve": "Prüfen", "act.merge": "Mergen", "act.answer": "Öffnen",
         "load.builds": "{n} von {of} Builds laufen", "load.healthy": "läuft rund", "load.pressure": "unter Druck", "load.overloaded": "überlastet", "load.unknown": "unbekannt",
@@ -255,7 +255,7 @@ const TEXT = {
         "conn.entries": "{n} entries", "conn.via": "via {relay}", "conn.error": "error", "conn.silent": "silent",
         "todo.title": "Your turn", "todo.count": "{n} · most urgent first", "todo.empty": "Nothing to do – all is running.",
         "group.stuck": "Stuck", "group.rework": "Rework", "group.approve": "Approve", "group.merge": "Merge", "group.answer": "Reply",
-        "hint.stuck": "agent and werkrevisor do not get on", "hint.rework": "your own PR", "hint.approve": "waits for your approval",
+        "hint.stuck": "the agent does not get on", "hint.rework": "your own PR", "hint.approve": "waits for your approval",
         "hint.merge": "approved, just merge it", "hint.answer": "addressed to you",
         "act.stuck": "Step in", "act.rework": "Look", "act.approve": "Review", "act.merge": "Merge", "act.answer": "Open",
         "load.builds": "{n} of {of} builds running", "load.healthy": "healthy", "load.pressure": "under pressure", "load.overloaded": "overloaded", "load.unknown": "unknown",
@@ -309,7 +309,8 @@ const REASONS_EN = [
     [/^niemand angefragt$/, "nobody requested"], [/^angefragt: /, "requested: "], [/^kein werkrevisor$/, "no werkrevisor"],
     [/^Frage offen$/, "question open"], [/^Dialog offen$/, "dialog open"], [/^wartet auf dich$/, "waits for you"],
     [/^werkrevisor ohne Urteil$/, "werkrevisor without verdict"], [/^RED, an Menschen eskaliert$/, "RED, escalated to a human"],
-    [/^RED seit (.+) ohne neuen Commit$/, "RED for $1 without a new commit"], [/^zuletzt vor (.+)$/, "last seen $1 ago"],
+    [/^RED seit (.+) ohne neuen Commit$/, "RED for $1 without a new commit"], [/^Konflikt seit (.+) ohne neuen Commit$/, "conflict for $1 without a new commit"],
+    [/^zuletzt vor (.+)$/, "last seen $1 ago"],
     [/^(\d+) privates? Repos? verborgen – controlToken konfigurieren$/, "$1 private repos hidden – configure controlToken"],
 ];
 
