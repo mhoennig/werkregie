@@ -764,16 +764,59 @@ function costsTile(costs) {
 // ---- what runs and which sessions wait, as cards ----
 const MAX_CARDS = 8;
 
+const cardWhat = (item) => [item.project, item.kind === "session" ? item.origin : item.detail].filter(Boolean).join(" · ");
+
+// ---- a card whose content changed, or a new one, shows inverted for 7 s ----
+const FLASH_MS = 7000;
+// e.g. a build's "3 min" in its detail, which grows with time alone
+const DURATION = /^\d+ (s|min|h|d)$/;
+// what each card showed at the last render; the first render is the baseline, so opening the page flashes nothing
+let cardContents = null;
+// until when a card shows inverted; kept here, so the renders every 5 s neither end nor restart it
+const flashes = new Map();
+let flashTimer = 0;
+
+const cardId = (item) => item.url || item.command || [item.source, item.origin, item.kind, item.project, item.title].join("\n");
+
+// what the card shows, without its age and durations, and with the state rather than its word in the current language
+const cardContent = (item, waits) =>
+    JSON.stringify([item.source, item.state, item.title, waits, cardWhat(item).split(" · ").filter((part) => !DURATION.test(part))]);
+
+function noteChangedCards(all, now) {
+    const contents = new Map(all.map(([item, waits]) => [cardId(item), cardContent(item, waits)]));
+    if (cardContents) contents.forEach((content, id) => { if (cardContents.get(id) !== content) flashes.set(id, now + FLASH_MS); });
+    cardContents = contents;
+    flashes.forEach((until, id) => { if (until <= now || !contents.has(id)) flashes.delete(id); });
+}
+
+// a flash ends on time even when no render follows, e.g. in a tab that does not reload while hidden
+function scheduleFlashEnd() {
+    clearTimeout(flashTimer);
+    if (!flashes.size) return;
+    flashTimer = setTimeout(() => {
+        const now = Date.now();
+        flashes.forEach((until, id) => { if (until <= now) flashes.delete(id); });
+        document.querySelectorAll("#cards .card.is-flash").forEach((card) => {
+            if (Number(card.dataset.flashUntil) <= now) card.classList.replace("is-flash", "is-flash-end");
+        });
+        scheduleFlashEnd();
+    }, Math.max(0, Math.min(...flashes.values()) - Date.now()));
+}
+
 function renderCards(items) {
     const running = items.filter((i) => i.section === "RUNNING");
     const waiting = items.filter((i) => i.section === "OPEN" && i.kind === "session");
     $("cards-count").textContent = running.length + waiting.length ? t("cards.count", { n: running.length, w: waiting.length }) : "";
     const all = [...running.map((i) => [i, false]), ...waiting.map((i) => [i, true])];
+    // all of them, not only the shown ones: a card that moves in from "+n weitere" unchanged is not new
+    noteChangedCards(all, Date.now());
     const shown = all.length > MAX_CARDS ? all.slice(0, MAX_CARDS - 1) : all;
     const cards = shown.map(([item, waits]) => {
         const tag = href(item) ? "a" : "div";
-        const what = [item.project, item.kind === "session" ? item.origin : item.detail].filter(Boolean).join(" · ");
-        return `<${tag} class="card${waits ? " is-waiting" : ""}"${linkAttrs(item)}>
+        const what = cardWhat(item);
+        const until = flashes.get(cardId(item));
+        const flash = until ? ` data-flash-until="${until}"` : "";
+        return `<${tag} class="card${waits ? " is-waiting" : ""}${until ? " is-flash" : ""}"${flash}${linkAttrs(item)}>
             <span class="card-head">${logo(item.source)}${statusHtml(item)}<span class="card-age">${esc(item.time ? span(item.time) : "")}</span>${copyButton(item)}</span>
             <span class="card-title">${esc(item.title)}</span>
             <span class="card-meta">${esc(waits ? `${t("cards.waits")} · ${what}` : what)}</span>
@@ -781,6 +824,7 @@ function renderCards(items) {
     });
     if (all.length > shown.length) cards.push(`<a class="card card-more" href="#sessions">${esc(t("cards.more", { n: all.length - shown.length }))}</a>`);
     $("cards").innerHTML = cards.length ? cards.join("") : `<div class="empty">${esc(t("cards.empty"))}</div>`;
+    scheduleFlashEnd();
 }
 
 // ---- the history of 24 hours as a lane per tool, a cell per hour ----

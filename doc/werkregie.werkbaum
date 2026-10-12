@@ -92,6 +92,8 @@
         - [^] Du bist dran, grouped by action, with the tool's logo and a link (S)
         - [^] Werkator's load and builds, werkrevisor's costs beside it (S)
         - [^] Running work and waiting sessions as cards (XS)
+        - [^] A card with new content shows inverted for 7 s (XS)
+          " Werkregie PR#33: age and durations alone are no change; opening the page flashes nothing.
         - [^] The history of 24 hours as a lane per tool (S)
         - [^] Tabs for the lists, a bar at the bottom on phones (S)
         - [^] #dash.lang: German and English, switched in the header (S)

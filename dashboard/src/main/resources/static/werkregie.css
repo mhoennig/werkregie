@@ -322,6 +322,40 @@ a.costs-tile:hover { border-color: var(--accent); color: var(--text); }
 .card-meta { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-more { align-items: center; justify-content: center; border-style: dashed; color: var(--accent); font-weight: 500; }
 
+/* A card with new content shows for 7 s in the other mode: its tokens are pairs of the light and the dark
+   lists above, and its color-scheme picks the one the page does not use. It switches at once and fades back;
+   the fade moves nothing, so it stays for prefers-reduced-motion as well. */
+.card.is-flash {
+    color-scheme: dark;
+    --bg: light-dark(#ffffff, #242928);
+    --panel: light-dark(#fafafa, #2a302f);
+    --panel-2: light-dark(#f4f5f5, #313837);
+    --line: light-dark(#e4e7e7, #3e4645);
+    --line-2: light-dark(#d1d6d5, #545f5d);
+    --text: light-dark(#141616, #f4f5f5);
+    --text-2: light-dark(#3e4645, #d1d6d5);
+    --muted: light-dark(#6e7c7a, #9ea9a7);
+    --ghost: light-dark(#9ea9a7, #6e7c7a);
+    --accent: light-dark(#0e6b7d, #63bccb);
+    --accent-2: light-dark(#0a5262, #8ed0db);
+    --accent-soft: light-dark(#e3f0f3, #1f3b41);
+    --accent-soft-2: light-dark(#c6e0e6, #27505a);
+    --clay: light-dark(#b0563b, #e09070);
+    --clay-soft: light-dark(#f6e9e4, #3e2a22);
+    --amber: light-dark(#b8860b, #e3b341);
+    --amber-soft: light-dark(#f9f0d2, #3d3418);
+    --blue: light-dark(#3a62b0, #8eaef0);
+    --green: light-dark(#2e7d4a, #7cc793);
+}
+.card.is-flash .app-logo.is-mono { filter: invert(1); }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .card.is-flash { color-scheme: light; }
+    :root:not([data-theme="light"]) .card.is-flash .app-logo.is-mono { filter: none; }
+}
+:root[data-theme="dark"] .card.is-flash { color-scheme: light; }
+:root[data-theme="dark"] .card.is-flash .app-logo.is-mono { filter: none; }
+.card.is-flash-end, .card.is-flash-end * { transition: background-color 0.8s, border-color 0.8s, color 0.8s, stroke 0.8s, filter 0.8s; }
+
 /* the history of 24 hours: a lane per tool, a cell per hour */
 .lanes { display: grid; gap: 5px; padding: 12px 14px 10px; }
 .lane { display: grid; grid-template-columns: 20px 96px minmax(0, 1fr); align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; }
