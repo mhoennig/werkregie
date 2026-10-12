@@ -115,7 +115,7 @@ class JournalProposer(private val config: JournalConfig, private val stories: Ta
 
         val proposed = groups.values.map { entry(day.day, it) }
         val entries = withinDailyLimit(proposed)
-            .sortedWith(compareBy({ !it.mapped }, { it.hours == 0 }, { it.customer }, { it.project }, { it.story?.ref ?: 0 }))
+            .sortedWith(compareBy({ !it.mapped }, { it.hours == 0 }, { it.customer }, { it.project }, { it.story?.ref ?: 0L }))
         return Proposal(day.day, entries, file(day.day, entries))
     }
 

@@ -58,6 +58,17 @@ class JournalProposerTest : FunSpec({
         }
     }
 
+    test("a story and the rest of its project are two entries, the one without story first") {
+        val proposal = propose(
+            sessions = listOf(
+                session("s1", "hs.hsadmin.ng", "09:00" to "10:00", branches = listOf("mihoe/Taiga545-hardening")),
+                session("s2", "hs.hsadmin.ng", "11:00" to "12:00"),
+            ),
+        )
+
+        proposal.entries.map { it.project to it.story?.ref } shouldContainExactly listOf("HSAdmin NG" to null, "HSAdmin NG" to 545L)
+    }
+
     test("one entry per project without a Taiga ID, naming the pull request and the sessions") {
         val proposal = propose(
             sessions = listOf(session("Journal archive", "werkregie", "09:00" to "10:00"), session("Journal import", "werkregie", "13:00" to "14:00")),

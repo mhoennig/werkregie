@@ -164,6 +164,7 @@
         " <stateDir>/journal/YYYY-MM-DD.json, kept 400 days.
       - [^] #dash.journal.proposal: Proposal for a picked day, to copy or download (M) :#dash.journal.record
         " Werkregie PR#45: tab Journal; mapping in journal: of dashboard.yml; one entry per Taiga story, else per project.
+        " Werkregie PR#49: no HTTP 500 for a project with a story and other work.
       - [ ] AI summary as the description of an entry (S) :#dash.journal.proposal
       - [?] Days before the deployment, read from older transcripts
     + [?] #dash.notify: Matrix as a notification channel, for colleagues too
