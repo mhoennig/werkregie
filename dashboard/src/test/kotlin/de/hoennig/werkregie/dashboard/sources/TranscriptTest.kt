@@ -51,4 +51,28 @@ class TranscriptTest : FunSpec({
 
         Transcript.end(path, mapper).question shouldBe null
     }
+
+    test("an answer to AskUserQuestion is the last input") {
+        val path = Files.createTempFile("transcript", ".jsonl")
+        Files.writeString(path, listOf(
+            """{"type":"user","message":{"content":"Baue den Export"}}""",
+            """{"type":"assistant","uuid":"u1","message":{"content":[{"type":"tool_use","id":"t1","name":"AskUserQuestion","input":{}}]}}""",
+            """{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"answered"}]},
+               "toolUseResult":{"answers":{"Welcher Zugang?":"OpenRouter"}}}""".replace("\n", ""),
+            claude("u2", "Erledigt."),
+        ).joinToString("\n"))
+
+        Transcript.end(path, mapper).prompt shouldBe "OpenRouter"
+    }
+
+    test("a prompt before the read end is found") {
+        val path = Files.createTempFile("transcript", ".jsonl")
+        Files.writeString(path, listOf(
+            """{"type":"user","message":{"content":"Alter Auftrag"}}""",
+            """{"type":"user","message":{"content":"Baue den Export"}}""",
+        ).plus((1..20).map { claude("u$it", "x".repeat(100)) }).joinToString("\n"))
+
+        Transcript.end(path, mapper, tailBytes = 500).prompt shouldBe "Baue den Export"
+        Transcript.end(path, mapper, tailBytes = 500, searchBytes = 1000).prompt shouldBe null
+    }
 })

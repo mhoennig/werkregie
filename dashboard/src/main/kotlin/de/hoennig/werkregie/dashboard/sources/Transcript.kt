@@ -8,7 +8,7 @@ import java.nio.file.Path
 /**
  * The end of a Claude Code transcript: an AskUserQuestion without a result, and Claude's last text
  * with whether the user wrote after it. [lastTextId] is the uuid of the entry holding that text.
- * [prompt] is the user's last input, [asked] the questions of the open AskUserQuestion.
+ * [prompt] is the user's last input, a prompt or the answers to an AskUserQuestion; [asked] the questions of the open AskUserQuestion.
  */
 data class TranscriptEnd(
     val openQuestion: Boolean,
@@ -26,16 +26,23 @@ internal object Transcript {
     // a long session has megabytes of tool output; its end is all that counts
     const val TAIL_BYTES = 512 * 1024L
 
-    fun end(path: Path, mapper: ObjectMapper, tailBytes: Long = TAIL_BYTES): TranscriptEnd {
-        val lines = tail(path, tailBytes)
+    // how far back the user's last input is searched when the end holds none
+    const val SEARCH_BYTES = 8 * 1024 * 1024L
+
+    fun end(path: Path, mapper: ObjectMapper, tailBytes: Long = TAIL_BYTES, searchBytes: Long = SEARCH_BYTES): TranscriptEnd =
+        RandomAccessFile(path.toFile(), "r").use { file -> end(file, mapper, tailBytes, searchBytes) }
+
+    private fun end(file: RandomAccessFile, mapper: ObjectMapper, tailBytes: Long, searchBytes: Long): TranscriptEnd {
+        val tail = part(file, file.length(), tailBytes)
         val questions = linkedMapOf<String, String?>()
         var prompt: String? = null
         var lastText: String? = null
         var lastTextId: String? = null
         var claudeLast = false
-        for (line in lines) {
+        for (line in tail.lines) {
             val entry = runCatching { mapper.readTree(line) }.getOrNull() ?: continue
             if (entry["isSidechain"]?.asBoolean() == true || entry["isMeta"]?.asBoolean() == true) continue
+            promptOf(entry)?.let { prompt = it }
             val content = entry["message"]?.get("content")
             when (entry.text("type")) {
                 "assistant" -> content?.filter { it.isObject }?.forEach { block ->
@@ -51,16 +58,30 @@ internal object Transcript {
                 "user" -> {
                     content?.filter { it.isObject && it.text("type") == "tool_result" }
                         ?.forEach { block -> block.text("tool_use_id")?.let(questions::remove) }
-                    if (isHuman(content)) {
-                        claudeLast = false
-                        // the summary of a compacted conversation is no input of the user
-                        if (entry["isCompactSummary"]?.asBoolean() != true) prompt = content?.let(::humanText)
-                    }
+                    if (isHuman(content)) claudeLast = false
                 }
             }
         }
+        var end = tail.start
+        while (prompt == null && end > 0 && file.length() - end < searchBytes) {
+            val part = part(file, end, tailBytes)
+            prompt = part.lines.mapNotNull { line -> runCatching { mapper.readTree(line) }.getOrNull()?.let(::promptOf) }.lastOrNull()
+            end = part.start
+        }
         val asked = questions.values.filterNotNull().joinToString(" ").takeIf { it.isNotBlank() }
         return TranscriptEnd(questions.isNotEmpty(), lastText, lastTextId, claudeLast && lastText != null, prompt, asked)
+    }
+
+    private fun promptOf(entry: JsonNode): String? {
+        if (entry.text("type") != "user" || entry["isSidechain"]?.asBoolean() == true || entry["isMeta"]?.asBoolean() == true) return null
+        // the summary of a compacted conversation is no input of the user
+        if (entry["isCompactSummary"]?.asBoolean() == true) return null
+        entry["toolUseResult"]?.get("answers")?.takeIf { it.isObject }?.let { answers ->
+            return answers.mapNotNull { it.asText().takeIf { answer -> answer.isNotBlank() && !answer.startsWith("[User dismissed") } }
+                .joinToString(" · ").takeIf { it.isNotEmpty() }
+        }
+        val content = entry["message"]?.get("content")
+        return if (isHuman(content)) content?.let(::humanText) else null
     }
 
     private fun asked(block: JsonNode): String? =
@@ -79,14 +100,19 @@ internal object Transcript {
         else -> content.any { it.text("type") == "text" && it.text("text")?.trimStart()?.startsWith("<") == false }
     }
 
-    private fun tail(path: Path, tailBytes: Long): List<String> =
-        RandomAccessFile(path.toFile(), "r").use { file ->
-            val start = maxOf(0, file.length() - tailBytes)
-            val bytes = ByteArray((file.length() - start).toInt())
-            file.seek(start)
-            file.readFully(bytes)
-            val lines = String(bytes, Charsets.UTF_8).split('\n')
-            // the first line of a tail is cut
-            if (start > 0) lines.drop(1) else lines
-        }.filter { it.isNotBlank() }
+    /** The whole lines of up to [bytes] before [end], which starts a line; [start] is where the first whole line starts. */
+    private class Part(val lines: List<String>, val start: Long)
+
+    private fun part(file: RandomAccessFile, end: Long, bytes: Long): Part {
+        val from = maxOf(0, end - bytes)
+        val buffer = ByteArray((end - from).toInt())
+        file.seek(from)
+        file.readFully(buffer)
+        // the first line of a part is cut, unless it starts the file
+        val skip = if (from == 0L) 0 else buffer.indexOf('\n'.code.toByte()) + 1
+        // a part inside one long line holds no whole line; the next part ends where it starts
+        if (from > 0 && (skip == 0 || skip == buffer.size)) return Part(emptyList(), from)
+        val lines = String(buffer, skip, buffer.size - skip, Charsets.UTF_8).split('\n').filter { it.isNotBlank() }
+        return Part(lines, from + skip)
+    }
 }
