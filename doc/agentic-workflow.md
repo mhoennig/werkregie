@@ -1,6 +1,6 @@
 # Agentic Workflow
 
-This document is the same in all werk repositories; each one keeps it as `docs/agentic-workflow.md`.
+This document is the same in all Werk repositories; each one keeps it as `docs/agentic-workflow.md`.
 The `AGENTS.md` of a repository refers to it and holds only what differs or adds:
 build and test commands, architecture, hard invariants, and exceptions to this document.
 werkregie holds the master copy, as `doc/agentic-workflow.md`.

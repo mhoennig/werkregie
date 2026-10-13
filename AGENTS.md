@@ -19,7 +19,7 @@ Run from `dashboard/`:
 
 ## Workflow
 
-Follow [doc/agentic-workflow.md](doc/agentic-workflow.md), the workflow of all werk repositories:
+Follow [doc/agentic-workflow.md](doc/agentic-workflow.md), the workflow of all Werk repositories:
 roles, steps of a PR, review rounds, PR documents, the plan, versions and the writing style.
 In addition, for werkregie:
 
