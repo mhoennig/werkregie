@@ -190,6 +190,7 @@ An entry this version does not know is named on stderr and skipped, so that a ne
   ✕ on a session in *Du bist dran* dismisses it until the session changes, e.g. with a new message;
   the server keeps the dismissals in `dismissed.json` of its state directory, for all devices,
   and takes them only with the access token as bearer header.
+  The other rows show ✕ dimmed, so that the controls align; its tooltip says why the row cannot be dismissed.
   The tooltip of its row in "Du bist dran" shows the user's last input and Claude's question:
   the open AskUserQuestion, else Claude's last text.
   The last input is a prompt or the answers to an AskUserQuestion, searched up to 8 MiB back in the transcript.

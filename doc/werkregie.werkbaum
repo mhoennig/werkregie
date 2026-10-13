@@ -16,6 +16,7 @@
           " Werkregie PR#40: the process file, an unanswered AskUserQuestion, or Jev's rating of Claude's last text.
         - [^] #dash.claude.dismiss: A session can be dismissed from Du bist dran until it changes (XS)
           " Werkregie PR#44: kept on the server for all devices; only with the access token.
+          " Werkregie PR#56: every row shows ✕, dimmed with the reason where it cannot dismiss.
         - [^] #dash.claude.tip: The tooltip shows the user's last input and Claude's question (S)
           " Werkregie PR#47: a text over 160 characters summarized once by Haiku 5.5 through OpenRouter.
           " PR#50: an answer to AskUserQuestion counts as input; an older prompt is searched up to 8 MiB back.
